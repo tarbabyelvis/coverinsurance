@@ -1,5 +1,12 @@
-from datetime import timezone
 from django.db import models
+
+
+from django.db import models
+
+
+class BaseModelManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted__isnull=True)
 
 
 class BaseModel(models.Model):
@@ -7,9 +14,8 @@ class BaseModel(models.Model):
     updated = models.DateTimeField(auto_now=True)
     deleted = models.DateTimeField(null=True, blank=True)
 
+    objects = BaseModelManager()
+    all_objects = models.Manager()
+
     class Meta:
         abstract = True
-
-    def save(self, *args, **kwargs):
-        self.updated = timezone.now()
-        super().save(*args, **kwargs)
