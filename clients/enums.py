@@ -6,6 +6,10 @@ class EntityType(models.TextChoices):
     ORGANIZATION = "ORGANIZATION", "Organization"
 
 
-class Gender(models.TextChoices):
-    MALE = "MALE", "Male"
-    FEMALE = "FEMALE", "Female"
+class MaritalStatus(models.TextChoices):
+    MARRIED = "MARRIED", "Married"
+    SINGLE = "SINGLE", "Single"
+    DIVORCED = "DIVORCED", "Divorced"
+    WIDOWED = "WIDOWED", "Widowed"
+    OTHER = "OTHER", "Other"
+    UNKNOWN = "UNKNOWN", "Unknown"

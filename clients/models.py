@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils import timezone
 
-from clients.enums import EntityType, Gender
+from clients.enums import EntityType, Gender, MaritalStatus
 from core.models import BaseModel
 
 
@@ -33,6 +33,9 @@ class ClientDetails(BaseModel):
     external_id = models.CharField(max_length=200, null=True, blank=True)
     entity_type = models.CharField(max_length=20, choices=EntityType.choices)
     gender = models.CharField(max_length=20, choices=Gender.choices)
+    marital_status = models.CharField(
+        max_length=20, choices=MaritalStatus.choices, null=True, blank=True
+    )
     date_of_birth = models.DateField(null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
     phone_number = models.CharField(max_length=200, null=True, blank=True)

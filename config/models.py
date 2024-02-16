@@ -1,6 +1,5 @@
 from django.db import models
-
-from config.enum import PolicyType
+from config.enum import DocumentCategories, PolicyType
 from core.models import BaseModel
 
 
@@ -32,11 +31,21 @@ class ClaimType(BaseModel):
 
 
 class ClaimFields(models.Model):
-    name = models.CharField(max_length=200, null=True, blank=True)
-    input_type = models.CharField(max_length=200, null=True, blank=True)
+    short_name = models.CharField(max_length=50)
+    name = models.CharField(max_length=200)
+    input_type = models.CharField(max_length=200)
     is_required = models.BooleanField(default=False)
     claim_type = models.ForeignKey(
         ClaimType,
         on_delete=models.RESTRICT,
         related_name="claims_fields",
     )
+
+
+class DocumentType(models.Model):
+    document_type = models.CharField(max_length=200)
+    category = models.CharField(max_length=20, choices=DocumentCategories.choices)
+
+
+class Relationships(models.Model):
+    name = models.CharField(max_length=200)
