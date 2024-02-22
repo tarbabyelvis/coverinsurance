@@ -41,9 +41,11 @@ SHARED_APPS = [
     "django_tenants",
     "rest_framework",
     "tenants",
+    "auditlog",
+    "policies", "claims", "clients", "jobs", "reports", "complaints", 'config',
 ]
 
-TENANT_APPS = ["policies", "claims", "clients", "jobs", "reports", "complaints"]
+TENANT_APPS = ["policies", "claims", "clients", "jobs", "reports", "complaints", 'config']
 
 INSTALLED_APPS = list(SHARED_APPS) + [
     app for app in TENANT_APPS if app not in SHARED_APPS
@@ -64,6 +66,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.APILoggingMiddleware",
+    "auditlog.middleware.AuditlogMiddleware",
 ]
 
 ROOT_URLCONF = "FinCover.urls"
@@ -154,3 +158,45 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SHOW_PUBLIC_IF_NO_TENANT_FOUND = True
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            'filters': ['tenant_context'], # tenant config
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+
+    # tenant configs
+    'filters': {
+        'tenant_context': {
+            '()': 'django_tenants.log.TenantContextFilter'
+        },
+    },
+    'formatters': {
+        'tenant_context': {
+            'format': '[%(schema_name)s:%(domain_url)s] '
+            '%(levelname)-7s %(asctime)s %(message)s',
+        },
+    },
+}

@@ -2,7 +2,7 @@ from django.db import models
 
 
 class EntityType(models.TextChoices):
-    PERSON = "PERSON", "Person"
+    INDIVIDUAL = "INDIVIDUAL", "Individual"
     ORGANIZATION = "ORGANIZATION", "Organization"
 
 

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from claims.models import ClaimFields
+from config.models import ClaimFields
 from config.models import ClaimType
 
 

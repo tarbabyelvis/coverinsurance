@@ -1,6 +1,7 @@
 from django.db import models
-from config.enum import DocumentCategories, PolicyType
+from config.enums import DocumentCategories, PolicyType
 from core.models import BaseModel
+from auditlog.registry import auditlog
 
 
 class PolicyName(BaseModel):
@@ -49,3 +50,11 @@ class DocumentType(models.Model):
 
 class Relationships(models.Model):
     name = models.CharField(max_length=200)
+
+
+# register the class for Audit
+auditlog.register(PolicyName)
+auditlog.register(InsuranceCompany)
+auditlog.register(ClaimFields)
+auditlog.register(DocumentType)
+auditlog.register(Relationships)

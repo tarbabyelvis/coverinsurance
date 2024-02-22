@@ -1,6 +1,7 @@
 from django.db import models
 from config.models import ClaimType, DocumentType
 from core.models import BaseModel
+from auditlog.registry import auditlog
 
 
 class Claim(BaseModel):
@@ -44,3 +45,8 @@ class ClaimDocument(BaseModel):
         on_delete=models.RESTRICT,
         related_name="claim_document_type",
     )
+
+
+# Register models for audit
+auditlog.register(Claim)
+auditlog.register(ClaimDocument)

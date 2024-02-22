@@ -1,6 +1,8 @@
 from django.urls import path
+from clients.views import ClientsView
 from .views import *
 
+app_name = 'clients'
 urlpatterns = [
-    # path("debt-review/loan-status/<int:loan_id>", GetLoanStatuses.as_view()),
+    path("", ClientsView.as_view(), name="create-get"),
 ]

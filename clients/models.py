@@ -1,11 +1,11 @@
 from django.db import models
-from django.utils import timezone
-
-from clients.enums import EntityType, Gender, MaritalStatus
+from auditlog.registry import auditlog
+from clients.enums import EntityType, MaritalStatus
+from core.enums import Gender
 from core.models import BaseModel
 
 
-class IdDocumentType(models.Model):
+class IdDocumentType(BaseModel):
     type_name = models.CharField(max_length=200)
 
     class Meta:
@@ -13,7 +13,7 @@ class IdDocumentType(models.Model):
         verbose_name_plural = "Loan Teams"
 
     def __str__(self):
-        return self.name
+        return self.type_name
 
 
 class ClientDetails(BaseModel):
@@ -83,3 +83,9 @@ class ClientEmploymentDetails(BaseModel):
 
     def __str__(self):
         return f"{self.client} - {self.employer_name}"
+
+
+# Register models for Audit
+auditlog.register(ClientDetails)
+auditlog.register(IdDocumentType)
+auditlog.register(ClientEmploymentDetails)

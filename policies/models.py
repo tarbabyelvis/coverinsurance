@@ -87,7 +87,7 @@ class Dependant(BaseModel):
     relationship = models.ForeignKey(
         Relationships,
         on_delete=models.RESTRICT,
-        related_name="policy_insurance_company",
+        related_name="relationship_dependant",
     )
     dependant_name = models.CharField(max_length=200, null=True, blank=True)
     dependant_dob = models.DateField(null=True, blank=True)
@@ -102,13 +102,13 @@ class Beneficiary(BaseModel):
     policy = models.ForeignKey(
         Policy,
         on_delete=models.RESTRICT,
-        related_name="policy_dependants",
+        related_name="policy_beneficiary",
     )
 
     relationship = models.ForeignKey(
         Relationships,
         on_delete=models.RESTRICT,
-        related_name="policy_insurance_company",
+        related_name="relationship_beneficiary",
     )
     beneficiary_name = models.CharField(max_length=200, null=True, blank=True)
     beneficiary_dob = models.DateField(null=True, blank=True)
