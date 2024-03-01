@@ -24,7 +24,6 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         errors = {}
-        print("the data: ", data)
 
         # Iterate over each field in the serializer
         for field_name, value in data.items():

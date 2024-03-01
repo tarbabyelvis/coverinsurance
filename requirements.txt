@@ -6,3 +6,6 @@ djangorestframework
 markdown
 django-filter
 django-auditlog
+openpyxl
+pandas
+drf-yasg

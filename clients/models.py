@@ -43,6 +43,7 @@ class ClientDetails(BaseModel):
     address_suburb = models.CharField(max_length=200, null=True, blank=True)
     address_town = models.CharField(max_length=200, null=True, blank=True)
     address_province = models.CharField(max_length=200, null=True, blank=True)
+    upload_ref = models.CharField(max_length=200, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:

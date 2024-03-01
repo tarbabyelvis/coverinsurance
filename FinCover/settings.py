@@ -42,6 +42,7 @@ SHARED_APPS = [
     "rest_framework",
     "tenants",
     "auditlog",
+    "drf_yasg",
     "policies", "claims", "clients", "jobs", "reports", "complaints", 'config',
 ]
 

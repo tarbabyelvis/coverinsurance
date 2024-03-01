@@ -1,7 +1,7 @@
 import logging
 from django.urls import reverse
 from rest_framework import status
-from .models import IdDocumentType, ClientDetails
+from ..models import IdDocumentType, ClientDetails
 from django_tenants.test.cases import TenantTestCase
 from django_tenants.test.client import TenantClient
 
@@ -20,8 +20,6 @@ class ClientDetailsAPITests(TenantTestCase):
 
 
     def test_create_client(self):
-        print(self.id_document_type.id)
-        print(self.id_document_type.pk)
         data = {
             'first_name': 'John',
             'last_name': 'Doe',
@@ -32,7 +30,6 @@ class ClientDetailsAPITests(TenantTestCase):
         }
         url = reverse('clients:create-get')
         response = self.c.post(url, data)
-        logger.error(response.content)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         client_obj = ClientDetails.objects.filter().first()
@@ -50,3 +47,5 @@ class ClientDetailsAPITests(TenantTestCase):
         response = self.c.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(len(response.data), 1)
+
+
