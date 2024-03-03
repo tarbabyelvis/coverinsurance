@@ -2,5 +2,5 @@ from django.urls import path
 from .views import *
 
 urlpatterns = [
-    # path("debt-review/loan-status/<int:loan_id>", GetLoanStatuses.as_view()),
+    path("", PolicyView.as_view(), name="create-policy"),
 ]

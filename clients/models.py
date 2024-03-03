@@ -1,11 +1,9 @@
 from django.db import models
 from auditlog.registry import auditlog
 from clients.enums import EntityType, MaritalStatus
-from config.models import IdDocumentType
+from config.models import BusinessSector, IdDocumentType
 from core.enums import Gender
 from core.models import BaseModel
-
-
 
 
 class ClientDetails(BaseModel):
@@ -67,8 +65,11 @@ class ClientEmploymentDetails(BaseModel):
         max_digits=10, decimal_places=2, null=True, blank=True
     )
     job_title = models.CharField(max_length=200, null=True, blank=True)
-    # TODO: Create a model for business sectors
-    sector = models.CharField(max_length=200, null=True, blank=True)
+    sector = models.ForeignKey(
+        BusinessSector,
+        on_delete=models.CASCADE,
+        related_name="client_employment_business_sector", null=True, blank=True
+    )
 
     class Meta:
         verbose_name = "Client Details"

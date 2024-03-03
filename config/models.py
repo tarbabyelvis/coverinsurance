@@ -87,6 +87,16 @@ class IdDocumentType(BaseModel):
 
     def __str__(self):
         return self.type_name
+    
+class BusinessSector(BaseModel):
+    sector = models.CharField(max_length=200)
+
+    class Meta:
+        verbose_name = "Business Sector"
+        verbose_name_plural = "Business Sectors"
+
+    def __str__(self):
+        return self.sector
 
 
 # register the class for Audit
@@ -96,3 +106,4 @@ auditlog.register(ClaimFields)
 auditlog.register(DocumentType)
 auditlog.register(Relationships)
 auditlog.register(IdDocumentType)
+auditlog.register(BusinessSector)
