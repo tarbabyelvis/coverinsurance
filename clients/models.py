@@ -1,19 +1,11 @@
 from django.db import models
 from auditlog.registry import auditlog
 from clients.enums import EntityType, MaritalStatus
+from config.models import IdDocumentType
 from core.enums import Gender
 from core.models import BaseModel
 
 
-class IdDocumentType(BaseModel):
-    type_name = models.CharField(max_length=200)
-
-    class Meta:
-        verbose_name = "Loan Team"
-        verbose_name_plural = "Loan Teams"
-
-    def __str__(self):
-        return self.type_name
 
 
 class ClientDetails(BaseModel):
@@ -88,5 +80,4 @@ class ClientEmploymentDetails(BaseModel):
 
 # Register models for Audit
 auditlog.register(ClientDetails)
-auditlog.register(IdDocumentType)
 auditlog.register(ClientEmploymentDetails)

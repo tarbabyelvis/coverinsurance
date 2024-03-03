@@ -30,6 +30,13 @@ class InsuranceCompany(BaseModel):
 class ClaimType(BaseModel):
     name = models.CharField(max_length=200, null=True, blank=True)
 
+    class Meta:
+        verbose_name = "Claim Type"
+        verbose_name_plural = "Claim Types"
+
+    def __str__(self):
+        return self.name
+
 
 class ClaimFields(models.Model):
     short_name = models.CharField(max_length=50)
@@ -42,14 +49,44 @@ class ClaimFields(models.Model):
         related_name="claims_fields",
     )
 
+    class Meta:
+        verbose_name = "Claim Field"
+        verbose_name_plural = "Claim Fields"
+
+    def __str__(self):
+        return self.name
+
 
 class DocumentType(models.Model):
     document_type = models.CharField(max_length=200)
     category = models.CharField(max_length=20, choices=DocumentCategories.choices)
 
+    class Meta:
+        verbose_name = "Document Type"
+        verbose_name_plural = "Document Types"
+
+    def __str__(self):
+        return self.document_type
+
 
 class Relationships(models.Model):
     name = models.CharField(max_length=200)
+    class Meta:
+        verbose_name = "Relationship"
+        verbose_name_plural = "Relationships"
+
+    def __str__(self):
+        return self.name
+    
+class IdDocumentType(BaseModel):
+    type_name = models.CharField(max_length=200)
+
+    class Meta:
+        verbose_name = "ID Document Type"
+        verbose_name_plural = "ID Document Types"
+
+    def __str__(self):
+        return self.type_name
 
 
 # register the class for Audit
@@ -58,3 +95,4 @@ auditlog.register(InsuranceCompany)
 auditlog.register(ClaimFields)
 auditlog.register(DocumentType)
 auditlog.register(Relationships)
+auditlog.register(IdDocumentType)
