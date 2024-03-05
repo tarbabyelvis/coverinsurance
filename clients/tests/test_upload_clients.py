@@ -1,4 +1,5 @@
 
+import json
 import logging
 from django.urls import reverse
 from rest_framework import status
@@ -18,20 +19,14 @@ class UploadClientsTest(TenantTestCase):
 
 
     def test_upload_clients_success(self):
-        # Create a sample Excel file for testing
-        # excel_file_content = b"First Name,Middlename,Last Name,ID Number,ID Type,Entity Type,Gender,Marital Status,Date of Birth,Email,Phone number,Address Street,Address Suburb,Address Town,Address Province\nJohn,Doe,Smith,1234567,Passport,Individual,Male,Single,1990-01-01,john@example.com,1234567890,Street,Suburb,Town,Province\n"
-        # excel_file = InMemoryUploadedFile(
-        #     'test.xlsx', excel_file_content, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        #     len(excel_file_content.getvalue()), None
-        # )
-
-        # CSV data
         
         # Create InMemoryUploadedFile
-        excel_file = mock_upload_excel()
+        excel_file, columns = mock_upload_excel()
         # Make a POST request to the API endpoint
         url = reverse("clients:upload-clients")
-        response = self.c.post(url, {"file": excel_file}, format="multipart")
+        # response = self.c.post(url, {"file": excel_file, "columns": columns}, format="multipart")
+        columns_data = json.dumps(columns)
+        response = self.c.post(url, {"file": excel_file, "columns": columns_data}, format="multipart")
         logger.info(f"upload correct: {response.content}")
 
         # Assert the response

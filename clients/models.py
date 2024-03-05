@@ -1,19 +1,9 @@
 from django.db import models
 from auditlog.registry import auditlog
 from clients.enums import EntityType, MaritalStatus
+from config.models import BusinessSector, IdDocumentType
 from core.enums import Gender
 from core.models import BaseModel
-
-
-class IdDocumentType(BaseModel):
-    type_name = models.CharField(max_length=200)
-
-    class Meta:
-        verbose_name = "Loan Team"
-        verbose_name_plural = "Loan Teams"
-
-    def __str__(self):
-        return self.type_name
 
 
 class ClientDetails(BaseModel):
@@ -75,8 +65,11 @@ class ClientEmploymentDetails(BaseModel):
         max_digits=10, decimal_places=2, null=True, blank=True
     )
     job_title = models.CharField(max_length=200, null=True, blank=True)
-    # TODO: Create a model for business sectors
-    sector = models.CharField(max_length=200, null=True, blank=True)
+    sector = models.ForeignKey(
+        BusinessSector,
+        on_delete=models.CASCADE,
+        related_name="client_employment_business_sector", null=True, blank=True
+    )
 
     class Meta:
         verbose_name = "Client Details"
@@ -88,5 +81,4 @@ class ClientEmploymentDetails(BaseModel):
 
 # Register models for Audit
 auditlog.register(ClientDetails)
-auditlog.register(IdDocumentType)
 auditlog.register(ClientEmploymentDetails)

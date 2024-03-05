@@ -9,3 +9,6 @@ django-auditlog
 openpyxl
 pandas
 drf-yasg
+django-rest-marshmallow
+marshmallow
+uvicorn
