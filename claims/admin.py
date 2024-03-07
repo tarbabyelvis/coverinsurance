@@ -1,16 +1,8 @@
 from django.contrib import admin
 
-from config.models import ClaimFields
-from config.models import ClaimType
+from claims.models import Claim
 
-
-class ClaimFieldsInline(admin.TabularInline):
-    model = ClaimFields
-    extra = 1
-
-
+@admin.register(Claim)
 class ClaimAdmin(admin.ModelAdmin):
-    inlines = (ClaimFieldsInline,)
-
-
-admin.site.register(ClaimType, ClaimAdmin)
+    list_display = ['name', 'claim_type', "claim_status", "claimant_name", "claimant_surname", "claimant_id_number"]
+    search_fields = ['name', 'claim_type', "claimant_name", "claimant_surname", "claimant_id_number", "claimant_email"]

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Claim, ClaimDocument
-from config.models import ClaimType, DocumentType
+from config.models import ClaimType, DocumentType, IdDocumentType
 
 class ClaimTypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -17,6 +17,7 @@ class ClaimDocumentSerializer(serializers.ModelSerializer):
         model = ClaimDocument
         fields = ['id', 'claim', 'document_name', 'document_file', 'document_type']
 
+
 class ClaimSerializer(serializers.ModelSerializer):
     claim_type = serializers.PrimaryKeyRelatedField(queryset=ClaimType.objects.all())
     claim_document = ClaimDocumentSerializer(many=True, required=False)
@@ -24,6 +25,22 @@ class ClaimSerializer(serializers.ModelSerializer):
     class Meta:
         model = Claim
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        if 'claimant_id_type' in data:
+            claimant_id_type = data['claimant_id_type']
+            if isinstance(claimant_id_type, str):
+                # Try to convert string to integer if it's a digit
+                if claimant_id_type.isdigit():
+                    data['claimant_id_type'] = int(claimant_id_type)
+                else:
+                    try:
+                        data['claimant_id_type'] = IdDocumentType.objects.get(name=claimant_id_type).id
+                    except IdDocumentType.DoesNotExist:
+                        raise serializers.ValidationError("Invalid claimant id type name")
+            elif not isinstance(claimant_id_type, int):
+                raise serializers.ValidationError("claimant_id_type must be an integer or string")
+        return super().to_internal_value(data)
 
     def create(self, validated_data):
         claim_documents_data = validated_data.pop('claim_document', [])

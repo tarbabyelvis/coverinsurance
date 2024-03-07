@@ -36,6 +36,24 @@ class PolicyName(BaseModel):
 
     def __str__(self):
         return self.name
+    
+class PolicyTypeFields(models.Model):
+    short_name = models.CharField(max_length=50)
+    name = models.CharField(max_length=200)
+    input_type = models.CharField(max_length=200)
+    is_required = models.BooleanField(default=False)
+    claim_type = models.ForeignKey(
+        PolicyName,
+        on_delete=models.RESTRICT,
+        related_name="policy_type_fields",
+    )
+
+    class Meta:
+        verbose_name = "Claim Field"
+        verbose_name_plural = "Claim Fields"
+
+    def __str__(self):
+        return self.name
 
 
 class InsuranceCompany(BaseModel):
@@ -148,3 +166,5 @@ auditlog.register(Relationships)
 auditlog.register(IdDocumentType)
 auditlog.register(BusinessSector)
 auditlog.register(Agent)
+auditlog.register(OrganisationConfig)
+

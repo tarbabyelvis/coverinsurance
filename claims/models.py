@@ -1,5 +1,5 @@
 from django.db import models
-from config.models import ClaimType, DocumentType
+from config.models import ClaimType, DocumentType, IdDocumentType
 from core.models import BaseModel
 from auditlog.registry import auditlog
 
@@ -15,7 +15,11 @@ class Claim(BaseModel):
     claimant_name = models.CharField(max_length=200, null=True, blank=True)
     claimant_surname = models.CharField(max_length=200, null=True, blank=True)
     claimant_id_number = models.CharField(max_length=200, null=True, blank=True)
-    claimant_id_type = models.CharField(max_length=200, null=True, blank=True)
+    claimant_id_type = models.ForeignKey(
+        IdDocumentType,
+        on_delete=models.RESTRICT,
+        related_name="claimant_id_document_type",
+    )
     claimant_email = models.EmailField(null=True, blank=True)
     claimant_phone = models.CharField(max_length=50, null=True, blank=True)
     claimant_bank_name = models.CharField(max_length=200, null=True, blank=True)
