@@ -1,11 +1,11 @@
 # serializers.py
 from datetime import datetime
+from django.db import transaction
 import json
 from rest_framework import serializers
 from clients.commons import CLIENTS_EXPECTED_COLUMNS
-from .models import ClientDetails, IdDocumentType
+from .models import ClientDetails, ClientEmploymentDetails, IdDocumentType
 from django.core.exceptions import ObjectDoesNotExist
-import os
 from marshmallow import Schema, fields, validates_schema, ValidationError
 
 
@@ -18,8 +18,15 @@ def in_memory_file_exists(in_memory_file):
     except (AttributeError, IOError):
         # If the file-like object is closed or empty, an exception will be raised
         return False
+    
+class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClientEmploymentDetails
+        exclude = ['client']
 
 class ClientDetailsSerializer(serializers.ModelSerializer):
+    employment_details = ClientEmploymentDetailsSerializer(many=True, required=False)
+
     class Meta:
         model = ClientDetails
         exclude = ['deleted']
@@ -42,28 +49,37 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Invalid primary_id_document_type ID.")
         
         return value
-    
+
     def to_internal_value(self, data):
+        # Convert QueryDict to a mutable dictionary
+        mutable_data = data.copy()
+
         # Convert datetime to date for the 'date_of_birth' field if needed
-        if 'date_of_birth' in data and isinstance(data['date_of_birth'], datetime):
-            data['date_of_birth'] = data['date_of_birth'].date()
+        if 'date_of_birth' in mutable_data and isinstance(mutable_data['date_of_birth'], datetime):
+            mutable_data['date_of_birth'] = mutable_data['date_of_birth'].date()
 
-        if isinstance(data["primary_id_document_type"], IdDocumentType):
+        if isinstance(mutable_data["primary_id_document_type"], IdDocumentType):
             # If the value is an instance of IdDocumentType, use it directly
-            data["primary_id_document_type"] = data["primary_id_document_type"].pk
-        elif isinstance(data["primary_id_document_type"], str):
-            # If the value is a string, get the IdDocumentType instance using the name
-            data["primary_id_document_type"] = IdDocumentType.objects.get(type_name__iexact=data["primary_id_document_type"]).pk
-
-            print(data["primary_id_document_type"])
+            mutable_data["primary_id_document_type"] = mutable_data["primary_id_document_type"].pk
+        elif isinstance(mutable_data["primary_id_document_type"], str):
+            print("ID Type: ", type(mutable_data["primary_id_document_type"]))
+            # If the value is a string, check if it's a number
+            if mutable_data["primary_id_document_type"].isdigit():
+                # If it's a number, retrieve the IdDocumentType instance using the primary key
+                mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(pk=mutable_data["primary_id_document_type"]).pk
+            else:
+                # If it's not a number, get the IdDocumentType instance using the name
+                mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(type_name__iexact=mutable_data["primary_id_document_type"]).pk
+            print(mutable_data["primary_id_document_type"])
         else:
             # If it's already a primary key, retrieve the IdDocumentType instance using the primary key
             try:
-                data["primary_id_document_type"] = IdDocumentType.objects.get(pk=data["primary_id_document_type"]).pk
+                mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(pk=mutable_data["primary_id_document_type"]).pk
             except ObjectDoesNotExist:
                 raise serializers.ValidationError("Invalid primary_id_document_type ID.")
-        return super().to_internal_value(data)
-    
+        
+        return super().to_internal_value(mutable_data)
+
     def validate(self, data):
         print("validate")
         errors = {}
@@ -93,8 +109,9 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         return data
 
 
+    @transaction.atomic
     def create(self, validated_data):
-        print("Error Creating")
+        employment_details_data = validated_data.pop('employment_details', [])
         # Extract the nested IdDocumentType data from the validated data
         primary_id_document_type_value = validated_data.pop('primary_id_document_type')
         
@@ -121,7 +138,11 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
 
         # Create the ClientDetails instance
         instance = ClientDetails.objects.create(**validated_data, primary_id_document_type=id_document_type_instance)
-        
+
+        # Create the ClientEmploymentDetails instances
+        for employment_detail_data in employment_details_data:
+            ClientEmploymentDetails.objects.create(client=instance, **employment_detail_data)
+
         return instance
 
 

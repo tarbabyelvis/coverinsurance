@@ -1,4 +1,5 @@
 from django.db import models
+from clients.enums import EntityType
 from config.enums import DocumentCategories, PolicyType
 from core.models import BaseModel
 from auditlog.registry import auditlog
@@ -29,6 +30,11 @@ class InsuranceCompany(BaseModel):
 
 class ClaimType(BaseModel):
     name = models.CharField(max_length=200, null=True, blank=True)
+    policy = models.ForeignKey(
+        PolicyName,
+        on_delete=models.RESTRICT,
+        related_name="claim_type_policy",
+    )
 
     class Meta:
         verbose_name = "Claim Type"
@@ -78,7 +84,7 @@ class Relationships(models.Model):
     def __str__(self):
         return self.name
     
-class IdDocumentType(BaseModel):
+class IdDocumentType(models.Model):
     type_name = models.CharField(max_length=200)
 
     class Meta:
@@ -97,6 +103,19 @@ class BusinessSector(BaseModel):
 
     def __str__(self):
         return self.sector
+    
+class Agent(BaseModel):
+    agent_name = models.CharField(max_length=200, null=True, blank=True)
+    entity_type = models.CharField(max_length=20, choices=EntityType.choices)
+    phone_number = models.CharField(max_length=200, null=True, blank=True)
+    email = models.EmailField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Agent"
+        verbose_name_plural = "Agents"
+
+    def __str__(self):
+        return self.agent_name
 
 
 # register the class for Audit
@@ -107,3 +126,4 @@ auditlog.register(DocumentType)
 auditlog.register(Relationships)
 auditlog.register(IdDocumentType)
 auditlog.register(BusinessSector)
+auditlog.register(Agent)

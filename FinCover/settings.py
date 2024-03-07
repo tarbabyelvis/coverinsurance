@@ -26,9 +26,9 @@ SECRET_KEY = "django-insecure-*tys91*uq0aa-@=jw!x*t#cv3hlq3_&uoh=d40ijr#&$v90p+q
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
-CSRF_TRUSTED_ORIGINS = ["http://fin-za.localhost"]
+CSRF_TRUSTED_ORIGINS = ["http://fin-za.localhost", "https://dev-cover-workflow.fin-connect.net"]
 
 
 # Application definition
@@ -116,6 +116,18 @@ DATABASES = {
         "PORT": os.getenv("DATABASE_PORT", 5432),
     },
 }
+
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django_tenants.postgresql_backend",
+#         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
+#         "USER": os.getenv("DATABASE_USER", "xWniG2oMKu85"),
+#         "PASSWORD": os.getenv("DATABASE_PASSWORD", "BzjUftSC7JDSf%]["),
+#         "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
+#         "PORT": os.getenv("DATABASE_PORT", 5433),
+#     },
+# }
+
 
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 

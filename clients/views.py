@@ -25,9 +25,10 @@ class ClientsView(APIView):
     )
 
     def post(self, request):
+        
         serializer = ClientDetailsSerializer(data=request.data)
-        if serializer.is_valid():
-            try:
+        try:
+            if serializer.is_valid():
                 logger.info("Validated data: %s", serializer.validated_data)
                 # Save the validated data to create a new ClientDetails instance
                 serializer.save()
@@ -35,10 +36,19 @@ class ClientsView(APIView):
                     message="Resource created successfully",
                     status_code=status.HTTP_201_CREATED,
                 )
-            except Exception as e:
-                return HTTPResponse.error(message=str(e))
-        else:
-            return HTTPResponse.error(message=serializer.errors)
+
+            else:
+                print(serializer.errors)
+                return HTTPResponse.error(message=serializer.errors)
+            
+        except ValidationError as e:
+            print(e)
+            return HTTPResponse.error(message=str(e))
+        
+        except Exception as e:
+            print(e)
+            return HTTPResponse.error(message=str(e))
+       
         
     # get all clients
     @swagger_auto_schema(

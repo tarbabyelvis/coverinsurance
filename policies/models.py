@@ -1,16 +1,8 @@
 from django.db import models
-from clients.enums import EntityType
 from clients.models import ClientDetails
-from config.models import InsuranceCompany, Relationships
+from config.models import Agent, InsuranceCompany, Relationships
 from core.enums import Gender, PolicyStatus
 from core.models import BaseModel
-
-
-class Agent(BaseModel):
-    agent_name = models.CharField(max_length=200, null=True, blank=True)
-    entity_type = models.CharField(max_length=20, choices=EntityType.choices)
-    phone_number = models.CharField(max_length=200, null=True, blank=True)
-    email = models.EmailField(null=True, blank=True)
 
 
 class Policy(BaseModel):
@@ -41,6 +33,13 @@ class Policy(BaseModel):
     policy_details = models.JSONField(null=True, blank=True)
     policy_status = models.CharField(max_length=20, choices=PolicyStatus.choices)
 
+    class Meta:
+        verbose_name = "Policy"
+        verbose_name_plural = "Policies"
+
+    def __str__(self):
+        return f"{self.id} - {self.client}"
+
 
 class PolicyPaymentSchedule(BaseModel):
     policy = models.ForeignKey(
@@ -59,6 +58,13 @@ class PolicyPaymentSchedule(BaseModel):
     is_paid = models.BooleanField(default=False)
     payment_schedule_details = models.JSONField(null=True, blank=True)
 
+    class Meta:
+        verbose_name = "Policy Payment Schedule"
+        verbose_name_plural = "Policy Payment Schedules"
+
+    def __str__(self):
+        return f"{self.id} - {self.policy}"
+
 
 class PremiumPayment(BaseModel):
     policy_schedule = models.ForeignKey(
@@ -75,6 +81,13 @@ class PremiumPayment(BaseModel):
     payment_receipt = models.FileField(null=True, blank=True)
     payment_receipt_date = models.DateField(null=True, blank=True)
     is_reversed = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Premium Payment"
+        verbose_name_plural = "Premium Payments"
+
+    def __str__(self):
+        return f"{self.id} - {self.policy_schedule}"
 
 
 class Dependant(BaseModel):
@@ -96,6 +109,13 @@ class Dependant(BaseModel):
     dependant_address_suburb = models.CharField(max_length=200, null=True, blank=True)
     dependant_address_town = models.CharField(max_length=200, null=True, blank=True)
     dependant_address_province = models.CharField(max_length=200, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Dependant"
+        verbose_name_plural = "Dependants"
+
+    def __str__(self):
+        return f"{self.id} - {self.policy}"
 
 
 class Beneficiary(BaseModel):
@@ -120,3 +140,10 @@ class Beneficiary(BaseModel):
     beneficiary_address_province = models.CharField(
         max_length=200, null=True, blank=True
     )
+
+    class Meta:
+        verbose_name = "Beneficiary"
+        verbose_name_plural = "Beneficiaries"
+
+    def __str__(self):
+        return f"{self.id} - {self.policy}"

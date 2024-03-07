@@ -1,36 +1,46 @@
-
 from rest_framework import serializers
-from claims.models import Claim
+from .models import Claim, ClaimDocument
+from config.models import ClaimType, DocumentType
 
+class ClaimTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClaimType
+        fields = ['id', 'name']  # Assuming you want to serialize only 'id' and 'name'
+
+class DocumentTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentType
+        fields = ['id', 'name']  # Assuming you want to serialize only 'id' and 'name'
+
+class ClaimDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClaimDocument
+        fields = ['id', 'claim', 'document_name', 'document_file', 'document_type']
 
 class ClaimSerializer(serializers.ModelSerializer):
+    claim_type = serializers.PrimaryKeyRelatedField(queryset=ClaimType.objects.all())
+    claim_document = ClaimDocumentSerializer(many=True, required=False)
+
     class Meta:
         model = Claim
-        exclude = ['deleted']
-   
-    def validate(self, data):
-        errors = {}
-
-        # Iterate over each field in the serializer
-        for field_name, value in data.items():
-            print("iteration")
-            # Get the corresponding model field
-            model_field = self.fields[field_name]
-
-            # Validate the data type
-            try:
-                data[field_name] = model_field.to_internal_value(value)
-            except serializers.ValidationError as e:
-                errors[field_name] = e.detail
-
-        if errors:
-            print('Error validation')
-            raise serializers.ValidationError(errors)
-        print("Done validation")
-        return data
-
+        fields = '__all__'
 
     def create(self, validated_data):
-        # Create the Claim instance
-        instance = Claim.objects.create(**validated_data)
+        claim_documents_data = validated_data.pop('claim_document', [])
+        claim = Claim.objects.create(**validated_data)
+        for claim_document_data in claim_documents_data:
+            ClaimDocument.objects.create(claim=claim, **claim_document_data)
+        return claim
+
+    def update(self, instance, validated_data):
+        claim_documents_data = validated_data.pop('claim_document', [])
+        claim_documents = instance.claim_document.all()
+        claim_documents = list(claim_documents)
+        instance = super().update(instance, validated_data)
+        for claim_document_data in claim_documents_data:
+            claim_document = claim_documents.pop(0)
+            claim_document.document_name = claim_document_data.get('document_name', claim_document.document_name)
+            claim_document.document_file = claim_document_data.get('document_file', claim_document.document_file)
+            claim_document.document_type = claim_document_data.get('document_type', claim_document.document_type)
+            claim_document.save()
         return instance

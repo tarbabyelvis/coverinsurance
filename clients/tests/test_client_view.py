@@ -1,7 +1,8 @@
 import logging
 from django.urls import reverse
 from rest_framework import status
-from ..models import IdDocumentType, ClientDetails
+from clients.models import ClientDetails
+from config.models import IdDocumentType
 from django_tenants.test.cases import TenantTestCase
 from django_tenants.test.client import TenantClient
 
@@ -24,12 +25,13 @@ class ClientDetailsAPITests(TenantTestCase):
             'first_name': 'John',
             'last_name': 'Doe',
             'primary_id_number': '123456789',
-            'primary_id_document_type': self.id_document_type.id,
+            'primary_id_document_type': int(self.id_document_type.id),
             'entity_type': "INDIVIDUAL",
             'gender': "MALE",
         }
         url = reverse('clients:create-get')
         response = self.c.post(url, data)
+        print(response.content)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         client_obj = ClientDetails.objects.filter().first()

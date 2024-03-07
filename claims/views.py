@@ -1,57 +1,28 @@
-
-from email.policy import Policy
-import logging
-from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
-from claims.models import Claim
-from claims.serializer import ClaimSerializer
-from core.http_response import HTTPResponse
-from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework import status
+from claims.models import Claim
 from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
+from .serializers import ClaimSerializer
 
-logger = logging.getLogger(__name__)
-
-class ClaimView(APIView):
+class ClaimCreateAPIView(APIView):
     @swagger_auto_schema(
-        operation_description="Create a new claim",
+        methods=['post'],
         request_body=ClaimSerializer,
-        responses={
-            201: openapi.Response("Created", ClaimSerializer),
-            400: "Bad Request",
-        }
+        responses={201: ClaimSerializer}
     )
-
-    def post(self, request):
+    def post(self, request, format=None):
         serializer = ClaimSerializer(data=request.data)
         if serializer.is_valid():
-            try:
-                logger.info("Validated data: %s", serializer.validated_data)
-                # Save the validated data to create a new Policy instance
-                serializer.save()
-                return  HTTPResponse.success(
-                    message="Resource created successfully",
-                    status_code=status.HTTP_201_CREATED,
-                )
-            except Exception as e:
-                return HTTPResponse.error(message=str(e))
-        else:
-            return HTTPResponse.error(message=serializer.errors)
-        
-    # get all clients
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     @swagger_auto_schema(
-        operation_description="Endpoint Operation Description for GET",
-        responses={
-            200: "Success",
-            400: "Bad Request"
-        }
+        methods=['get'],
+        responses={200: ClaimSerializer(many=True)}
     )
-    def get(self, request):
+    def get(self, request, format=None):
         claims = Claim.objects.all()
         serializer = ClaimSerializer(claims, many=True)
-        return  HTTPResponse.success(
-            message="Request Successful",
-            status_code=status.HTTP_200_OK,
-            data = serializer.data
-        )
+        return Response(serializer.data)
