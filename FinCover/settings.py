@@ -26,9 +26,9 @@ SECRET_KEY = "django-insecure-*tys91*uq0aa-@=jw!x*t#cv3hlq3_&uoh=d40ijr#&$v90p+q
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
-CSRF_TRUSTED_ORIGINS = ["http://fin-za.localhost"]
+CSRF_TRUSTED_ORIGINS = ["http://fin-za.localhost", "https://dev-cover-workflow.fin-connect.net"]
 
 
 # Application definition
