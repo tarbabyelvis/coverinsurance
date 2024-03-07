@@ -5,6 +5,27 @@ from core.models import BaseModel
 from auditlog.registry import auditlog
 
 
+class OrganisationConfig(BaseModel):
+    name = models.CharField(max_length=200)
+
+    def save(self, *args, **kwargs):
+        # Allow only a single instance of Company
+        if OrganisationConfig.objects.exists() and not self.pk:
+            raise ValueError("Only one instance of Organisation is allowed.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Prevent deletion of the Company instance
+        raise ValueError("Cannot delete the Organisation details.")
+
+    class Meta:
+        verbose_name = "Organisation Config"
+        verbose_name_plural = "Organisation Configs"
+
+    def __str__(self):
+        return self.name
+    
+
 class PolicyName(BaseModel):
     name = models.CharField(max_length=200)
     policy_type = models.CharField(max_length=20, choices=PolicyType.choices)

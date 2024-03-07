@@ -24,6 +24,11 @@ class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
         model = ClientEmploymentDetails
         exclude = ['client']
 
+class IdDocumentTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IdDocumentType
+        exclude = ['client']
+
 class ClientDetailsSerializer(serializers.ModelSerializer):
     employment_details = ClientEmploymentDetailsSerializer(many=True, required=False)
 

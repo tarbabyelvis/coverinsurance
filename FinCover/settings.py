@@ -48,7 +48,7 @@ SHARED_APPS = [
     "policies", "claims", "clients", "jobs", "reports", "complaints", 'config',
 ]
 
-TENANT_APPS = ["policies", "claims", "clients", "jobs", "reports", "complaints", 'config']
+TENANT_APPS = ["policies", "claims", "clients", "jobs", "reports", "complaints", 'config', "integrations"]
 
 INSTALLED_APPS = list(SHARED_APPS) + [
     app for app in TENANT_APPS if app not in SHARED_APPS
@@ -93,6 +93,12 @@ TEMPLATES = [
 
 
 WSGI_APPLICATION = "FinCover.wsgi.application"
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+}
 
 
 # Database

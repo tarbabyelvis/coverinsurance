@@ -2,6 +2,7 @@
 import logging
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 from clients.services import upload_clients
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
@@ -11,10 +12,14 @@ from .serializers import ClientDetailsSerializer, ExcelSchema
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from marshmallow import ValidationError
+from django.shortcuts import get_object_or_404
+from django.http import Http404
 
 logger = logging.getLogger(__name__)
 
 class ClientsView(APIView):
+    pagination_class = PageNumberPagination
+
     @swagger_auto_schema(
         operation_description="Create a new client",
         request_body=ClientDetailsSerializer,
@@ -25,8 +30,8 @@ class ClientsView(APIView):
     )
 
     def post(self, request):
-        
         serializer = ClientDetailsSerializer(data=request.data)
+
         try:
             if serializer.is_valid():
                 logger.info("Validated data: %s", serializer.validated_data)
@@ -60,11 +65,18 @@ class ClientsView(APIView):
     )
     def get(self, request):
         clients = ClientDetails.objects.all()
-        serializer = ClientDetailsSerializer(clients, many=True)
+        paginator = self.pagination_class()
+        result_page = paginator.paginate_queryset(clients, request)
+        serializer = ClientDetailsSerializer(result_page, many=True)
         return  HTTPResponse.success(
             message="Request Successful",
             status_code=status.HTTP_200_OK,
-            data = serializer.data
+            data={
+                "results": serializer.data,
+                "count": paginator.page.paginator.count if paginator.page else 0,
+                "next": paginator.get_next_link(),
+                "previous": paginator.get_previous_link()
+            }
         )
 
 class UploadClients(APIView):
@@ -138,3 +150,23 @@ class UploadClients(APIView):
         except Exception as e:
             print("Error: ", e)
             return HTTPResponse.error(message=str(e))
+        
+class ClientDetailView(APIView):
+    @swagger_auto_schema(
+        operation_description="Retrieve a specific client by ID",
+        responses={200: openapi.Response("Success", ClientDetailsSerializer)}
+    )
+    def get(self, request, pk):
+        try:
+            client = get_object_or_404(ClientDetails, pk=pk)
+            serializer = ClientDetailsSerializer(client)
+            return  HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+                data = serializer.data
+            )
+        except Http404:
+            return HTTPResponse.error(
+                message="Client not found",
+                status_code=status.HTTP_404_NOT_FOUND
+            )

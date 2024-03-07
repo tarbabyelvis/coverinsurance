@@ -23,7 +23,7 @@ urlpatterns = [
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
-    path("admin/", admin.site.urls, name="admin-app"),
+    path("admin", admin.site.urls, name="admin-app"),
     path("v1/policies/", include("policies.urls"), name="policies-app"),
     path("v1/claims/", include("claims.urls"), name="claims-app"),
     path("v1/reports/", include("reports.urls"), name="reports-app"),

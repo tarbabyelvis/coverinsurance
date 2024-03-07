@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.db import transaction
-from policies.models import Policy, Beneficiary, Dependant
+from policies.models import Policy, Beneficiary, Dependant, PolicyPaymentSchedule
 
 
 class BeneficiarySerializer(serializers.ModelSerializer):
@@ -12,6 +12,11 @@ class BeneficiarySerializer(serializers.ModelSerializer):
 class DependantSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dependant
+        exclude = ['policy']
+
+class PolicyPaymentScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PolicyPaymentSchedule
         exclude = ['policy']
 
 
@@ -56,3 +61,11 @@ class PolicySerializer(serializers.ModelSerializer):
             Dependant.objects.create(policy=instance, **dependant_data)
 
         return instance
+
+
+class PolicyDetailSerializer(PolicySerializer):
+    policy_payment_schedule = PolicyPaymentScheduleSerializer(many=True, read_only=True)
+    # Add other nested serializers for related models here
+
+    # class Meta(PolicySerializer.Meta):
+    #     fields = '__all__'
