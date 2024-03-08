@@ -5,6 +5,27 @@ from core.models import BaseModel
 from auditlog.registry import auditlog
 
 
+class OrganisationConfig(BaseModel):
+    name = models.CharField(max_length=200)
+
+    def save(self, *args, **kwargs):
+        # Allow only a single instance of Company
+        if OrganisationConfig.objects.exists() and not self.pk:
+            raise ValueError("Only one instance of Organisation is allowed.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Prevent deletion of the Company instance
+        raise ValueError("Cannot delete the Organisation details.")
+
+    class Meta:
+        verbose_name = "Organisation Config"
+        verbose_name_plural = "Organisation Configs"
+
+    def __str__(self):
+        return self.name
+    
+
 class PolicyName(BaseModel):
     name = models.CharField(max_length=200)
     policy_type = models.CharField(max_length=20, choices=PolicyType.choices)
@@ -12,6 +33,24 @@ class PolicyName(BaseModel):
     class Meta:
         verbose_name = "Policy Name"
         verbose_name_plural = "Policy Names"
+
+    def __str__(self):
+        return self.name
+    
+class PolicyTypeFields(models.Model):
+    short_name = models.CharField(max_length=50)
+    name = models.CharField(max_length=200)
+    input_type = models.CharField(max_length=200)
+    is_required = models.BooleanField(default=False)
+    claim_type = models.ForeignKey(
+        PolicyName,
+        on_delete=models.RESTRICT,
+        related_name="policy_type_fields",
+    )
+
+    class Meta:
+        verbose_name = "Claim Field"
+        verbose_name_plural = "Claim Fields"
 
     def __str__(self):
         return self.name
@@ -127,3 +166,5 @@ auditlog.register(Relationships)
 auditlog.register(IdDocumentType)
 auditlog.register(BusinessSector)
 auditlog.register(Agent)
+auditlog.register(OrganisationConfig)
+

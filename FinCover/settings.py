@@ -48,7 +48,7 @@ SHARED_APPS = [
     "policies", "claims", "clients", "jobs", "reports", "complaints", 'config',
 ]
 
-TENANT_APPS = ["policies", "claims", "clients", "jobs", "reports", "complaints", 'config']
+TENANT_APPS = ["policies", "claims", "clients", "jobs", "reports", "complaints", 'config', "integrations"]
 
 INSTALLED_APPS = list(SHARED_APPS) + [
     app for app in TENANT_APPS if app not in SHARED_APPS
@@ -95,6 +95,12 @@ TEMPLATES = [
 WSGI_APPLICATION = "FinCover.wsgi.application"
 
 
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+}
+
+
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
@@ -106,27 +112,27 @@ DATABASES = {
 }
 
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django_tenants.postgresql_backend",
-        "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
-        "USER": os.getenv("DATABASE_USER", "postgres"),
-        "PASSWORD": os.getenv("DATABASE_PASSWORD", "dominicd"),
-        "HOST": os.getenv("DATABASE_HOST", "127.0.0.1"),
-        "PORT": os.getenv("DATABASE_PORT", 5432),
-    },
-}
-
 # DATABASES = {
 #     "default": {
 #         "ENGINE": "django_tenants.postgresql_backend",
 #         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
-#         "USER": os.getenv("DATABASE_USER", "xWniG2oMKu85"),
-#         "PASSWORD": os.getenv("DATABASE_PASSWORD", "BzjUftSC7JDSf%]["),
-#         "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
-#         "PORT": os.getenv("DATABASE_PORT", 5433),
+#         "USER": os.getenv("DATABASE_USER", "postgres"),
+#         "PASSWORD": os.getenv("DATABASE_PASSWORD", "dominicd"),
+#         "HOST": os.getenv("DATABASE_HOST", "127.0.0.1"),
+#         "PORT": os.getenv("DATABASE_PORT", 5432),
 #     },
 # }
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django_tenants.postgresql_backend",
+        "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
+        "USER": os.getenv("DATABASE_USER", "xWniG2oMKu85"),
+        "PASSWORD": os.getenv("DATABASE_PASSWORD", "BzjUftSC7JDSf%]["),
+        "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
+        "PORT": os.getenv("DATABASE_PORT", 5433),
+    },
+}
 
 
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)

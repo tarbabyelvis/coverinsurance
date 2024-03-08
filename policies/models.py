@@ -3,6 +3,7 @@ from clients.models import ClientDetails
 from config.models import Agent, InsuranceCompany, Relationships
 from core.enums import Gender, PolicyStatus
 from core.models import BaseModel
+from auditlog.registry import auditlog
 
 
 class Policy(BaseModel):
@@ -32,6 +33,7 @@ class Policy(BaseModel):
     )
     policy_details = models.JSONField(null=True, blank=True)
     policy_status = models.CharField(max_length=20, choices=PolicyStatus.choices)
+
 
     class Meta:
         verbose_name = "Policy"
@@ -147,3 +149,10 @@ class Beneficiary(BaseModel):
 
     def __str__(self):
         return f"{self.id} - {self.policy}"
+
+
+auditlog.register(Policy)
+auditlog.register(PolicyPaymentSchedule)
+auditlog.register(PremiumPayment)
+auditlog.register(Dependant)
+auditlog.register(Beneficiary)

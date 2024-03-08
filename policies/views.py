@@ -1,18 +1,23 @@
 
-from email.policy import Policy
+
 import logging
-from rest_framework.parsers import MultiPartParser, FormParser
+from policies.models import Policy
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
 from rest_framework import status
-from .serializers import PolicySerializer
+from .serializers import PolicyDetailSerializer, PolicySerializer
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from django.shortcuts import get_object_or_404
+from django.http import Http404
 
 logger = logging.getLogger(__name__)
 
 class PolicyView(APIView):
+    pagination_class = PageNumberPagination
+
     @swagger_auto_schema(
         operation_description="Create a new policy",
         request_body=PolicySerializer,
@@ -47,10 +52,39 @@ class PolicyView(APIView):
         }
     )
     def get(self, request):
-        policies = Policy.objects.all()
-        serializer = PolicySerializer(policies, many=True)
-        return  HTTPResponse.success(
+        policies = Policy.all_objects.all()
+        paginator = self.pagination_class()
+        result_page = paginator.paginate_queryset(policies, request)
+        serializer = PolicySerializer(result_page, many=True)
+        
+        return HTTPResponse.success(
             message="Request Successful",
             status_code=status.HTTP_200_OK,
-            data = serializer.data
+            data={
+                "results": serializer.data,
+                "count": paginator.page.paginator.count if paginator.page else 0,
+                "next": paginator.get_next_link(),
+                "previous": paginator.get_previous_link()
+            }
         )
+
+
+class PolicyDetailView(APIView):
+    @swagger_auto_schema(
+        operation_description="Retrieve a specific policy by ID",
+        responses={200: openapi.Response("Success", PolicyDetailSerializer)}
+    )
+    def get(self, request, pk):
+        try:
+            policy = get_object_or_404(Policy, pk=pk)
+            serializer = PolicyDetailSerializer(policy)
+            return  HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+                data = serializer.data
+            )
+        except Http404:
+            return HTTPResponse.error(
+                message="Policy not found",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
