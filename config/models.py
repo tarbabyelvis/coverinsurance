@@ -42,15 +42,16 @@ class PolicyTypeFields(models.Model):
     name = models.CharField(max_length=200)
     input_type = models.CharField(max_length=200)
     is_required = models.BooleanField(default=False)
-    claim_type = models.ForeignKey(
+    is_unique = models.BooleanField(default=False)
+    policy_type = models.ForeignKey(
         PolicyName,
         on_delete=models.RESTRICT,
         related_name="policy_type_fields",
     )
 
     class Meta:
-        verbose_name = "Claim Field"
-        verbose_name_plural = "Claim Fields"
+        verbose_name = "Policy Type Field"
+        verbose_name_plural = "Policy Type Fields"
 
     def __str__(self):
         return self.name
@@ -88,6 +89,7 @@ class ClaimFields(models.Model):
     name = models.CharField(max_length=200)
     input_type = models.CharField(max_length=200)
     is_required = models.BooleanField(default=False)
+    is_unique = models.BooleanField(default=False)
     claim_type = models.ForeignKey(
         ClaimType,
         on_delete=models.RESTRICT,
@@ -167,4 +169,5 @@ auditlog.register(IdDocumentType)
 auditlog.register(BusinessSector)
 auditlog.register(Agent)
 auditlog.register(OrganisationConfig)
+auditlog.register(PolicyTypeFields)
 
