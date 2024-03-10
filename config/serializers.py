@@ -41,3 +41,16 @@ class AgentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Agent
         fields = ["agent_name", "entity_type", "phone_number", "email"]
+
+
+class ClaimFieldsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClaimFields
+        fields = ["short_name", "name", "input_type", "is_required", "is_unique"]
+
+
+class PolicyTypeFieldsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PolicyTypeFields
+        fields = ["short_name", "name", "input_type", "is_required", "is_unique"]
+

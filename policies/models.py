@@ -35,6 +35,16 @@ class Policy(BaseModel):
     policy_status = models.CharField(max_length=20, choices=PolicyStatus.choices)
 
 
+    def get_status_symbol(self):
+        """
+        Method to get the associated symbol for the status.
+        """
+        for status in self.PolicyStatus:
+            if self.status == status.value[0]:
+                return status.value[0]
+        return None
+
+
     class Meta:
         verbose_name = "Policy"
         verbose_name_plural = "Policies"

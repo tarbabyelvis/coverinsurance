@@ -84,3 +84,30 @@ class AgentList(APIView):
         business_sectors = Agent.objects.all()
         serializer = AgentSerializer(business_sectors, many=True)
         return HTTPResponse.success(data=serializer.data)
+    
+class PolicyTypeFieldsAPIView(APIView):
+    @swagger_auto_schema(
+        operation_description="Retrieve a list ID Document types",
+        responses={200: AgentSerializer(many=True)}
+    )
+    def get(self, request, format=None):
+        policy_type = request.query_params.get('policy_type')
+
+        if not policy_type:
+            return HTTPResponse.error(message="Please provide a policy type")
+
+        policy_type_fields = PolicyTypeFields.objects.filter(id=policy_type)
+        serializer = PolicyTypeFieldsSerializer(policy_type_fields, many=True)
+        return HTTPResponse.success(serializer.data)
+    
+
+class ClaimFieldsAPIView(APIView):
+    def get(self, request, format=None):
+        claim_type = request.query_params.get('claim_type')
+
+        if not claim_type:
+            return HTTPResponse.error(message="Please provide a claim type")
+
+        claim_type_fields = ClaimFields.objects.filter(id=claim_type)
+        serializer = ClaimFieldsSerializer(claim_type_fields, many=True)
+        return HTTPResponse.success(serializer.data)
