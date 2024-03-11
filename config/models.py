@@ -24,11 +24,13 @@ class OrganisationConfig(BaseModel):
 
     def __str__(self):
         return self.name
-    
+
 
 class PolicyName(BaseModel):
     name = models.CharField(max_length=200)
     policy_type = models.CharField(max_length=20, choices=PolicyType.choices)
+    has_beneficiaries = models.BooleanField(default=False)
+    has_dependencies = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = "Policy Name"
@@ -36,7 +38,8 @@ class PolicyName(BaseModel):
 
     def __str__(self):
         return self.name
-    
+
+
 class PolicyTypeFields(models.Model):
     short_name = models.CharField(max_length=50)
     name = models.CharField(max_length=200)
@@ -118,13 +121,15 @@ class DocumentType(models.Model):
 
 class Relationships(models.Model):
     name = models.CharField(max_length=200)
+
     class Meta:
         verbose_name = "Relationship"
         verbose_name_plural = "Relationships"
 
     def __str__(self):
         return self.name
-    
+
+
 class IdDocumentType(models.Model):
     type_name = models.CharField(max_length=200)
 
@@ -134,7 +139,8 @@ class IdDocumentType(models.Model):
 
     def __str__(self):
         return self.type_name
-    
+
+
 class BusinessSector(BaseModel):
     sector = models.CharField(max_length=200)
 
@@ -144,7 +150,8 @@ class BusinessSector(BaseModel):
 
     def __str__(self):
         return self.sector
-    
+
+
 class Agent(BaseModel):
     agent_name = models.CharField(max_length=200, null=True, blank=True)
     entity_type = models.CharField(max_length=20, choices=EntityType.choices)
@@ -170,4 +177,3 @@ auditlog.register(BusinessSector)
 auditlog.register(Agent)
 auditlog.register(OrganisationConfig)
 auditlog.register(PolicyTypeFields)
-
