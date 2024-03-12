@@ -118,7 +118,7 @@ class UploadClientAndPolicyExcelAPIView(APIView):
 
     @swagger_auto_schema(
         request_body=ClientPolicyRequestSerializer,
-        responses={201: openapi.Response("Success")},
+        responses={201: ClientPolicyRequestSerializer},
     )
     def post(self, request, *args, **kwargs):
 
