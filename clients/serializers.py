@@ -68,16 +68,13 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         ):
             mutable_data["date_of_birth"] = mutable_data["date_of_birth"].date()
 
-        print("Done date of birth...")
         if isinstance(mutable_data["primary_id_document_type"], IdDocumentType):
             # If the value is an instance of IdDocumentType, use it directly
             mutable_data["primary_id_document_type"] = mutable_data[
                 "primary_id_document_type"
             ].pk
-            print("Done with id type...")
 
         elif isinstance(mutable_data["primary_id_document_type"], str):
-            print("ID Type: ", type(mutable_data["primary_id_document_type"]))
             # If the value is a string, check if it's a number
             if mutable_data["primary_id_document_type"].isdigit():
                 # If it's a number, retrieve the IdDocumentType instance using the primary key
@@ -89,12 +86,15 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
                 mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(
                     type_name__iexact=mutable_data["primary_id_document_type"]
                 ).pk
-            print(mutable_data["primary_id_document_type"])
+
         else:
-            print("id type setup")
-            print(mutable_data["primary_id_document_type"])
             # If it's already a primary key, retrieve the IdDocumentType instance using the primary key
             try:
+                print(
+                    IdDocumentType.objects.get(
+                        "here we go ", id=mutable_data["primary_id_document_type"]
+                    )
+                )
                 mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(
                     pk=mutable_data["primary_id_document_type"]
                 ).pk
@@ -102,16 +102,14 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "Invalid primary_id_document_type ID."
                 )
-        print("DOne mutating")
+
         return super().to_internal_value(mutable_data)
 
     def validate(self, data):
-        print("validate")
         errors = {}
 
         # Iterate over each field in the serializer
         for field_name, value in data.items():
-            print("iteration")
             # Get the corresponding model field
             model_field = self.fields[field_name]
 
@@ -137,6 +135,7 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        print("trying to create")
         employment_details_data = validated_data.pop("employment_details", [])
         # Extract the nested IdDocumentType data from the validated data
         primary_id_document_type_value = validated_data.pop("primary_id_document_type")
@@ -144,31 +143,36 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         # Initialize variable to hold IdDocumentType instance
         id_document_type_instance = None
 
-        if isinstance(primary_id_document_type_value, IdDocumentType):
-            # If the value is an instance of IdDocumentType, use it directly
-            id_document_type_instance = primary_id_document_type_value
-        elif isinstance(primary_id_document_type_value, str):
-            # If the value is a string, get the IdDocumentType instance using the name
-            id_document_type_instance = IdDocumentType.objects.get(
-                type_name__iexact=primary_id_document_type_value
-            )
-        else:
-            # If it's already a primary key, retrieve the IdDocumentType instance using the primary key
-            try:
+        try:
+            if isinstance(primary_id_document_type_value, IdDocumentType):
+                # If the value is an instance of IdDocumentType, use it directly
+                id_document_type_instance = primary_id_document_type_value
+            elif isinstance(primary_id_document_type_value, str):
+                # If the value is a string, check if it represents a digit
+                if primary_id_document_type_value.isdigit():
+                    # If it's a digit, retrieve the IdDocumentType instance using the primary key
+                    id_document_type_instance = IdDocumentType.objects.get(
+                        pk=primary_id_document_type_value
+                    )
+                else:
+                    # If it's not a digit, get the IdDocumentType instance using the name
+                    id_document_type_instance = IdDocumentType.objects.get(
+                        type_name__iexact=primary_id_document_type_value
+                    )
+            else:
+                # If it's already a primary key, retrieve the IdDocumentType instance using the primary key
                 id_document_type_instance = IdDocumentType.objects.get(
                     pk=primary_id_document_type_value
                 )
-            except ObjectDoesNotExist:
-                raise serializers.ValidationError(
-                    "Invalid primary_id_document_type ID."
-                )
+        except IdDocumentType.DoesNotExist:
+            # Handle the case where the IdDocumentType instance does not exist
+            raise serializers.ValidationError("Invalid primary_id_document_type value.")
 
         # Cast date_of_birth value to date if it's datetime
         if "date_of_birth" in validated_data and isinstance(
             validated_data["date_of_birth"], datetime
         ):
             validated_data["date_of_birth"] = validated_data["date_of_birth"].date()
-            print(validated_data["date_of_birth"])
 
         # Create the ClientDetails instance
         instance = ClientDetails.objects.create(

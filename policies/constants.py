@@ -41,6 +41,6 @@ CLIENT_COLUMNS = {
     "postal_code": "Postal Code",
 }
 
-DEFAULT_CLIENT_FIELDS = {"primary_id_document_type": 1}
+DEFAULT_CLIENT_FIELDS = {"primary_id_document_type": 1, "entity_type": "INDIVIDUAL"}
 
 DEFAULT_POLICY_FIELDS = {}

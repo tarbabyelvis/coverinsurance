@@ -64,15 +64,9 @@ def upload_clients_and_policies(
 
         client_data = {k: row_dict[k] for k in received_client_columns}
         client_data = merge_dict_into_another(client_data, DEFAULT_CLIENT_FIELDS)
-        # check gender and replace string ('Unknown' for 'U', 'Male' for 'M', 'Female' for 'F')
-        # if client_data["gender"] == "U":
-        #     client_data["gender"] = "Unknown"
-        # elif client_data["gender"] == "M":
-        #     client_data["gender"] = "Male"
-        # elif client_data["gender"] == "F":
-        #     client_data["gender"] = "Female"
+
         if "gender" in client_data:
-            gender_mapping = {"U": "Unknown", "M": "Male", "F": "Female"}
+            gender_mapping = {"U": "UNKNOWN", "M": "MALE", "F": "FEMALE"}
             client_data["gender"] = gender_mapping.get(client_data["gender"], "Unknown")
 
         print(client_data)
