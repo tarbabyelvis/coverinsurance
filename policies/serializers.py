@@ -1,3 +1,4 @@
+from django.forms import model_to_dict
 from rest_framework import serializers
 from django.db import transaction
 from clients.models import ClientDetails
@@ -85,9 +86,15 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
         # Create client and policy instances
         client_instance = ClientDetails.objects.create(**client_data)
-        policy_instance = Policy.objects.create(**policy_data, client=client_instance)
 
-        return {"client": client_instance, "policy": policy_instance}
+        policy_data.pop("client")  # Remove client from policy data
+        print(policy_data)
+        policy_instance = Policy.objects.create(client=client_instance, **policy_data)
+
+        return {
+            "client": model_to_dict(client_instance),
+            "policy": model_to_dict(policy_instance),
+        }
 
     def update(self, instance, validated_data):
         # Extract client and policy data
