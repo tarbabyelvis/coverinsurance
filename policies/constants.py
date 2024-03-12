@@ -40,3 +40,7 @@ CLIENT_COLUMNS = {
     "phone_number": "Principal Telephone Number",
     "postal_code": "Postal Code",
 }
+
+DEFAULT_CLIENT_FIELDS = {"primary_id_document_type": 1}
+
+DEFAULT_POLICY_FIELDS = {}
