@@ -15,9 +15,9 @@ urlpatterns = [
         CreateClientAndPolicyAPIView.as_view(),
         name="client-and-policy",
     ),
-    # path(
-    #     "upload-client-and-policy",
-    #     UploadClientAndPolicyExcelAPIView.as_view(),
-    #     name="client-and-policy-excel",
-    # ),
+    path(
+        "upload-client-and-policy",
+        UploadClientAndPolicyExcelAPIView.as_view(),
+        name="client-and-policy-excel",
+    ),
 ]
