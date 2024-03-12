@@ -33,6 +33,7 @@ class ClientDetails(BaseModel):
     address_suburb = models.CharField(max_length=200, null=True, blank=True)
     address_town = models.CharField(max_length=200, null=True, blank=True)
     address_province = models.CharField(max_length=200, null=True, blank=True)
+    postal_code = models.CharField(max_length=200, null=True, blank=True)
     upload_ref = models.CharField(max_length=200, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
@@ -68,7 +69,9 @@ class ClientEmploymentDetails(BaseModel):
     sector = models.ForeignKey(
         BusinessSector,
         on_delete=models.CASCADE,
-        related_name="client_employment_business_sector", null=True, blank=True
+        related_name="client_employment_business_sector",
+        null=True,
+        blank=True,
     )
 
     class Meta:

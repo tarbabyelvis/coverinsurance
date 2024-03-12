@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,7 +29,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
-CSRF_TRUSTED_ORIGINS = ["http://fin-za.localhost", "https://dev-cover-workflow.fin-connect.net"]
+CSRF_TRUSTED_ORIGINS = [
+    "http://fin-za.localhost",
+    "https://dev-cover-workflow.fin-connect.net",
+]
 
 
 # Application definition
@@ -45,10 +49,25 @@ SHARED_APPS = [
     "tenants",
     "auditlog",
     "drf_yasg",
-    "policies", "claims", "clients", "jobs", "reports", "complaints", 'config',
+    "policies",
+    "claims",
+    "clients",
+    "jobs",
+    "reports",
+    "complaints",
+    "config",
 ]
 
-TENANT_APPS = ["policies", "claims", "clients", "jobs", "reports", "complaints", 'config', "integrations"]
+TENANT_APPS = [
+    "policies",
+    "claims",
+    "clients",
+    "jobs",
+    "reports",
+    "complaints",
+    "config",
+    "integrations",
+]
 
 INSTALLED_APPS = list(SHARED_APPS) + [
     app for app in TENANT_APPS if app not in SHARED_APPS
@@ -96,8 +115,8 @@ WSGI_APPLICATION = "FinCover.wsgi.application"
 
 
 REST_FRAMEWORK = {
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
 }
 
 
@@ -112,27 +131,27 @@ DATABASES = {
 }
 
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django_tenants.postgresql_backend",
-#         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
-#         "USER": os.getenv("DATABASE_USER", "postgres"),
-#         "PASSWORD": os.getenv("DATABASE_PASSWORD", "dominicd"),
-#         "HOST": os.getenv("DATABASE_HOST", "127.0.0.1"),
-#         "PORT": os.getenv("DATABASE_PORT", 5432),
-#     },
-# }
-
 DATABASES = {
     "default": {
         "ENGINE": "django_tenants.postgresql_backend",
         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
-        "USER": os.getenv("DATABASE_USER", "xWniG2oMKu85"),
-        "PASSWORD": os.getenv("DATABASE_PASSWORD", "BzjUftSC7JDSf%]["),
-        "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
-        "PORT": os.getenv("DATABASE_PORT", 5433),
+        "USER": os.getenv("DATABASE_USER", "postgres"),
+        "PASSWORD": os.getenv("DATABASE_PASSWORD", "dominicd"),
+        "HOST": os.getenv("DATABASE_HOST", "127.0.0.1"),
+        "PORT": os.getenv("DATABASE_PORT", 5432),
     },
 }
+
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django_tenants.postgresql_backend",
+#         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
+#         "USER": os.getenv("DATABASE_USER", "xWniG2oMKu85"),
+#         "PASSWORD": os.getenv("DATABASE_PASSWORD", "BzjUftSC7JDSf%]["),
+#         "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
+#         "PORT": os.getenv("DATABASE_PORT", 5433),
+#     },
+# }
 
 
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
@@ -187,7 +206,7 @@ LOGGING = {
         "console": {
             "level": "INFO",
             "class": "logging.StreamHandler",
-            'filters': ['tenant_context'], # tenant config
+            "filters": ["tenant_context"],  # tenant config
         },
     },
     "loggers": {
@@ -207,17 +226,34 @@ LOGGING = {
             "propagate": True,
         },
     },
-
     # tenant configs
-    'filters': {
-        'tenant_context': {
-            '()': 'django_tenants.log.TenantContextFilter'
+    "filters": {
+        "tenant_context": {"()": "django_tenants.log.TenantContextFilter"},
+    },
+    "formatters": {
+        "tenant_context": {
+            "format": "[%(schema_name)s:%(domain_url)s] "
+            "%(levelname)-7s %(asctime)s %(message)s",
         },
     },
-    'formatters': {
-        'tenant_context': {
-            'format': '[%(schema_name)s:%(domain_url)s] '
-            '%(levelname)-7s %(asctime)s %(message)s',
-        },
+}
+
+CELERY_BROKER_URL = "redis://localhost:6379/0"  # Redis URL
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"  # Redis URL for results
+
+# settings.py
+
+CELERY_BEAT_SCHEDULE = {
+    "task1": {
+        "task": "yourapp.tasks.process_task1",
+        "schedule": crontab(minute=0, hour=0),  # Replace with your cron schedule
+    },
+    "task2": {
+        "task": "yourapp.tasks.process_task2",
+        "schedule": crontab(minute=0, hour=0),  # Replace with your cron schedule
+    },
+    "task3": {
+        "task": "yourapp.tasks.process_task3",
+        "schedule": crontab(minute=0, hour=0),  # Replace with your cron schedule
     },
 }

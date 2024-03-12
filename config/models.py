@@ -29,6 +29,7 @@ class OrganisationConfig(BaseModel):
 class PolicyName(BaseModel):
     name = models.CharField(max_length=200)
     policy_type = models.CharField(max_length=20, choices=PolicyType.choices)
+    default_commission = models.FloatField(blank=True, null=True)
     has_beneficiaries = models.BooleanField(default=False)
     has_dependencies = models.BooleanField(default=False)
 

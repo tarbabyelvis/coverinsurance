@@ -14,11 +14,13 @@ class Policy(BaseModel):
     )
     commencement_date = models.DateField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
-    premium = models.DecimalField(
+    sum_insured = models.DecimalField(max_digits=20, decimal_places=2)
+    total_premium = models.DecimalField(
         null=True, blank=True, max_digits=20, decimal_places=2
     )
     policy_terms = models.IntegerField(null=True, blank=True)  # in months
     policy_number = models.CharField(max_length=200, null=True, blank=True)
+    external_reference = models.CharField(max_length=60, null=True, blank=True)
     insurer = models.ForeignKey(
         InsuranceCompany,
         on_delete=models.RESTRICT,
@@ -33,7 +35,9 @@ class Policy(BaseModel):
     )
     policy_details = models.JSONField(null=True, blank=True)
     policy_status = models.CharField(max_length=20, choices=PolicyStatus.choices)
-
+    commission_percentage = models.FloatField(null=True, blank=True)
+    commission_amount = models.DecimalField(default=0, max_digits=20, decimal_places=2)
+    admin_fee = models.DecimalField(default=0, max_digits=20, decimal_places=2)
 
     def get_status_symbol(self):
         """
@@ -43,7 +47,6 @@ class Policy(BaseModel):
             if self.status == status.value[0]:
                 return status.value[0]
         return None
-
 
     class Meta:
         verbose_name = "Policy"
