@@ -18,23 +18,26 @@ def in_memory_file_exists(in_memory_file):
     except (AttributeError, IOError):
         # If the file-like object is closed or empty, an exception will be raised
         return False
-    
+
+
 class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClientEmploymentDetails
-        exclude = ['client']
+        exclude = ["client"]
+
 
 class IdDocumentTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = IdDocumentType
-        exclude = ['client']
+        exclude = ["client"]
+
 
 class ClientDetailsSerializer(serializers.ModelSerializer):
     employment_details = ClientEmploymentDetailsSerializer(many=True, required=False)
 
     class Meta:
         model = ClientDetails
-        exclude = ['deleted']
+        exclude = ["deleted"]
         # fields = [field.name for field in ClientDetails._meta.get_fields() if field.name != 'deleted']
 
     def validate_primary_id_document_type(self, value):
@@ -52,7 +55,7 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         except ObjectDoesNotExist:
             # If the object does not exist, raise a validation error
             raise serializers.ValidationError("Invalid primary_id_document_type ID.")
-        
+
         return value
 
     def to_internal_value(self, data):
@@ -60,29 +63,46 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         mutable_data = data.copy()
 
         # Convert datetime to date for the 'date_of_birth' field if needed
-        if 'date_of_birth' in mutable_data and isinstance(mutable_data['date_of_birth'], datetime):
-            mutable_data['date_of_birth'] = mutable_data['date_of_birth'].date()
+        if "date_of_birth" in mutable_data and isinstance(
+            mutable_data["date_of_birth"], datetime
+        ):
+            mutable_data["date_of_birth"] = mutable_data["date_of_birth"].date()
 
+        print("Done date of birth...")
         if isinstance(mutable_data["primary_id_document_type"], IdDocumentType):
             # If the value is an instance of IdDocumentType, use it directly
-            mutable_data["primary_id_document_type"] = mutable_data["primary_id_document_type"].pk
+            mutable_data["primary_id_document_type"] = mutable_data[
+                "primary_id_document_type"
+            ].pk
+            print("Done with id type...")
+
         elif isinstance(mutable_data["primary_id_document_type"], str):
             print("ID Type: ", type(mutable_data["primary_id_document_type"]))
             # If the value is a string, check if it's a number
             if mutable_data["primary_id_document_type"].isdigit():
                 # If it's a number, retrieve the IdDocumentType instance using the primary key
-                mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(pk=mutable_data["primary_id_document_type"]).pk
+                mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(
+                    pk=mutable_data["primary_id_document_type"]
+                ).pk
             else:
                 # If it's not a number, get the IdDocumentType instance using the name
-                mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(type_name__iexact=mutable_data["primary_id_document_type"]).pk
+                mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(
+                    type_name__iexact=mutable_data["primary_id_document_type"]
+                ).pk
             print(mutable_data["primary_id_document_type"])
         else:
+            print("id type setup")
+            print(mutable_data["primary_id_document_type"])
             # If it's already a primary key, retrieve the IdDocumentType instance using the primary key
             try:
-                mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(pk=mutable_data["primary_id_document_type"]).pk
+                mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(
+                    pk=mutable_data["primary_id_document_type"]
+                ).pk
             except ObjectDoesNotExist:
-                raise serializers.ValidationError("Invalid primary_id_document_type ID.")
-        
+                raise serializers.ValidationError(
+                    "Invalid primary_id_document_type ID."
+                )
+        print("DOne mutating")
         return super().to_internal_value(mutable_data)
 
     def validate(self, data):
@@ -98,7 +118,9 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
             # Validate the data type
             try:
                 # Attempt to convert the value to the correct data type
-                if model_field.field_name == 'date_of_birth' and isinstance(value, datetime):
+                if model_field.field_name == "date_of_birth" and isinstance(
+                    value, datetime
+                ):
                     # If the field is 'date_of_birth' and the value is datetime, cast it to date
                     data[field_name] = value.date()
                 else:
@@ -108,48 +130,58 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
                 errors[field_name] = e.detail
 
         if errors:
-            print('Error validation')
+            print("Error validation")
             raise serializers.ValidationError(errors)
         print("Done validation")
         return data
 
-
     @transaction.atomic
     def create(self, validated_data):
-        employment_details_data = validated_data.pop('employment_details', [])
+        employment_details_data = validated_data.pop("employment_details", [])
         # Extract the nested IdDocumentType data from the validated data
-        primary_id_document_type_value = validated_data.pop('primary_id_document_type')
-        
+        primary_id_document_type_value = validated_data.pop("primary_id_document_type")
+
         # Initialize variable to hold IdDocumentType instance
         id_document_type_instance = None
-        
+
         if isinstance(primary_id_document_type_value, IdDocumentType):
             # If the value is an instance of IdDocumentType, use it directly
             id_document_type_instance = primary_id_document_type_value
         elif isinstance(primary_id_document_type_value, str):
             # If the value is a string, get the IdDocumentType instance using the name
-            id_document_type_instance = IdDocumentType.objects.get(type_name__iexact=primary_id_document_type_value)
+            id_document_type_instance = IdDocumentType.objects.get(
+                type_name__iexact=primary_id_document_type_value
+            )
         else:
             # If it's already a primary key, retrieve the IdDocumentType instance using the primary key
             try:
-                id_document_type_instance = IdDocumentType.objects.get(pk=primary_id_document_type_value)
+                id_document_type_instance = IdDocumentType.objects.get(
+                    pk=primary_id_document_type_value
+                )
             except ObjectDoesNotExist:
-                raise serializers.ValidationError("Invalid primary_id_document_type ID.")
+                raise serializers.ValidationError(
+                    "Invalid primary_id_document_type ID."
+                )
 
         # Cast date_of_birth value to date if it's datetime
-        if 'date_of_birth' in validated_data and isinstance(validated_data['date_of_birth'], datetime):
-            validated_data['date_of_birth'] = validated_data['date_of_birth'].date()
-            print(validated_data['date_of_birth'])
+        if "date_of_birth" in validated_data and isinstance(
+            validated_data["date_of_birth"], datetime
+        ):
+            validated_data["date_of_birth"] = validated_data["date_of_birth"].date()
+            print(validated_data["date_of_birth"])
 
         # Create the ClientDetails instance
-        instance = ClientDetails.objects.create(**validated_data, primary_id_document_type=id_document_type_instance)
+        instance = ClientDetails.objects.create(
+            **validated_data, primary_id_document_type=id_document_type_instance
+        )
 
         # Create the ClientEmploymentDetails instances
         for employment_detail_data in employment_details_data:
-            ClientEmploymentDetails.objects.create(client=instance, **employment_detail_data)
+            ClientEmploymentDetails.objects.create(
+                client=instance, **employment_detail_data
+            )
 
         return instance
-
 
 
 class ExcelSchema(Schema):
@@ -159,31 +191,35 @@ class ExcelSchema(Schema):
 
     @validates_schema
     def validate_excel_file(self, data, **kwargs):
-        if not data.get('file'):
-            raise ValidationError('Excel file is required.')
+        if not data.get("file"):
+            raise ValidationError("Excel file is required.")
 
-        filename = data['file'][0]
-        if not filename.name.lower().endswith('.xlsx'):
-            raise ValidationError('File must be in Excel format (xlsx).')
+        filename = data["file"][0]
+        if not filename.name.lower().endswith(".xlsx"):
+            raise ValidationError("File must be in Excel format (xlsx).")
 
         if not in_memory_file_exists(filename):
-            raise ValidationError('File does not exist.')
+            raise ValidationError("File does not exist.")
 
         # expected columns
-        received_columns = json.loads(data['columns'][0])
+        received_columns = json.loads(data["columns"][0])
 
         # convert to dict
 
-        
         actual_columns = list(received_columns.keys())
-        missing_columns = [col for col in CLIENTS_EXPECTED_COLUMNS if col not in actual_columns]
-        unexpected_columns = [col for col in actual_columns if col not in CLIENTS_EXPECTED_COLUMNS]
+        missing_columns = [
+            col for col in CLIENTS_EXPECTED_COLUMNS if col not in actual_columns
+        ]
+        unexpected_columns = [
+            col for col in actual_columns if col not in CLIENTS_EXPECTED_COLUMNS
+        ]
 
         if missing_columns:
             raise ValidationError(f'Missing columns: {", ".join(missing_columns)}')
 
         if unexpected_columns:
-            raise ValidationError(f'Unexpected columns: {", ".join(unexpected_columns)}')
-        
-        print("first serializer done")
+            raise ValidationError(
+                f'Unexpected columns: {", ".join(unexpected_columns)}'
+            )
 
+        print("first serializer done")

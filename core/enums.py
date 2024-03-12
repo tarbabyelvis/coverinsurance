@@ -3,7 +3,11 @@ from django.db import models
 
 class Gender(models.TextChoices):
     MALE = "MALE", "Male"
-    FEMALE = "FEMALE", "Female"
+    FEMALE = (
+        "FEMALE",
+        "Female",
+    )
+    UNKNOWN = "UNKNOWN", "Unknown"
 
 
 # class PolicyStatus(models.TextChoices):
@@ -13,7 +17,8 @@ class Gender(models.TextChoices):
 #     CANCELLED = "CANCELLED", "Cancelled"
 #     EXPIRED = "EXPIRED", "Expired"
 #     QUOTATION = "QUOTATION", "Quotation"
-    
+
+
 class PolicyStatus(models.TextChoices):
     ACTIVE = "A", "Active"
     LAPSED = "L", "Lapsed"
