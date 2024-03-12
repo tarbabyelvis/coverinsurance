@@ -18,7 +18,7 @@ class Policy(BaseModel):
     total_premium = models.DecimalField(
         null=True, blank=True, max_digits=20, decimal_places=2
     )
-    policy_terms = models.IntegerField(null=True, blank=True)  # in months
+    policy_term = models.IntegerField(null=True, blank=True)  # in months
     policy_number = models.CharField(max_length=200, null=True, blank=True)
     external_reference = models.CharField(max_length=60, null=True, blank=True)
     insurer = models.ForeignKey(
