@@ -77,7 +77,10 @@ class PolicyView(APIView):
 class PolicyDetailView(APIView):
     @swagger_auto_schema(
         operation_description="Retrieve a specific policy by ID",
-        responses={200: openapi.Response("Success", PolicyDetailSerializer)},
+        responses={
+            200: openapi.Response("Success", PolicyDetailSerializer),
+            404: "Policy not found",
+        },
     )
     def get(self, request, pk):
         try:
@@ -97,6 +100,7 @@ class PolicyDetailView(APIView):
 class CreateClientAndPolicyAPIView(APIView):
 
     @swagger_auto_schema(
+        operation_description="Create policy and client atomic request",
         request_body=ClientPolicyRequestSerializer,
         responses={201: ClientPolicyResponseSerializer},
     )
@@ -117,14 +121,21 @@ class UploadClientAndPolicyExcelAPIView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     @swagger_auto_schema(
+        operation_description="Upload policy from excel sheet",
         request_body=ClientPolicyRequestSerializer,
-        responses={201: ClientPolicyRequestSerializer},
+        responses={400: "Bad Request", 201: "Resource created successfully"},
     )
-    def post(self, request, *args, **kwargs):
-
+    def post(self, request):
         try:
+            if file_obj is None:
+                return HTTPResponse.error(message="File is missing in the request.")
+
             file_obj = request.data.get("file")
             upload_clients_and_policies(file_obj, CLIENT_COLUMNS, POLICY_COLUMNS)
+            return HTTPResponse.success(
+                message="Resource created successfully",
+                status_code=status.HTTP_201_CREATED,
+            )
 
         except Exception as e:
             logger.error(e)
