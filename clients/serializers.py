@@ -90,11 +90,6 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         else:
             # If it's already a primary key, retrieve the IdDocumentType instance using the primary key
             try:
-                print(
-                    IdDocumentType.objects.get(
-                        "here we go ", id=mutable_data["primary_id_document_type"]
-                    )
-                )
                 mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(
                     pk=mutable_data["primary_id_document_type"]
                 ).pk

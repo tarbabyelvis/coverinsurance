@@ -146,6 +146,7 @@ DATABASES = {
     },
 }
 
+
 # DATABASES = {
 #     "default": {
 #         "ENGINE": "django_tenants.postgresql_backend",
