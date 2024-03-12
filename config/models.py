@@ -133,6 +133,7 @@ class Relationships(models.Model):
 
 class IdDocumentType(models.Model):
     type_name = models.CharField(max_length=200)
+    objects = models.Manager()
 
     class Meta:
         verbose_name = "ID Document Type"
