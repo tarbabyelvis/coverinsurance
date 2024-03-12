@@ -13,3 +13,4 @@ django-rest-marshmallow
 marshmallow
 uvicorn
 celery[redis]
+python-dotenv
