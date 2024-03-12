@@ -122,15 +122,23 @@ class UploadClientAndPolicyExcelAPIView(APIView):
 
     @swagger_auto_schema(
         operation_description="Upload policy from excel sheet",
-        request_body=ClientPolicyRequestSerializer,
+        manual_parameters=[
+            openapi.Parameter(
+                name="file",
+                in_=openapi.IN_FORM,
+                type=openapi.TYPE_FILE,
+                required=True,
+                description="The file to upload",
+            )
+        ],
         responses={400: "Bad Request", 201: "Resource created successfully"},
     )
     def post(self, request):
         try:
+            file_obj = request.data.get("file")
             if file_obj is None:
                 return HTTPResponse.error(message="File is missing in the request.")
 
-            file_obj = request.data.get("file")
             upload_clients_and_policies(file_obj, CLIENT_COLUMNS, POLICY_COLUMNS)
             return HTTPResponse.success(
                 message="Resource created successfully",
