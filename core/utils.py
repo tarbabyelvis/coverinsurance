@@ -1,4 +1,5 @@
 from typing import List
+from datetime import date, datetime
 
 
 def get_dict_values(input_dict) -> List:
@@ -65,9 +66,6 @@ def check_gender(dictionary):
     return gender_mapping.get(gender_value, "Unknown")
 
 
-from datetime import datetime
-
-
 def convert_to_datetime(date_string):
     # List of known datetime formats
     date_formats = [
@@ -90,3 +88,17 @@ def convert_to_datetime(date_string):
 
     # If none of the formats work, return None
     return None
+
+
+def serialize_dates(obj):
+    if isinstance(obj, date):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        serialized_dict = {}
+        for key, value in obj.items():
+            serialized_dict[key] = serialize_dates(value)
+        return serialized_dict
+    elif isinstance(obj, list):
+        return [serialize_dates(item) for item in obj]
+    else:
+        return obj

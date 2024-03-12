@@ -3,8 +3,10 @@ from rest_framework import serializers
 from django.db import transaction
 from clients.models import ClientDetails
 from clients.serializers import ClientDetailsSerializer
+from config.serializers import AgentSerializer, InsuranceCompanySerializer
 from core.utils import convert_to_datetime
 from policies.models import Policy, Beneficiary, Dependant, PolicyPaymentSchedule
+from datetime import datetime
 
 
 class BeneficiarySerializer(serializers.ModelSerializer):
@@ -28,6 +30,9 @@ class PolicyPaymentScheduleSerializer(serializers.ModelSerializer):
 class PolicySerializer(serializers.ModelSerializer):
     beneficiaries = BeneficiarySerializer(many=True, required=False)
     dependants = DependantSerializer(many=True, required=False)
+    # client = ClientDetailsSerializer(read_only=True)
+    # insurer = InsuranceCompanySerializer(read_only=True)
+    # agent = AgentSerializer(read_only=True)
 
     class Meta:
         model = Policy
@@ -80,6 +85,9 @@ class PolicySerializer(serializers.ModelSerializer):
 
 class PolicyDetailSerializer(PolicySerializer):
     policy_payment_schedule = PolicyPaymentScheduleSerializer(many=True, read_only=True)
+    client = ClientDetailsSerializer(read_only=True)
+    insurer = InsuranceCompanySerializer(read_only=True)
+    agent = AgentSerializer(read_only=True)
     # Add other nested serializers for related models here
 
     # class Meta(PolicySerializer.Meta):
@@ -91,27 +99,39 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
     policy = PolicySerializer()
 
     def to_internal_value(self, data):
-        # Convert QueryDict to a mutable dictionary
+        # Deep copy the data to avoid modifying the original object
         mutable_data = data.copy()
 
         # Convert datetime to date for specified fields if needed
         for field in ["commencement_date", "expiry_date"]:
-            if field in mutable_data["policy"] and isinstance(
+            if field in mutable_data.get("policy", {}) and isinstance(
                 mutable_data["policy"][field], str
             ):
                 date_time = convert_to_datetime(mutable_data["policy"][field])
                 if date_time is not None:
                     mutable_data["policy"][field] = date_time.date()
-        if "policy_status" in mutable_data["policy"] and (
-            isinstance(mutable_data["policy"]["policy_status"], int)
-            or str(mutable_data["policy"]["policy_status"]).isdigit()
-        ):
-            print(mutable_data["policy"]["policy_status"])
-            status_mapping = {"1": "A"}
-            mutable_data["policy"]["policy_status"] = status_mapping.get(
-                mutable_data["policy"]["policy_status"], "X"
-            )
-            print(mutable_data["policy"]["policy_status"])
+            if field in mutable_data.get("policy", {}) and isinstance(
+                mutable_data["policy"][field], datetime
+            ):
+                mutable_data["policy"][field] = mutable_data[field].date()
+
+        # Convert policy_status to a proper format if needed
+        if "policy_status" in mutable_data.get("policy", {}):
+            policy_status = mutable_data["policy"]["policy_status"]
+            if isinstance(policy_status, int) or str(policy_status).isdigit():
+                status_mapping = {"1": "A"}
+                mutable_data["policy"]["policy_status"] = status_mapping.get(
+                    str(policy_status), "X"
+                )
+
+        # Convert datetime to date for the 'date_of_birth' field if needed
+        client_data = mutable_data.get("client", {})
+        if "date_of_birth" in client_data:
+            date_of_birth = client_data["date_of_birth"]
+            if isinstance(date_of_birth, datetime):
+                client_data["date_of_birth"] = date_of_birth.strftime("%Y-%m-%d")
+            elif isinstance(date_of_birth, str):
+                client_data["date_of_birth"] = convert_to_datetime(date_of_birth)
 
         return super().to_internal_value(mutable_data)
 
@@ -120,10 +140,15 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
         client_data = validated_data.pop("client")
         policy_data = validated_data.pop("policy")
 
+        print(policy_data)
+
         # Create client and policy instances
         client_instance = ClientDetails.objects.create(**client_data)
-
-        policy_data.pop("client")  # Remove client from policy data
+        try:
+            policy_data.pop("client")  # Remove client from policy data
+        except Exception as e:
+            print(e)
+        print("before commencement")
         policy_instance = Policy.objects.create(client=client_instance, **policy_data)
 
         return {
