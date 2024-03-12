@@ -131,27 +131,27 @@ DATABASES = {
 }
 
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django_tenants.postgresql_backend",
-        "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
-        "USER": os.getenv("DATABASE_USER", "postgres"),
-        "PASSWORD": os.getenv("DATABASE_PASSWORD", "dominicd"),
-        "HOST": os.getenv("DATABASE_HOST", "127.0.0.1"),
-        "PORT": os.getenv("DATABASE_PORT", 5432),
-    },
-}
-
 # DATABASES = {
 #     "default": {
 #         "ENGINE": "django_tenants.postgresql_backend",
 #         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
-#         "USER": os.getenv("DATABASE_USER", "xWniG2oMKu85"),
-#         "PASSWORD": os.getenv("DATABASE_PASSWORD", "BzjUftSC7JDSf%]["),
-#         "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
-#         "PORT": os.getenv("DATABASE_PORT", 5433),
+#         "USER": os.getenv("DATABASE_USER", "postgres"),
+#         "PASSWORD": os.getenv("DATABASE_PASSWORD", "dominicd"),
+#         "HOST": os.getenv("DATABASE_HOST", "127.0.0.1"),
+#         "PORT": os.getenv("DATABASE_PORT", 5432),
 #     },
 # }
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django_tenants.postgresql_backend",
+        "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
+        "USER": os.getenv("DATABASE_USER", "xWniG2oMKu85"),
+        "PASSWORD": os.getenv("DATABASE_PASSWORD", "BzjUftSC7JDSf%]["),
+        "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
+        "PORT": os.getenv("DATABASE_PORT", 5433),
+    },
+}
 
 
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
@@ -190,7 +190,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "staticfiles"),
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
