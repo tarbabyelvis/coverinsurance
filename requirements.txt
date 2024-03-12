@@ -12,3 +12,4 @@ drf-yasg
 django-rest-marshmallow
 marshmallow
 uvicorn
+celery[redis]

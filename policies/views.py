@@ -1,4 +1,5 @@
 import logging
+from policies.constants import CLIENT_COLUMNS, POLICY_COLUMNS
 from policies.models import Policy
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
@@ -123,7 +124,7 @@ class UploadClientAndPolicyExcelAPIView(APIView):
 
         try:
             file_obj = request.data.get("file")
-            upload_clients_and_policies(file_obj, [], [])
+            upload_clients_and_policies(file_obj, CLIENT_COLUMNS, POLICY_COLUMNS)
 
         except Exception as e:
             logger.error(e)
