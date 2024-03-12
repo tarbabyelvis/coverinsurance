@@ -38,6 +38,9 @@ CSRF_TRUSTED_ORIGINS = [
     "https://*.dev-cover-workflow.fin-connect.net",
 ]
 
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ORIGIN_ALLOW_ALL = True
+
 
 # Application definition
 
@@ -49,6 +52,7 @@ SHARED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_tenants",
+    "corsheaders",
     "rest_framework",
     "tenants",
     "auditlog",

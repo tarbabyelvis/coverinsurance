@@ -36,7 +36,10 @@ class PolicyView(APIView):
         },
     )
     def post(self, request):
-        serializer = PolicySerializer(data=request.data)
+        serializer = PolicySerializer(
+            data=request.data,
+            context={"request": request},
+        )
         if serializer.is_valid():
             try:
                 logger.info("Validated data: %s", serializer.validated_data)

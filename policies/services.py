@@ -4,12 +4,9 @@ from django.db import transaction
 from django.forms import ValidationError
 import openpyxl
 from typing import Any, Dict, List
-from clients.models import ClientDetails
-from clients.serializers import ClientDetailsSerializer
 from core.utils import get_dict_values, merge_dict_into_another, replace_keys
-from policies.constants import DEFAULT_CLIENT_FIELDS
-from policies.models import Policy
-from policies.serializers import PolicySerializer
+from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS
+from policies.serializers import ClientPolicyRequestSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +37,6 @@ def upload_clients_and_policies(
 
     # Select the active worksheet
     ws = wb.active
-    print("Workbook stage")
-    print(ws)
-    print("DOne")
 
     # Extract headers from the worksheet
     headers: List[str] = [cell.value.strip() for cell in ws[1]]
@@ -69,19 +63,28 @@ def upload_clients_and_policies(
             gender_mapping = {"U": "UNKNOWN", "M": "MALE", "F": "FEMALE"}
             client_data["gender"] = gender_mapping.get(client_data["gender"], "Unknown")
 
-        print(client_data)
-
         policy_data = {k: row_dict[k] for k in received_policy_columns}
+
+        policy_data = merge_dict_into_another(policy_data, DEFAULT_POLICY_FIELDS)
+
         print(policy_data)
 
-        # Validate client data using serializer
-        serializer = ClientDetailsSerializer(data=client_data)
-        print("done with the serializer")
+        serializer = ClientPolicyRequestSerializer(
+            data={"client": client_data, "policy": policy_data},
+        )
         serializer.is_valid(raise_exception=True)
-        client = ClientDetails.objects.create(**client_data)
-        print("done creating client")
+        serializer.save()
 
-        # Create client and policy objects
-        policy_serializer = PolicySerializer(data={**policy_data, "client": client})
-        policy_serializer.is_valid(raise_exception=True)
-        Policy.objects.create(client=client, **policy_data)
+        # # Validate client data using serializer
+        # serializer = ClientDetailsSerializer(data=client_data)
+        # print("done with the serializer")
+        # serializer.is_valid(raise_exception=True)
+        # print("done with client validation")
+        # print(serializer.data)
+        # client = ClientDetails.objects.create(**client_data)
+        # print("done creating client")
+
+        # # Create client and policy objects
+        # policy_serializer = PolicySerializer(data={**policy_data, "client": client})
+        # policy_serializer.is_valid(raise_exception=True)
+        # Policy.objects.create(client=client, **policy_data)
