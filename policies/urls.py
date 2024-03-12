@@ -5,6 +5,7 @@ app_name = "policy"
 
 urlpatterns = [
     path("", PolicyView.as_view(), name="create-policy"),
+    path("<int:pk>", PolicyDetailView.as_view(), name="policy-detail"),
     path(
         "client-and-policy",
         CreateClientAndPolicyAPIView.as_view(),

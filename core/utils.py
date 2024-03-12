@@ -63,3 +63,30 @@ def check_gender(dictionary):
     gender_mapping = {"U": "Unknown", "M": "Male", "F": "Female"}
     gender_value = dictionary.get("gender", "U")
     return gender_mapping.get(gender_value, "Unknown")
+
+
+from datetime import datetime
+
+
+def convert_to_datetime(date_string):
+    # List of known datetime formats
+    date_formats = [
+        "%m/%d/%Y %I:%M:%S %p",  # MM/DD/YYYY HH:MM:SS AM/PM
+        "%Y-%m-%d %H:%M:%S",  # YYYY-MM-DD HH:MM:SS
+        "%d-%m-%Y %H:%M:%S",  # DD-MM-YYYY HH:MM:SS
+        "%Y/%m/%d %H:%M:%S",  # YYYY/MM/DD HH:MM:SS
+        "%m/%d/%Y",  # MM/DD/YYYY
+        "%Y-%m-%d",  # YYYY-MM-DD
+        "%d-%m-%Y",  # DD-MM-YYYY
+        "%Y/%m/%d",  # YYYY/MM/DD
+    ]
+
+    # Try to convert the date string to datetime object using each format
+    for date_format in date_formats:
+        try:
+            return datetime.strptime(date_string, date_format)
+        except ValueError:
+            pass  # If conversion fails, try the next format
+
+    # If none of the formats work, return None
+    return None
