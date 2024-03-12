@@ -29,7 +29,7 @@ class ClientDetails(BaseModel):
     date_of_birth = models.DateField(null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
     phone_number = models.CharField(max_length=200, null=True, blank=True)
-    address_street = models.CharField(max_length=200, null=True, blank=True)
+    address_street = models.TextField(null=True, blank=True)
     address_suburb = models.CharField(max_length=200, null=True, blank=True)
     address_town = models.CharField(max_length=200, null=True, blank=True)
     address_province = models.CharField(max_length=200, null=True, blank=True)

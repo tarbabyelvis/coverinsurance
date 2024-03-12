@@ -67,24 +67,8 @@ def upload_clients_and_policies(
 
         policy_data = merge_dict_into_another(policy_data, DEFAULT_POLICY_FIELDS)
 
-        print(policy_data)
-
         serializer = ClientPolicyRequestSerializer(
             data={"client": client_data, "policy": policy_data},
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
-        # # Validate client data using serializer
-        # serializer = ClientDetailsSerializer(data=client_data)
-        # print("done with the serializer")
-        # serializer.is_valid(raise_exception=True)
-        # print("done with client validation")
-        # print(serializer.data)
-        # client = ClientDetails.objects.create(**client_data)
-        # print("done creating client")
-
-        # # Create client and policy objects
-        # policy_serializer = PolicySerializer(data={**policy_data, "client": client})
-        # policy_serializer.is_valid(raise_exception=True)
-        # Policy.objects.create(client=client, **policy_data)

@@ -57,13 +57,16 @@ class PolicyView(APIView):
     # get all clients
     @swagger_auto_schema(
         operation_description="Endpoint Operation Description for GET",
-        responses={200: "Success", 400: "Bad Request"},
+        responses={
+            201: openapi.Response("Request Successful", PolicyDetailSerializer),
+            400: "Bad Request",
+        },
     )
     def get(self, request):
         policies = Policy.all_objects.all()
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(policies, request)
-        serializer = PolicySerializer(result_page, many=True)
+        serializer = PolicyDetailSerializer(result_page, many=True)
 
         return HTTPResponse.success(
             message="Request Successful",
