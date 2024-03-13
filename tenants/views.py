@@ -1,6 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
+
+from core.http_response import HTTPResponse
 from .models import Tenant, Domain
 
 
@@ -17,4 +19,8 @@ class GetTenants(APIView):
             tenant["domain"] = f"https://{domain[0]['domain']}"
             if tenant["name"] != "public":
                 result.append(tenant)
-        return Response(result, status=status.HTTP_200_OK)
+        return HTTPResponse.success(
+            data=result,
+            message="Resource retrieved successfully",
+            status_code=status.HTTP_200_OK,
+        )
