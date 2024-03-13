@@ -6,6 +6,7 @@ class PolicyNameSerializer(serializers.ModelSerializer):
     class Meta:
         model = PolicyName
         fields = [
+            "id",
             "name",
             "policy_type",
             "default_commission",
@@ -17,43 +18,43 @@ class PolicyNameSerializer(serializers.ModelSerializer):
 class InsuranceCompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = InsuranceCompany
-        fields = ["name"]
+        fields = ["id", "name"]
 
 
 class ClaimTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClaimType
-        fields = ["name"]
+        fields = ["id", "name"]
 
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentType
-        fields = ["document_type", "category"]
+        fields = ["id", "document_type", "category"]
 
 
 class RelationshipsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Relationships
-        fields = ["name"]
+        fields = "id", ["name"]
 
 
 class IdDocumentTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = IdDocumentType
-        fields = ["type_name"]
+        fields = ["id", "type_name"]
 
 
 class BusinessSectorSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessSector
-        fields = ["sector"]
+        fields = ["id", "sector"]
 
 
 class AgentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Agent
-        fields = ["agent_name", "entity_type", "phone_number", "email"]
+        fields = ["id", "agent_name", "entity_type", "phone_number", "email"]
 
 
 class ClaimFieldsSerializer(serializers.ModelSerializer):
