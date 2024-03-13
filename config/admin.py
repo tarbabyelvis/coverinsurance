@@ -21,6 +21,7 @@ class DocumentTypeAdmin(admin.ModelAdmin):
 @admin.register(Relationships)
 class RelationshipsAdmin(admin.ModelAdmin):
     list_display = [
+        "id",
         "name",
     ]
 
@@ -28,7 +29,16 @@ class RelationshipsAdmin(admin.ModelAdmin):
 @admin.register(IdDocumentType)
 class IdDocumentTypeAdmin(admin.ModelAdmin):
     list_display = [
+        "id",
         "type_name",
+    ]
+
+
+@admin.register(BusinessSector)
+class BusinessSectorAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "sector",
     ]
 
 
