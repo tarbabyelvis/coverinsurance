@@ -36,7 +36,7 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
 class RelationshipsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Relationships
-        fields = "id", ["name"]
+        fields = ["id", "name"]
 
 
 class IdDocumentTypeSerializer(serializers.ModelSerializer):
