@@ -2,4 +2,5 @@ from enum import Enum
 
 
 class Processes(Enum):
-    LIFE_FUNERAL_DAILY = "life_funeral_daily"
+    LIFE_FUNERAL = "life_funeral"
+    CREDIT_LIFE = "credit_life"

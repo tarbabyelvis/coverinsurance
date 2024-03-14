@@ -6,7 +6,6 @@ from rest_framework.views import APIView
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
 from rest_framework import status
-from django.core.exceptions import ObjectDoesNotExist
 from policies.services import upload_clients_and_policies
 from .serializers import (
     BeneficiarySerializer,
@@ -14,6 +13,7 @@ from .serializers import (
     ClientPolicyResponseSerializer,
     DependantSerializer,
     PolicyDetailSerializer,
+    PolicyListSerializer,
     PolicySerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
@@ -60,7 +60,7 @@ class PolicyView(APIView):
     @swagger_auto_schema(
         operation_description="Endpoint Operation Description for GET",
         responses={
-            201: openapi.Response("Request Successful", PolicySerializer),
+            201: openapi.Response("Request Successful", PolicyListSerializer),
             400: "Bad Request",
         },
     )
@@ -68,7 +68,7 @@ class PolicyView(APIView):
         policies = Policy.objects.all()
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(policies, request)
-        serializer = PolicySerializer(result_page, many=True)
+        serializer = PolicyListSerializer(result_page, many=True)
 
         return HTTPResponse.success(
             message="Request Successful",
@@ -163,7 +163,9 @@ class PolicyDependenciesView(APIView):
 
     @swagger_auto_schema(
         operation_description="Add policy dependencies",
-        request_body=PolicySerializer,
+        request_body=DependantSerializer(
+            many=True
+        ),  # Update to accept a list of beneficiaries
         responses={
             201: openapi.Response("Created", DependantSerializer),
             400: "Bad Request",
@@ -172,14 +174,15 @@ class PolicyDependenciesView(APIView):
     def post(self, request, policy_id):
 
         serializer = DependantSerializer(
-            data={**request.data, "policy": policy_id},
+            data=request.data,
+            many=True,
             context={"request": request},
         )
         if serializer.is_valid():
             try:
                 logger.info("Validated data: %s", serializer.validated_data)
                 # Save the validated data to create a new Policy instance
-                serializer.save()
+                serializer.save(policy=policy_id)
                 return HTTPResponse.success(
                     message="Resource created successfully",
                     status_code=status.HTTP_201_CREATED,
@@ -212,7 +215,9 @@ class PolicyBeneficiariesView(APIView):
 
     @swagger_auto_schema(
         operation_description="Add policy beneficiary",
-        request_body=BeneficiarySerializer,
+        request_body=BeneficiarySerializer(
+            many=True
+        ),  # Update to accept a list of beneficiaries
         responses={
             201: openapi.Response("Created", BeneficiarySerializer),
             400: "Bad Request",
@@ -221,15 +226,18 @@ class PolicyBeneficiariesView(APIView):
     def post(self, request, policy_id):
 
         serializer = BeneficiarySerializer(
-            data={**request.data, "policy": policy_id},
+            data=request.data,
+            many=True,
             context={"request": request},
         )
         if serializer.is_valid():
             try:
                 logger.info("Validated data: %s", serializer.validated_data)
-                serializer.save()
+                serializer.save(
+                    policy=policy_id
+                )  # Set the policy_id for each beneficiary
                 return HTTPResponse.success(
-                    message="Resource created successfully",
+                    message="Resources created successfully",
                     status_code=status.HTTP_201_CREATED,
                 )
             except Exception as e:

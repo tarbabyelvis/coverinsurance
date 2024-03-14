@@ -33,6 +33,8 @@ class Task(models.Model):
 class TaskLog(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
     timestamp = models.DateTimeField(auto_now_add=True)
+    data = models.TextField(null=True, blank=True)
+    manual_run = models.BooleanField(default=False)
     status = models.CharField(max_length=20)
 
     def __str__(self):

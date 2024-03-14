@@ -22,12 +22,12 @@ urlpatterns = [
         name="client-and-policy-excel",
     ),
     path(
-        "dependents/<int:pk>",
+        "dependents/<int:policy_id>",
         PolicyDependenciesView.as_view(),
         name="policy-dependents",
     ),
     path(
-        "beneficiaries/<int:pk>",
+        "beneficiaries/<int:policy_id>",
         PolicyBeneficiariesView.as_view(),
         name="policy-beneficiaries",
     ),

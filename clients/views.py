@@ -1,7 +1,5 @@
-
 import logging
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 from clients.services import upload_clients
 from core.http_response import HTTPResponse
@@ -17,6 +15,7 @@ from django.http import Http404
 
 logger = logging.getLogger(__name__)
 
+
 class ClientsView(APIView):
     pagination_class = PageNumberPagination
 
@@ -26,9 +25,8 @@ class ClientsView(APIView):
         responses={
             201: openapi.Response("Created", ClientDetailsSerializer),
             400: "Bad Request",
-        }
+        },
     )
-
     def post(self, request):
         serializer = ClientDetailsSerializer(data=request.data)
 
@@ -37,7 +35,7 @@ class ClientsView(APIView):
                 logger.info("Validated data: %s", serializer.validated_data)
                 # Save the validated data to create a new ClientDetails instance
                 serializer.save()
-                return  HTTPResponse.success(
+                return HTTPResponse.success(
                     message="Resource created successfully",
                     status_code=status.HTTP_201_CREATED,
                 )
@@ -45,39 +43,36 @@ class ClientsView(APIView):
             else:
                 print(serializer.errors)
                 return HTTPResponse.error(message=serializer.errors)
-            
+
         except ValidationError as e:
             print(e)
             return HTTPResponse.error(message=str(e))
-        
+
         except Exception as e:
             print(e)
             return HTTPResponse.error(message=str(e))
-       
-        
+
     # get all clients
     @swagger_auto_schema(
         operation_description="Endpoint Operation Description for GET",
-        responses={
-            200: "Success",
-            400: "Bad Request"
-        }
+        responses={200: "Success", 400: "Bad Request"},
     )
     def get(self, request):
         clients = ClientDetails.objects.all()
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(clients, request)
         serializer = ClientDetailsSerializer(result_page, many=True)
-        return  HTTPResponse.success(
+        return HTTPResponse.success(
             message="Request Successful",
             status_code=status.HTTP_200_OK,
             data={
                 "results": serializer.data,
                 "count": paginator.page.paginator.count if paginator.page else 0,
                 "next": paginator.get_next_link(),
-                "previous": paginator.get_previous_link()
-            }
+                "previous": paginator.get_previous_link(),
+            },
         )
+
 
 class UploadClients(APIView):
     parser_classes = (MultiPartParser, FormParser)
@@ -86,13 +81,15 @@ class UploadClients(APIView):
         operation_description="Upload client data from an Excel file",
         manual_parameters=[
             openapi.Parameter(
-                name='file', in_=openapi.IN_FORM,
+                name="file",
+                in_=openapi.IN_FORM,
                 type=openapi.TYPE_FILE,
                 required=True,
-                description='Excel file containing client data'
+                description="Excel file containing client data",
             ),
             openapi.Parameter(
-                name='columns', in_=openapi.IN_FORM,
+                name="columns",
+                in_=openapi.IN_FORM,
                 type=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
@@ -110,21 +107,16 @@ class UploadClients(APIView):
                         "address_street": openapi.Schema(type=openapi.TYPE_STRING),
                         "address_suburb": openapi.Schema(type=openapi.TYPE_STRING),
                         "address_town": openapi.Schema(type=openapi.TYPE_STRING),
-                        "address_province": openapi.Schema(type=openapi.TYPE_STRING)
+                        "address_province": openapi.Schema(type=openapi.TYPE_STRING),
                     },
                     # required=["first_name", "last_name", "id_number"]
                 ),
                 required=True,
-                description='Mapping of column names in the Excel file to field names in the database (JSON format)'
-            )
+                description="Mapping of column names in the Excel file to field names in the database (JSON format)",
+            ),
         ],
-        responses={
-            201: "Resource created successfully",
-            400: "Bad Request"
-        }
+        responses={201: "Resource created successfully", 400: "Bad Request"},
     )
-        
-
     def post(self, request):
         try:
             schema = ExcelSchema()
@@ -134,7 +126,9 @@ class UploadClients(APIView):
             columns_map = request.data.get("columns")
 
             if file_obj is None or columns_map is None:
-                return HTTPResponse.error(message="File or columns map is missing in the request.")
+                return HTTPResponse.error(
+                    message="File or columns map is missing in the request."
+                )
 
             upload_clients(file_obj, columns_map)
             return HTTPResponse.success(
@@ -150,23 +144,23 @@ class UploadClients(APIView):
         except Exception as e:
             print("Error: ", e)
             return HTTPResponse.error(message=str(e))
-        
+
+
 class ClientDetailView(APIView):
     @swagger_auto_schema(
         operation_description="Retrieve a specific client by ID",
-        responses={200: openapi.Response("Success", ClientDetailsSerializer)}
+        responses={200: openapi.Response("Success", ClientDetailsSerializer)},
     )
     def get(self, request, pk):
         try:
             client = get_object_or_404(ClientDetails, pk=pk)
             serializer = ClientDetailsSerializer(client)
-            return  HTTPResponse.success(
+            return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
-                data = serializer.data
+                data=serializer.data,
             )
         except Http404:
             return HTTPResponse.error(
-                message="Client not found",
-                status_code=status.HTTP_404_NOT_FOUND
+                message="Client not found", status_code=status.HTTP_404_NOT_FOUND
             )
