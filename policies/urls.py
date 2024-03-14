@@ -21,4 +21,9 @@ urlpatterns = [
         UploadClientAndPolicyExcelAPIView.as_view(),
         name="client-and-policy-excel",
     ),
+    path(
+        "dependents/<int:pk>",
+        PolicyDependenciesView.as_view(),
+        name="policy-dependents",
+    ),
 ]

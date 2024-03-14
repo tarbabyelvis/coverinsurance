@@ -14,13 +14,13 @@ class ClientDetails(BaseModel):
         null=True,
         blank=True,
     )
-    primary_id_number = models.CharField(max_length=200)
+    primary_id_number = models.CharField(max_length=200, unique=True)
     primary_id_document_type = models.ForeignKey(
         IdDocumentType,
         on_delete=models.RESTRICT,
         related_name="id_document_type",
     )
-    external_id = models.CharField(max_length=200, null=True, blank=True)
+    external_id = models.CharField(max_length=200, null=True, blank=True, unique=True)
     entity_type = models.CharField(max_length=20, choices=EntityType.choices)
     gender = models.CharField(max_length=20, choices=Gender.choices)
     marital_status = models.CharField(
