@@ -26,4 +26,9 @@ urlpatterns = [
         PolicyDependenciesView.as_view(),
         name="policy-dependents",
     ),
+    path(
+        "beneficiaries/<int:pk>",
+        PolicyBeneficiariesView.as_view(),
+        name="policy-beneficiaries",
+    ),
 ]
