@@ -46,7 +46,7 @@ class ClientDetails(BaseModel):
 
 
 class ClientEmploymentDetails(BaseModel):
-    client = models.ForeignKey(
+    client = models.OneToOneField(
         ClientDetails,
         on_delete=models.CASCADE,
         related_name="client_employment_details",
