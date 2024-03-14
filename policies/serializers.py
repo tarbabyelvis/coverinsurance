@@ -1,13 +1,15 @@
 from django.forms import model_to_dict
 from rest_framework import serializers
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from clients.models import ClientDetails, ClientEmploymentDetails
 from clients.serializers import ClientDetailsSerializer
 from config.models import BusinessSector, Relationships
 from config.serializers import AgentSerializer, InsuranceCompanySerializer
 from core.utils import convert_to_datetime
+from policies.constants import STATUS_MAPPING
 from policies.models import Policy, Beneficiary, Dependant, PolicyPaymentSchedule
 from datetime import datetime
+from rest_framework.fields import empty
 
 
 class BeneficiarySerializer(serializers.ModelSerializer):
@@ -167,6 +169,10 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
                 mutable_data["policy"]["policy_status"] = status_mapping.get(
                     str(policy_status), "X"
                 )
+            else:
+                mutable_data["policy"]["policy_status"] = STATUS_MAPPING.get(
+                    str(policy_status), mutable_data["policy"]["policy_status"]
+                )
 
         # Convert datetime to date for the 'date_of_birth' field if needed
         client_data = mutable_data.get("client", {})
@@ -181,35 +187,58 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        # Extract client and policy data
+        print("trying to save")
         client_data = validated_data.pop("client")
         policy_data = validated_data.pop("policy")
-        beneficiaries_data = policy_data.pop("beneficiaries", [])
-        dependencies_data = policy_data.pop("dependants", [])
-        employment_details_data = client_data.pop("employment_details", None)
+        beneficiaries_data = (
+            policy_data.pop("beneficiaries") if "beneficiaries" in policy_data else []
+        )
+        dependants_data = (
+            policy_data.pop("dependants") if "dependants" in policy_data else []
+        )
+        employment_details_data = (
+            client_data.pop("employment_details")
+            if "employment_details" in client_data
+            else None
+        )
 
-        # Check if client exists
-        client_instance, _ = ClientDetails.objects.get_or_create(**client_data)
+        # Check if the client with the primary ID number already exists
+        client_instance, _ = ClientDetails.objects.get_or_create(
+            primary_id_number=client_data["primary_id_number"],
+            external_id=client_data["external_id"],
+            defaults=client_data,
+        )
 
-        # Create the ClientEmploymentDetails instances
+        # Create or update ClientEmploymentDetails
         if employment_details_data:
             if str(employment_details_data["sector"]).isdigit():
                 employment_details_data["sector"] = BusinessSector.objects.get(
                     pk=employment_details_data["sector"]
                 )
-            ClientEmploymentDetails.objects.create(
-                **employment_details_data, client=client_instance
+            ClientEmploymentDetails.objects.update_or_create(
+                client=client_instance, defaults=employment_details_data
             )
 
-        policy_instance, _ = Policy.objects.get_or_create(
-            client=client_instance, **policy_data
-        )
+        # Check if the policy with the policy number and external reference already exists
+        try:
+            policy_instance, _ = Policy.objects.get_or_create(
+                policy_number=policy_data["policy_number"],
+                external_reference=policy_data["external_reference"],
+                defaults={"client": client_instance, **policy_data},
+            )
+        except IntegrityError:
+            # Handle the case where the policy number or external reference already exists
+            # You can raise appropriate validation error or handle it as per your requirement
+            raise serializers.ValidationError(
+                "Policy with the given policy number or external reference already exists."
+            )
 
-        for beneficiary in beneficiaries_data:
-            Beneficiary.objects.create(**beneficiary, policy=policy_instance)
+        # Create beneficiaries and dependants
+        for beneficiary_data in beneficiaries_data:
+            Beneficiary.objects.create(policy=policy_instance, **beneficiary_data)
 
-        for dependant in dependencies_data:
-            Dependant.objects.create(**dependant, policy=policy_instance)
+        for dependant_data in dependants_data:
+            Dependant.objects.create(policy=policy_instance, **dependant_data)
 
         return {
             "client": ClientDetailsSerializer(client_instance).data,
@@ -234,6 +263,32 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             )
 
         return instance
+
+    def run_validation(self, data=empty):
+        """
+        Bypass uniqueness checks when running validation.
+        """
+        try:
+            # Temporarily remove the unique validation check
+            client_serializer = ClientDetailsSerializer()
+            policy_serializer = PolicySerializer()
+            client_serializer.validators = [
+                v
+                for v in client_serializer.validators
+                if "UniqueValidator" not in str(v)
+            ]
+            policy_serializer.validators = [
+                v
+                for v in policy_serializer.validators
+                if "UniqueValidator" not in str(v)
+            ]
+            self.fields["client"] = client_serializer
+            self.fields["policy"] = policy_serializer
+            return super().run_validation(data)
+        finally:
+            # Restore the original validators
+            self.fields["client"] = ClientDetailsSerializer()
+            self.fields["policy"] = PolicySerializer()
 
 
 class ClientPolicyResponseSerializer(serializers.Serializer):

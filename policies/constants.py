@@ -44,3 +44,17 @@ CLIENT_COLUMNS = {
 DEFAULT_CLIENT_FIELDS = {"primary_id_document_type": 1, "entity_type": "INDIVIDUAL"}
 
 DEFAULT_POLICY_FIELDS = {"insurer": 1}
+
+STATUS_MAPPING = {
+    "Active": "A",
+    "Lapsed": "L",
+    "Cancelled": "X",
+    "Expiry": "E",
+    "Claimed": "C",
+    "Reinstated": "R",
+    "Not Taken Up": "N",
+    "Paid Up": "P",
+    "Surrendered": "S",
+    "Surrendered due to replacement": "SR",
+    "Transferred out": "T",
+}
