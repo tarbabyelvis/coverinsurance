@@ -11,6 +11,18 @@ from policies.serializers import ClientPolicyRequestSerializer
 logger = logging.getLogger(__name__)
 
 
+def extract_json_fields(dictionary):
+    policy_details = {}
+
+    for key in list(dictionary.keys()):
+        if key.startswith("json_"):
+            new_key = key.replace("json_", "")
+            policy_details[new_key] = dictionary.pop(key)
+
+    dictionary["policy_details"] = policy_details
+    return dictionary
+
+
 @transaction.atomic
 def upload_clients_and_policies(
     file_obj: Any, client_columns: List, policy_columns
@@ -66,6 +78,8 @@ def upload_clients_and_policies(
         policy_data = {k: row_dict[k] for k in received_policy_columns}
 
         policy_data = merge_dict_into_another(policy_data, DEFAULT_POLICY_FIELDS)
+        # convert all fields that have json prefix
+        policy_data = extract_json_fields(policy_data)
 
         serializer = ClientPolicyRequestSerializer(
             data={"client": client_data, "policy": policy_data},

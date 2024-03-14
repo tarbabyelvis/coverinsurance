@@ -74,11 +74,11 @@ class PolicyPaymentScheduleSerializer(serializers.ModelSerializer):
 
 
 class PolicySerializer(serializers.ModelSerializer):
-    beneficiaries = BeneficiarySerializer(many=True, required=False)
-    dependants = DependantSerializer(many=True, required=False)
-    # client = ClientDetailsSerializer(read_only=True)
-    # insurer = InsuranceCompanySerializer(read_only=True)
-    # agent = AgentSerializer(read_only=True)
+    # beneficiaries = BeneficiarySerializer(many=True, required=False)
+    # dependants = DependantSerializer(many=True, required=False)
+    client = ClientDetailsSerializer(read_only=True)
+    insurer = InsuranceCompanySerializer(read_only=True)
+    agent = AgentSerializer(read_only=True)
 
     class Meta:
         model = Policy
@@ -134,6 +134,8 @@ class PolicyDetailSerializer(PolicySerializer):
     client = ClientDetailsSerializer(read_only=True)
     insurer = InsuranceCompanySerializer(read_only=True)
     agent = AgentSerializer(read_only=True)
+    policy_beneficiary = BeneficiarySerializer(many=True)
+    policy_dependants = DependantSerializer(many=True)
     # Add other nested serializers for related models here
 
     # class Meta(PolicySerializer.Meta):
@@ -190,6 +192,7 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
         print("trying to save")
         client_data = validated_data.pop("client")
         policy_data = validated_data.pop("policy")
+        print(policy_data)
         beneficiaries_data = (
             policy_data.pop("beneficiaries") if "beneficiaries" in policy_data else []
         )
@@ -205,27 +208,35 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
         # Check if the client with the primary ID number already exists
         client_instance, _ = ClientDetails.objects.get_or_create(
             primary_id_number=client_data["primary_id_number"],
-            external_id=client_data["external_id"],
             defaults=client_data,
         )
 
         # Create or update ClientEmploymentDetails
         if employment_details_data:
             if str(employment_details_data["sector"]).isdigit():
-                employment_details_data["sector"] = BusinessSector.objects.get(
-                    pk=employment_details_data["sector"]
-                )
+                try:
+                    employment_details_data["sector"] = BusinessSector.objects.get(
+                        pk=employment_details_data["sector"]
+                    )
+                except BusinessSector.DoesNotExist:
+                    raise serializers.ValidationError("Business sector does not exist.")
             ClientEmploymentDetails.objects.update_or_create(
                 client=client_instance, defaults=employment_details_data
             )
 
         # Check if the policy with the policy number and external reference already exists
         try:
-            policy_instance, _ = Policy.objects.get_or_create(
-                policy_number=policy_data["policy_number"],
-                external_reference=policy_data["external_reference"],
-                defaults={"client": client_instance, **policy_data},
-            )
+            if "policy_number" in policy_data and policy_data["policy_number"]:
+                policy_instance, _ = Policy.objects.get_or_create(
+                    policy_number=policy_data["policy_number"],
+                    defaults={"client": client_instance, **policy_data},
+                )
+            else:
+                print("Here we go again")
+                print(policy_data)
+                policy_instance = Policy.objects.create(
+                    client=client_instance, **policy_data
+                )
         except IntegrityError:
             # Handle the case where the policy number or external reference already exists
             # You can raise appropriate validation error or handle it as per your requirement
@@ -264,31 +275,31 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
         return instance
 
-    def run_validation(self, data=empty):
-        """
-        Bypass uniqueness checks when running validation.
-        """
-        try:
-            # Temporarily remove the unique validation check
-            client_serializer = ClientDetailsSerializer()
-            policy_serializer = PolicySerializer()
-            client_serializer.validators = [
-                v
-                for v in client_serializer.validators
-                if "UniqueValidator" not in str(v)
-            ]
-            policy_serializer.validators = [
-                v
-                for v in policy_serializer.validators
-                if "UniqueValidator" not in str(v)
-            ]
-            self.fields["client"] = client_serializer
-            self.fields["policy"] = policy_serializer
-            return super().run_validation(data)
-        finally:
-            # Restore the original validators
-            self.fields["client"] = ClientDetailsSerializer()
-            self.fields["policy"] = PolicySerializer()
+    # def run_validation(self, data=empty):
+    #     """
+    #     Bypass uniqueness checks when running validation.
+    #     """
+    #     try:
+    #         # Temporarily remove the unique validation check
+    #         client_serializer = ClientDetailsSerializer()
+    #         policy_serializer = PolicySerializer()
+    #         client_serializer.validators = [
+    #             v
+    #             for v in client_serializer.validators
+    #             if "UniqueValidator" not in str(v)
+    #         ]
+    #         policy_serializer.validators = [
+    #             v
+    #             for v in policy_serializer.validators
+    #             if "UniqueValidator" not in str(v)
+    #         ]
+    #         self.fields["client"] = client_serializer
+    #         self.fields["policy"] = policy_serializer
+    #         return super().run_validation(data)
+    #     finally:
+    #         # Restore the original validators
+    #         self.fields["client"] = ClientDetailsSerializer()
+    #         self.fields["policy"] = PolicySerializer()
 
 
 class ClientPolicyResponseSerializer(serializers.Serializer):

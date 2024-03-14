@@ -60,7 +60,7 @@ class PolicyView(APIView):
     @swagger_auto_schema(
         operation_description="Endpoint Operation Description for GET",
         responses={
-            201: openapi.Response("Request Successful", PolicyDetailSerializer),
+            201: openapi.Response("Request Successful", PolicySerializer),
             400: "Bad Request",
         },
     )
@@ -68,7 +68,7 @@ class PolicyView(APIView):
         policies = Policy.objects.all()
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(policies, request)
-        serializer = PolicyDetailSerializer(result_page, many=True)
+        serializer = PolicySerializer(result_page, many=True)
 
         return HTTPResponse.success(
             message="Request Successful",

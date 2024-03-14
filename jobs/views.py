@@ -1,3 +1,9 @@
-from django.shortcuts import render
+from django.urls import path
+from .views import *
 
-# Create your views here.
+app_name = "jobs"
+
+urlpatterns = [
+    # path("", PolicyView.as_view(), name="create-policy"),
+    # path("<int:pk>", PolicyDetailView.as_view(), name="policy-detail"),
+]
