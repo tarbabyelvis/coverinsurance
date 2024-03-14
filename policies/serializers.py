@@ -1,9 +1,9 @@
 from django.forms import model_to_dict
 from rest_framework import serializers
 from django.db import transaction
-from clients.models import ClientDetails
+from clients.models import ClientDetails, ClientEmploymentDetails
 from clients.serializers import ClientDetailsSerializer
-from config.models import Relationships
+from config.models import BusinessSector, Relationships
 from config.serializers import AgentSerializer, InsuranceCompanySerializer
 from core.utils import convert_to_datetime
 from policies.models import Policy, Beneficiary, Dependant, PolicyPaymentSchedule
@@ -21,12 +21,6 @@ class BeneficiarySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Policy does not exist.")
         return value
 
-    def validate_relationship(self, value):
-        # Validate if the relationship exists
-        if not Relationships.objects.filter(id=value).exists():
-            raise serializers.ValidationError("Relationship does not exist.")
-        return value
-
     def create(self, validated_data):
         # Extract policy and relationship from validated data
         policy_id = validated_data.pop("policy")
@@ -38,27 +32,22 @@ class BeneficiarySerializer(serializers.ModelSerializer):
 
         # Create and return the dependant instance
         beneficiary = Beneficiary.objects.create(
-            policy=policy, relationship=relationship, **validated_data
+            policy=policy, relationship=relationship.pk, **validated_data
         )
         return beneficiary
 
 
 class DependantSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Dependant
         exclude = ["policy", "deleted"]
 
-    def validate_policy(self, value):
-        # Validate if the policy exists
-        if not Policy.objects.filter(id=value).exists():
-            raise serializers.ValidationError("Policy does not exist.")
-        return value
-
-    def validate_relationship(self, value):
-        # Validate if the relationship exists
-        if not Relationships.objects.filter(id=value).exists():
-            raise serializers.ValidationError("Relationship does not exist.")
-        return value
+    # def validate_policy(self, value):
+    #     # Validate if the policy exists
+    #     if not Policy.objects.filter(id=value).exists():
+    #         raise serializers.ValidationError("Policy does not exist.")
+    #     return value
 
     def create(self, validated_data):
         # Extract policy and relationship from validated data
@@ -71,7 +60,7 @@ class DependantSerializer(serializers.ModelSerializer):
 
         # Create and return the dependant instance
         dependant = Dependant.objects.create(
-            policy=policy, relationship=relationship, **validated_data
+            policy=policy, relationship=relationship.pk, **validated_data
         )
         return dependant
 
@@ -190,41 +179,53 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
         return super().to_internal_value(mutable_data)
 
+    @transaction.atomic
     def create(self, validated_data):
         # Extract client and policy data
         client_data = validated_data.pop("client")
         policy_data = validated_data.pop("policy")
+        employment_details_data = client_data.pop("employment_details", [])
 
         # Check if client exists
         client_instance, _ = ClientDetails.objects.get_or_create(**client_data)
 
-        # Check if policy exists
+        # Create the ClientEmploymentDetails instances
+        if employment_details_data:
+            if str(employment_details_data["sector"]).isdigit():
+                employment_details_data["sector"] = BusinessSector.objects.get(
+                    pk=employment_details_data["sector"]
+                )
+            ClientEmploymentDetails.objects.create(
+                **employment_details_data, client=client_instance
+            )
+
         policy_instance, _ = Policy.objects.get_or_create(
             client=client_instance, **policy_data
         )
 
         return {
-            "client": model_to_dict(client_instance),
-            "policy": model_to_dict(policy_instance),
+            "client": ClientDetailsSerializer(client_instance).data,
+            "policy": PolicySerializer(policy_instance).data,
         }
 
+    @transaction.atomic
     def update(self, instance, validated_data):
-        # Extract client and policy data
-        client_data = validated_data.pop("client")
-        policy_data = validated_data.pop("policy")
+        client_data = validated_data.pop("client", None)
+        policy_data = validated_data.pop("policy", None)
 
-        # Update client and policy instances
-        client_instance = instance["client"]
-        policy_instance = instance["policy"]
-        for attr, value in client_data.items():
-            setattr(client_instance, attr, value)
-        client_instance.save()
+        if client_data:
+            # Update client instance
+            ClientDetails.objects.update_or_create(
+                defaults=client_data, **instance.client
+            )
 
-        for attr, value in policy_data.items():
-            setattr(policy_instance, attr, value)
-        policy_instance.save()
+        if policy_data:
+            # Update policy instance
+            Policy.objects.update_or_create(
+                defaults=policy_data, client=instance.client
+            )
 
-        return {"client": client_instance, "policy": policy_instance}
+        return instance
 
 
 class ClientPolicyResponseSerializer(serializers.Serializer):

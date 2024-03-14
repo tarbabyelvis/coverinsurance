@@ -4,6 +4,8 @@ from django.db import transaction
 import json
 from rest_framework import serializers
 from clients.commons import CLIENTS_EXPECTED_COLUMNS
+from config.models import BusinessSector
+from config.serializers import BusinessSectorSerializer
 from .models import ClientDetails, ClientEmploymentDetails, IdDocumentType
 from django.core.exceptions import ObjectDoesNotExist
 from marshmallow import Schema, fields, validates_schema, ValidationError
@@ -21,9 +23,34 @@ def in_memory_file_exists(in_memory_file):
 
 
 class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
+    sector = BusinessSectorSerializer(required=False)
+
     class Meta:
         model = ClientEmploymentDetails
         exclude = ["client"]
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation["client"] = (
+            instance.client_id
+        )  # Assuming 'client_id' is the field in ClientEmploymentDetails storing the client's ID
+        return representation
+
+    def to_internal_value(self, data):
+        data = data.copy()
+        sector_data = data.pop("sector", None)
+        client_id = data.pop("client", None)
+        instance = super().to_internal_value(data)
+        if client_id is not None:
+            instance["client"] = client_id
+        if sector_data is not None:
+            if isinstance(sector_data, int):  # Check if sector_data is an ID (integer)
+                instance["sector"] = sector_data
+            else:
+                sector_serializer = BusinessSectorSerializer(data=sector_data)
+                sector_serializer.is_valid(raise_exception=True)
+                instance["sector"] = sector_serializer.save()
+        return instance
 
 
 class IdDocumentTypeSerializer(serializers.ModelSerializer):
@@ -33,7 +60,7 @@ class IdDocumentTypeSerializer(serializers.ModelSerializer):
 
 
 class ClientDetailsSerializer(serializers.ModelSerializer):
-    employment_details = ClientEmploymentDetailsSerializer(many=True, required=False)
+    employment_details = ClientEmploymentDetailsSerializer(required=False)
 
     class Meta:
         model = ClientDetails
@@ -97,6 +124,19 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "Invalid primary_id_document_type ID."
                 )
+            #
+        #     if (
+        #         "employment_details" in mutable_data
+        #         and "sector" in mutable_data["employment_details"]
+        #         and isinstance(
+        #             mutable_data["employment_details"]["sector"], BusinessSector
+        #         )
+        #     ):
+        #         mutable_data["employment_details"]["sector"] = mutable_data[
+        #             "employment_details"
+        #         ]["sector"].pk
+        # print("Hello")
+        # print(mutable_data["employment_details"])
 
         return super().to_internal_value(mutable_data)
 
@@ -130,7 +170,6 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        print("trying to create")
         employment_details_data = validated_data.pop("employment_details", [])
         # Extract the nested IdDocumentType data from the validated data
         primary_id_document_type_value = validated_data.pop("primary_id_document_type")
