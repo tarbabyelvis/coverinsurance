@@ -1,16 +1,18 @@
 import logging
 from policies.constants import CLIENT_COLUMNS, POLICY_COLUMNS
-from policies.models import Policy
+from policies.models import Beneficiary, Dependant, Policy
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
 from rest_framework import status
-
+from django.core.exceptions import ObjectDoesNotExist
 from policies.services import upload_clients_and_policies
 from .serializers import (
+    BeneficiarySerializer,
     ClientPolicyRequestSerializer,
     ClientPolicyResponseSerializer,
+    DependantSerializer,
     PolicyDetailSerializer,
     PolicySerializer,
 )
@@ -63,7 +65,7 @@ class PolicyView(APIView):
         },
     )
     def get(self, request):
-        policies = Policy.all_objects.all()
+        policies = Policy.objects.all()
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(policies, request)
         serializer = PolicyDetailSerializer(result_page, many=True)
@@ -154,3 +156,99 @@ class UploadClientAndPolicyExcelAPIView(APIView):
         except Exception as e:
             logger.error(e)
             return HTTPResponse.error(message=str(e))
+
+
+# add dependencies
+class PolicyDependenciesView(APIView):
+
+    @swagger_auto_schema(
+        operation_description="Add policy dependencies",
+        request_body=PolicySerializer,
+        responses={
+            201: openapi.Response("Created", DependantSerializer),
+            400: "Bad Request",
+        },
+    )
+    def post(self, request, policy_id):
+
+        serializer = DependantSerializer(
+            data={**request.data, "policy": policy_id},
+            context={"request": request},
+        )
+        if serializer.is_valid():
+            try:
+                logger.info("Validated data: %s", serializer.validated_data)
+                # Save the validated data to create a new Policy instance
+                serializer.save()
+                return HTTPResponse.success(
+                    message="Resource created successfully",
+                    status_code=status.HTTP_201_CREATED,
+                )
+            except Exception as e:
+                return HTTPResponse.error(message=str(e))
+        else:
+            return HTTPResponse.error(message=serializer.errors)
+
+    # get all clients
+    @swagger_auto_schema(
+        operation_description="Get policy dependencies",
+        responses={
+            201: openapi.Response("Request Successful", DependantSerializer),
+            400: "Bad Request",
+        },
+    )
+    def get(self, request, policy_id):
+        dependencies = Dependant.objects.filter(policy_id=policy_id)
+
+        return HTTPResponse.success(
+            message="Request Successful",
+            status_code=status.HTTP_200_OK,
+            data=dependencies,
+        )
+
+
+# add policies
+class PolicyBeneficiariesView(APIView):
+
+    @swagger_auto_schema(
+        operation_description="Add policy beneficiary",
+        request_body=BeneficiarySerializer,
+        responses={
+            201: openapi.Response("Created", BeneficiarySerializer),
+            400: "Bad Request",
+        },
+    )
+    def post(self, request, policy_id):
+
+        serializer = BeneficiarySerializer(
+            data={**request.data, "policy": policy_id},
+            context={"request": request},
+        )
+        if serializer.is_valid():
+            try:
+                logger.info("Validated data: %s", serializer.validated_data)
+                serializer.save()
+                return HTTPResponse.success(
+                    message="Resource created successfully",
+                    status_code=status.HTTP_201_CREATED,
+                )
+            except Exception as e:
+                return HTTPResponse.error(message=str(e))
+        else:
+            return HTTPResponse.error(message=serializer.errors)
+
+    @swagger_auto_schema(
+        operation_description="Get policy policies",
+        responses={
+            201: openapi.Response("Request Successful", BeneficiarySerializer),
+            400: "Bad Request",
+        },
+    )
+    def get(self, request, policy_id):
+        beneficiaries = Beneficiary.objects.filter(policy_id=policy_id)
+
+        return HTTPResponse.success(
+            message="Request Successful",
+            status_code=status.HTTP_200_OK,
+            data=beneficiaries,
+        )

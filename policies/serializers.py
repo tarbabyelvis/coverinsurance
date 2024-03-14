@@ -3,6 +3,7 @@ from rest_framework import serializers
 from django.db import transaction
 from clients.models import ClientDetails
 from clients.serializers import ClientDetailsSerializer
+from config.models import Relationships
 from config.serializers import AgentSerializer, InsuranceCompanySerializer
 from core.utils import convert_to_datetime
 from policies.models import Policy, Beneficiary, Dependant, PolicyPaymentSchedule
@@ -12,13 +13,67 @@ from datetime import datetime
 class BeneficiarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Beneficiary
-        exclude = ["policy"]
+        exclude = ["policy", "deleted"]
+
+    def validate_policy(self, value):
+        # Validate if the policy exists
+        if not Policy.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Policy does not exist.")
+        return value
+
+    def validate_relationship(self, value):
+        # Validate if the relationship exists
+        if not Relationships.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Relationship does not exist.")
+        return value
+
+    def create(self, validated_data):
+        # Extract policy and relationship from validated data
+        policy_id = validated_data.pop("policy")
+        relationship_id = validated_data.pop("relationship")
+
+        # Get the policy and relationship instances
+        policy = Policy.objects.get(id=policy_id)
+        relationship = Relationships.objects.get(id=relationship_id)
+
+        # Create and return the dependant instance
+        beneficiary = Beneficiary.objects.create(
+            policy=policy, relationship=relationship, **validated_data
+        )
+        return beneficiary
 
 
 class DependantSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dependant
-        exclude = ["policy"]
+        exclude = ["policy", "deleted"]
+
+    def validate_policy(self, value):
+        # Validate if the policy exists
+        if not Policy.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Policy does not exist.")
+        return value
+
+    def validate_relationship(self, value):
+        # Validate if the relationship exists
+        if not Relationships.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Relationship does not exist.")
+        return value
+
+    def create(self, validated_data):
+        # Extract policy and relationship from validated data
+        policy_id = validated_data.pop("policy")
+        relationship_id = validated_data.pop("relationship")
+
+        # Get the policy and relationship instances
+        policy = Policy.objects.get(id=policy_id)
+        relationship = Relationships.objects.get(id=relationship_id)
+
+        # Create and return the dependant instance
+        dependant = Dependant.objects.create(
+            policy=policy, relationship=relationship, **validated_data
+        )
+        return dependant
 
 
 class PolicyPaymentScheduleSerializer(serializers.ModelSerializer):
@@ -140,16 +195,13 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
         client_data = validated_data.pop("client")
         policy_data = validated_data.pop("policy")
 
-        print(policy_data)
+        # Check if client exists
+        client_instance, _ = ClientDetails.objects.get_or_create(**client_data)
 
-        # Create client and policy instances
-        client_instance = ClientDetails.objects.create(**client_data)
-        try:
-            policy_data.pop("client")  # Remove client from policy data
-        except Exception as e:
-            print(e)
-        print("before commencement")
-        policy_instance = Policy.objects.create(client=client_instance, **policy_data)
+        # Check if policy exists
+        policy_instance, _ = Policy.objects.get_or_create(
+            client=client_instance, **policy_data
+        )
 
         return {
             "client": model_to_dict(client_instance),

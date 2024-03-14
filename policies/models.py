@@ -19,8 +19,10 @@ class Policy(BaseModel):
         null=True, blank=True, max_digits=20, decimal_places=2
     )
     policy_term = models.IntegerField(null=True, blank=True)  # in months
-    policy_number = models.CharField(max_length=200, null=True, blank=True)
-    external_reference = models.CharField(max_length=60, null=True, blank=True)
+    policy_number = models.CharField(max_length=200, null=True, blank=True, unique=True)
+    external_reference = models.CharField(
+        max_length=60, null=True, blank=True, unique=True
+    )
     insurer = models.ForeignKey(
         InsuranceCompany,
         on_delete=models.RESTRICT,
@@ -169,3 +171,16 @@ auditlog.register(PolicyPaymentSchedule)
 auditlog.register(PremiumPayment)
 auditlog.register(Dependant)
 auditlog.register(Beneficiary)
+
+
+# UPDATE clients_clientdetails
+# SET external_id  = external_id || id::TEXT;
+
+# UPDATE clients_clientdetails
+# SET primary_id_number = primary_id_number || id::TEXT;
+
+# UPDATE policies_policy
+# SET policy_number = policy_number || id::TEXT;
+
+# UPDATE policies_policy
+# SET external_reference  = external_reference || id::TEXT
