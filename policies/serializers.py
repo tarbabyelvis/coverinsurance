@@ -3,13 +3,14 @@ from rest_framework import serializers
 from django.db import IntegrityError, transaction
 from clients.models import ClientDetails, ClientEmploymentDetails
 from clients.serializers import ClientDetailsSerializer
-from config.models import BusinessSector, Relationships
+from config.models import Agent, BusinessSector, InsuranceCompany, Relationships
 from config.serializers import AgentSerializer, InsuranceCompanySerializer
 from core.utils import convert_to_datetime
 from policies.constants import STATUS_MAPPING
 from policies.models import Policy, Beneficiary, Dependant, PolicyPaymentSchedule
 from datetime import datetime
 from rest_framework.fields import empty
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class BeneficiarySerializer(serializers.ModelSerializer):
@@ -30,11 +31,14 @@ class BeneficiarySerializer(serializers.ModelSerializer):
 
         # Get the policy and relationship instances
         policy = Policy.objects.get(id=policy_id)
-        relationship = Relationships.objects.get(id=relationship_id)
+        if isinstance(relationship_id, Relationships):
+            relationship = relationship_id
+        else:
+            relationship = Relationships.objects.get(id=relationship_id)
 
         # Create and return the dependant instance
         beneficiary = Beneficiary.objects.create(
-            policy=policy, relationship=relationship.pk, **validated_data
+            policy=policy, relationship=relationship, **validated_data
         )
         return beneficiary
 
@@ -58,11 +62,14 @@ class DependantSerializer(serializers.ModelSerializer):
 
         # Get the policy and relationship instances
         policy = Policy.objects.get(id=policy_id)
-        relationship = Relationships.objects.get(id=relationship_id)
+        if isinstance(relationship_id, Relationships):
+            relationship = relationship_id
+        else:
+            relationship = Relationships.objects.get(id=relationship_id)
 
         # Create and return the dependant instance
         dependant = Dependant.objects.create(
-            policy=policy, relationship=relationship.pk, **validated_data
+            policy=policy, relationship=relationship, **validated_data
         )
         return dependant
 
@@ -74,11 +81,10 @@ class PolicyPaymentScheduleSerializer(serializers.ModelSerializer):
 
 
 class PolicySerializer(serializers.ModelSerializer):
-    # beneficiaries = BeneficiarySerializer(many=True, required=False)
-    # dependants = DependantSerializer(many=True, required=False)
+
     client = ClientDetailsSerializer(read_only=True)
-    insurer = InsuranceCompanySerializer(read_only=True)
-    agent = AgentSerializer(read_only=True)
+    # insurer = InsuranceCompanySerializer()
+    # agent = AgentSerializer()
 
     class Meta:
         model = Policy
@@ -96,6 +102,7 @@ class PolicySerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        print("saving")
         beneficiaries_data = validated_data.pop("beneficiaries", [])
         dependants_data = validated_data.pop("dependants", [])
 
@@ -127,6 +134,12 @@ class PolicySerializer(serializers.ModelSerializer):
             Dependant.objects.create(policy=instance, **dependant_data)
 
         return instance
+
+
+class PolicyListSerializer(serializers.ModelSerializer):
+    client = ClientDetailsSerializer(read_only=True)
+    insurer = InsuranceCompanySerializer(read_only=True)
+    agent = AgentSerializer(read_only=True)
 
 
 class PolicyDetailSerializer(PolicySerializer):
@@ -185,11 +198,12 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             elif isinstance(date_of_birth, str):
                 client_data["date_of_birth"] = convert_to_datetime(date_of_birth)
 
+        # Convert insurer to proper datatype
+        print("Done with the initial")
         return super().to_internal_value(mutable_data)
 
     @transaction.atomic
     def create(self, validated_data):
-        print("trying to save")
         client_data = validated_data.pop("client")
         policy_data = validated_data.pop("policy")
         print(policy_data)
@@ -211,6 +225,12 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             defaults=client_data,
         )
 
+        insurer = policy_data["insurer"]
+
+        if isinstance(insurer, int) or str(insurer).isdigit():
+            insurance_company = InsuranceCompany.objects.get(pk=insurer)
+            policy_data["insurer"] = insurance_company
+
         # Create or update ClientEmploymentDetails
         if employment_details_data:
             if str(employment_details_data["sector"]).isdigit():
@@ -226,18 +246,20 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
         # Check if the policy with the policy number and external reference already exists
         try:
+            print("policy data")
+            print(policy_data)
             if "policy_number" in policy_data and policy_data["policy_number"]:
                 policy_instance, _ = Policy.objects.get_or_create(
                     policy_number=policy_data["policy_number"],
                     defaults={"client": client_instance, **policy_data},
                 )
             else:
-                print("Here we go again")
                 print(policy_data)
                 policy_instance = Policy.objects.create(
                     client=client_instance, **policy_data
                 )
-        except IntegrityError:
+        except IntegrityError as e:
+            print(e)
             # Handle the case where the policy number or external reference already exists
             # You can raise appropriate validation error or handle it as per your requirement
             raise serializers.ValidationError(

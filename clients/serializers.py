@@ -4,7 +4,6 @@ from django.db import transaction
 import json
 from rest_framework import serializers
 from clients.commons import CLIENTS_EXPECTED_COLUMNS
-from config.models import BusinessSector
 from config.serializers import BusinessSectorSerializer
 from .models import ClientDetails, ClientEmploymentDetails, IdDocumentType
 from django.core.exceptions import ObjectDoesNotExist
