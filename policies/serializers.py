@@ -184,7 +184,9 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
         # Extract client and policy data
         client_data = validated_data.pop("client")
         policy_data = validated_data.pop("policy")
-        employment_details_data = client_data.pop("employment_details", [])
+        beneficiaries_data = policy_data.pop("beneficiaries", [])
+        dependencies_data = policy_data.pop("dependants", [])
+        employment_details_data = client_data.pop("employment_details", None)
 
         # Check if client exists
         client_instance, _ = ClientDetails.objects.get_or_create(**client_data)
@@ -202,6 +204,12 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
         policy_instance, _ = Policy.objects.get_or_create(
             client=client_instance, **policy_data
         )
+
+        for beneficiary in beneficiaries_data:
+            Beneficiary.objects.create(**beneficiary, policy=policy_instance)
+
+        for dependant in dependencies_data:
+            Dependant.objects.create(**dependant, policy=policy_instance)
 
         return {
             "client": ClientDetailsSerializer(client_instance).data,
