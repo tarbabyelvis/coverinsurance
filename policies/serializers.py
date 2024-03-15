@@ -104,6 +104,19 @@ class PolicySerializer(serializers.ModelSerializer):
             except ObjectDoesNotExist:
                 raise serializers.ValidationError("Invalid client ID.")
 
+        # Convert policy_status to a proper format if needed
+        if "policy_status" in mutable_data:
+            policy_status = mutable_data["policy_status"]
+            if isinstance(policy_status, int) or str(policy_status).isdigit():
+                status_mapping = {"1": "A"}
+                mutable_data["policy_status"] = status_mapping.get(
+                    str(policy_status), "X"
+                )
+            else:
+                mutable_data["policy_status"] = STATUS_MAPPING.get(
+                    str(policy_status), mutable_data["policy_status"]
+                )
+
         return super().to_internal_value(mutable_data)
 
     class Meta:
