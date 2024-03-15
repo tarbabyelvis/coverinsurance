@@ -72,7 +72,7 @@ def upload_clients_and_policies(
         client_data = merge_dict_into_another(client_data, DEFAULT_CLIENT_FIELDS)
 
         if "gender" in client_data:
-            gender_mapping = {"U": "UNKNOWN", "M": "MALE", "F": "FEMALE"}
+            gender_mapping = {"U": "Unknown", "M": "Male", "F": "Female"}
             client_data["gender"] = gender_mapping.get(client_data["gender"], "Unknown")
 
         policy_data = {k: row_dict[k] for k in received_policy_columns}

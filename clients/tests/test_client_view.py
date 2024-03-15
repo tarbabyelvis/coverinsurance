@@ -26,8 +26,8 @@ class ClientDetailsAPITests(TenantTestCase):
             'last_name': 'Doe',
             'primary_id_number': '123456789',
             'primary_id_document_type': int(self.id_document_type.id),
-            'entity_type': "INDIVIDUAL",
-            'gender': "MALE",
+            'entity_type': "Individual",
+            'gender': "Male",
         }
         url = reverse('clients:create-get')
         response = self.c.post(url, data)
