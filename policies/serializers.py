@@ -1,16 +1,13 @@
-from django.forms import model_to_dict
 from rest_framework import serializers
 from django.db import IntegrityError, transaction
 from clients.models import ClientDetails, ClientEmploymentDetails
 from clients.serializers import ClientDetailsSerializer
-from config.models import Agent, BusinessSector, InsuranceCompany, Relationships
+from config.models import BusinessSector, InsuranceCompany, Relationships
 from config.serializers import AgentSerializer, InsuranceCompanySerializer
 from core.utils import convert_to_datetime
 from policies.constants import STATUS_MAPPING
 from policies.models import Policy, Beneficiary, Dependant, PolicyPaymentSchedule
 from datetime import datetime
-from rest_framework.fields import empty
-from django.core.exceptions import ObjectDoesNotExist
 
 
 class BeneficiarySerializer(serializers.ModelSerializer):
@@ -48,12 +45,6 @@ class DependantSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dependant
         exclude = ["policy", "deleted"]
-
-    # def validate_policy(self, value):
-    #     # Validate if the policy exists
-    #     if not Policy.objects.filter(id=value).exists():
-    #         raise serializers.ValidationError("Policy does not exist.")
-    #     return value
 
     def create(self, validated_data):
         # Extract policy and relationship from validated data
@@ -140,6 +131,10 @@ class PolicyListSerializer(serializers.ModelSerializer):
     client = ClientDetailsSerializer(read_only=True)
     insurer = InsuranceCompanySerializer(read_only=True)
     agent = AgentSerializer(read_only=True)
+
+    class Meta:
+        model = Policy
+        exclude = ["deleted"]
 
 
 class PolicyDetailSerializer(PolicySerializer):
@@ -296,32 +291,6 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             )
 
         return instance
-
-    # def run_validation(self, data=empty):
-    #     """
-    #     Bypass uniqueness checks when running validation.
-    #     """
-    #     try:
-    #         # Temporarily remove the unique validation check
-    #         client_serializer = ClientDetailsSerializer()
-    #         policy_serializer = PolicySerializer()
-    #         client_serializer.validators = [
-    #             v
-    #             for v in client_serializer.validators
-    #             if "UniqueValidator" not in str(v)
-    #         ]
-    #         policy_serializer.validators = [
-    #             v
-    #             for v in policy_serializer.validators
-    #             if "UniqueValidator" not in str(v)
-    #         ]
-    #         self.fields["client"] = client_serializer
-    #         self.fields["policy"] = policy_serializer
-    #         return super().run_validation(data)
-    #     finally:
-    #         # Restore the original validators
-    #         self.fields["client"] = ClientDetailsSerializer()
-    #         self.fields["policy"] = PolicySerializer()
 
 
 class ClientPolicyResponseSerializer(serializers.Serializer):
