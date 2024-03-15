@@ -2,12 +2,12 @@ from django.db import models
 
 
 class Gender(models.TextChoices):
-    MALE = "MALE", "Male"
+    MALE = "Male", "Male"
     FEMALE = (
-        "FEMALE",
+        "Female",
         "Female",
     )
-    UNKNOWN = "UNKNOWN", "Unknown"
+    UNKNOWN = "Unknown", "Unknown"
 
 
 # class PolicyStatus(models.TextChoices):
