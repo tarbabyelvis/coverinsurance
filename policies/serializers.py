@@ -8,6 +8,7 @@ from core.utils import convert_to_datetime
 from policies.constants import STATUS_MAPPING
 from policies.models import Policy, Beneficiary, Dependant, PolicyPaymentSchedule
 from datetime import datetime
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class BeneficiarySerializer(serializers.ModelSerializer):
@@ -73,9 +74,37 @@ class PolicyPaymentScheduleSerializer(serializers.ModelSerializer):
 
 class PolicySerializer(serializers.ModelSerializer):
 
-    client = ClientDetailsSerializer(read_only=True)
+    # client = ClientDetailsSerializer(read_only=True)
     # insurer = InsuranceCompanySerializer()
     # agent = AgentSerializer()
+
+    def to_internal_value(self, data):
+        # Convert QueryDict to a mutable dictionary
+        mutable_data = data.copy()
+
+        if isinstance(mutable_data["client"], ClientDetails):
+            # If the value is an instance of ClientDetails, use it directly
+            mutable_data["client"] = mutable_data["client"].pk
+        elif isinstance(mutable_data["client"], str):
+            # If the value is a string, check if it's a number
+            if mutable_data["client"].isdigit():
+                # If it's a number, retrieve the ClientDetails instance using the primary key
+                mutable_data["client"] = ClientDetails.objects.get(
+                    pk=mutable_data["client"]
+                ).pk
+            else:
+                raise serializers.ValidationError("Invalid client ID.")
+
+        else:
+            # If it's already a primary key, retrieve the ClientDetails instance using the primary key
+            try:
+                mutable_data["client"] = ClientDetails.objects.get(
+                    pk=mutable_data["client"]
+                ).pk
+            except ObjectDoesNotExist:
+                raise serializers.ValidationError("Invalid client ID.")
+
+        return super().to_internal_value(mutable_data)
 
     class Meta:
         model = Policy
@@ -93,7 +122,6 @@ class PolicySerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        print("saving")
         beneficiaries_data = validated_data.pop("beneficiaries", [])
         dependants_data = validated_data.pop("dependants", [])
 
@@ -194,7 +222,6 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
                 client_data["date_of_birth"] = convert_to_datetime(date_of_birth)
 
         # Convert insurer to proper datatype
-        print("Done with the initial")
         return super().to_internal_value(mutable_data)
 
     @transaction.atomic

@@ -123,19 +123,6 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "Invalid primary_id_document_type ID."
                 )
-            #
-        #     if (
-        #         "employment_details" in mutable_data
-        #         and "sector" in mutable_data["employment_details"]
-        #         and isinstance(
-        #             mutable_data["employment_details"]["sector"], BusinessSector
-        #         )
-        #     ):
-        #         mutable_data["employment_details"]["sector"] = mutable_data[
-        #             "employment_details"
-        #         ]["sector"].pk
-        # print("Hello")
-        # print(mutable_data["employment_details"])
 
         return super().to_internal_value(mutable_data)
 
