@@ -1,6 +1,6 @@
 from django.db import models
 from clients.models import ClientDetails
-from config.models import Agent, InsuranceCompany, Relationships
+from config.models import Agent, InsuranceCompany, PolicyName, Relationships
 from core.enums import Gender, PolicyStatus
 from core.models import BaseModel
 from auditlog.registry import auditlog
@@ -11,6 +11,13 @@ class Policy(BaseModel):
         ClientDetails,
         on_delete=models.RESTRICT,
         related_name="policy_client_details",
+    )
+    policy_type = models.ForeignKey(
+        PolicyName,
+        on_delete=models.RESTRICT,
+        related_name="policy_name_policy",
+        null=True,
+        blank=True,
     )
     commencement_date = models.DateField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
