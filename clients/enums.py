@@ -2,14 +2,14 @@ from django.db import models
 
 
 class EntityType(models.TextChoices):
-    INDIVIDUAL = "INDIVIDUAL", "Individual"
-    ORGANIZATION = "ORGANIZATION", "Organization"
+    INDIVIDUAL = "Individual", "Individual"
+    ORGANIZATION = "Organization", "Organization"
 
 
 class MaritalStatus(models.TextChoices):
-    MARRIED = "MARRIED", "Married"
-    SINGLE = "SINGLE", "Single"
-    DIVORCED = "DIVORCED", "Divorced"
-    WIDOWED = "WIDOWED", "Widowed"
-    OTHER = "OTHER", "Other"
-    UNKNOWN = "UNKNOWN", "Unknown"
+    MARRIED = "Married", "Married"
+    SINGLE = "Single", "Single"
+    DIVORCED = "Divorced", "Divorced"
+    WIDOWED = "Widowed", "Widowed"
+    OTHER = "Other", "Other"
+    UNKNOWN = "Unknown", "Unknown"
