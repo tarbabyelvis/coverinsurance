@@ -75,8 +75,8 @@ class ClientEmploymentDetails(BaseModel):
     )
 
     class Meta:
-        verbose_name = "Client Details"
-        verbose_name_plural = "Client Details"
+        verbose_name = "Client Employment Details"
+        verbose_name_plural = "Client Employment Details"
 
     def __str__(self):
         return f"{self.client} - {self.employer_name}"
