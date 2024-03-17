@@ -49,7 +49,7 @@ POLICY_COLUMNS = {
     "policy_number": "Policy Number",
     "commencement_date": "Policy Commencement date",
     "expiry_date": "Policy Expiry Date",
-    "policy_terms": "Term of policy",
+    "policy_term": "Term of policy",
     "total_premium": "Prem",
     "json_premium_pd": "Prem Pd",
     "commission_amount": "Commission",
