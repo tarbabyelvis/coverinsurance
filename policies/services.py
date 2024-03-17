@@ -37,8 +37,6 @@ def upload_clients_and_policies(
 
     # Merge client and policy column definitions
     merged_columns = {**received_client_columns, **received_policy_columns}
-    print("done merging")
-    print(file_obj.file)
 
     # Load the Excel workbook
     wb = openpyxl.load_workbook(file_obj.file)
@@ -52,7 +50,6 @@ def upload_clients_and_policies(
 
     # Extract headers from the worksheet
     headers: List[str] = [cell.value.strip() for cell in ws[1]]
-    print("Header done")
 
     # Check if expected headers are present in the worksheet
     expected_headers = expected_client_headers + expected_policy_headers

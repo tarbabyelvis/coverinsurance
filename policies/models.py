@@ -27,7 +27,7 @@ class Policy(BaseModel):
     )
     policy_term = models.IntegerField(null=True, blank=True)  # in months
     policy_number = models.CharField(max_length=200, null=True, blank=True, unique=True)
-    business_unit = models.CharField(max_length=200, null=True, blank=True, unique=True)
+    business_unit = models.CharField(max_length=200, null=True, blank=True)
     external_reference = models.CharField(
         max_length=60, null=True, blank=True, unique=True
     )
