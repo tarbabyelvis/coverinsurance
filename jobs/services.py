@@ -10,6 +10,9 @@ from policies.serializers import PolicyDetailSerializer
 
 
 def credit_life(request_type, start_date, end_date):
+    print(start_date)
+    print(end_date)
+    print(request_type)
     task = Task.objects.get(task=Processes.CREDIT_LIFE)
     integration = IntegrationConfigs.objects.get(name=Integrations.GUARDRISK)
     log = TaskLog.objects.create(task=task, status="running", manual_run=True)

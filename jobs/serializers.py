@@ -1,11 +1,13 @@
-from marshmallow import Schema, fields, validates_schema, ValidationError
+from rest_framework import serializers
 
 
-class JobsSchema(Schema):
-    start_date = fields.Date(required=True)
-    end_date = fields.Date(required=True)
+class JobsSerializer(serializers.Serializer):
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
 
-    @validates_schema
-    def validate_excel_file(self, data, **kwargs):
-        if not data.get("end_date") < data.get("start_date"):
-            raise ValidationError("End Date cannot be less that Start Date.")
+    def validate(self, data):
+        if data.get("end_date") < data.get("start_date"):
+            raise serializers.ValidationError(
+                "End Date cannot be less than Start Date."
+            )
+        return data

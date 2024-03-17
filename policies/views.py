@@ -1,6 +1,6 @@
 import logging
 from policies.constants import CLIENT_COLUMNS, POLICY_COLUMNS
-from policies.models import Beneficiary, Dependant, Policy
+from policies.models import Beneficiary, Dependant, Policy, PremiumPayment
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from core.http_response import HTTPResponse
@@ -15,6 +15,7 @@ from .serializers import (
     PolicyDetailSerializer,
     PolicyListSerializer,
     PolicySerializer,
+    PremiumPaymentSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -54,7 +55,9 @@ class PolicyView(APIView):
             except Exception as e:
                 return HTTPResponse.error(message=str(e))
         else:
-            return HTTPResponse.error(message=serializer.errors)
+            return HTTPResponse.error(
+                message=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST
+            )
 
     # get all clients
     @swagger_auto_schema(
@@ -259,4 +262,55 @@ class PolicyBeneficiariesView(APIView):
             message="Request Successful",
             status_code=status.HTTP_200_OK,
             data=beneficiaries,
+        )
+
+
+# policy payments
+
+
+class CapturePaymentView(APIView):
+    @swagger_auto_schema(
+        request_body=PremiumPaymentSerializer,
+        responses={201: PremiumPaymentSerializer()},
+    )
+    def post(self, request, policy_id):
+        """
+        Capture payment.
+        """
+        serializer = PremiumPaymentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(policy=policy_id)
+            return HTTPResponse.success(
+                data=serializer.data, status_code=status.HTTP_201_CREATED
+            )
+        return HTTPResponse.error(
+            message=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+    @swagger_auto_schema(responses={200: PremiumPaymentSerializer(many=True)})
+    def get(self, request, policy_id):
+        """
+        Get all policy payments.
+        """
+        payments = PremiumPayment.objects.filter(policy_id=policy_id)
+        serializer = PremiumPaymentSerializer(payments, many=True)
+        return HTTPResponse.success(
+            data=serializer.data, status_code=status.HTTP_200_OK
+        )
+
+
+class UploadPaymentFileView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    @swagger_auto_schema(
+        request_body=MultiPartParser, responses={200: "File uploaded successfully."}
+    )
+    def put(self, request, format=None):
+        """
+        Upload payment file.
+        """
+        file_obj = request.FILES["file"]
+        # Additional logic to parse and process the file
+        return HTTPResponse.success(
+            message="Payments successfully uploaded", status_code=status.HTTP_200_OK
         )
