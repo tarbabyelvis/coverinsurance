@@ -124,7 +124,20 @@ class PolicySerializer(serializers.ModelSerializer):
                     str(policy_status), mutable_data["policy_status"]
                 )
 
-        print("Done here")
+        ## Handle rounding and casting for decimal fields
+        for field_name in [
+            "sum_insured",
+            "total_premium",
+            "commission_amount",
+            "admin_fee",
+        ]:
+            if field_name in mutable_data:
+                try:
+                    mutable_data[field_name] = float(mutable_data[field_name])
+                    mutable_data[field_name] = round(mutable_data[field_name], 2)
+                except (ValueError, TypeError):
+                    mutable_data[field_name] = 0
+
         return super().to_internal_value(mutable_data)
 
     class Meta:
@@ -234,6 +247,9 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
         # Convert datetime to date for specified fields if needed
         for field in ["commencement_date", "expiry_date"]:
+            print(field)
+            print(mutable_data["policy"][field])
+            print(type(mutable_data["policy"][field]))
             if field in mutable_data.get("policy", {}) and isinstance(
                 mutable_data["policy"][field], str
             ):
@@ -243,7 +259,8 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             if field in mutable_data.get("policy", {}) and isinstance(
                 mutable_data["policy"][field], datetime
             ):
-                mutable_data["policy"][field] = mutable_data[field].date()
+                print("it is a date instance")
+                mutable_data["policy"][field] = mutable_data["policy"][field].date()
 
         # Convert policy_status to a proper format if needed
         if "policy_status" in mutable_data.get("policy", {}):
@@ -267,14 +284,16 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             elif isinstance(date_of_birth, str):
                 client_data["date_of_birth"] = convert_to_datetime(date_of_birth)
 
+        print(mutable_data)
         # Convert insurer to proper datatype
         return super().to_internal_value(mutable_data)
 
     @transaction.atomic
     def create(self, validated_data):
         client_data = validated_data.pop("client")
+        print("---------------------------------------------")
+        print(client_data)
         policy_data = validated_data.pop("policy")
-        print(policy_data)
         beneficiaries_data = (
             policy_data.pop("beneficiaries") if "beneficiaries" in policy_data else []
         )
