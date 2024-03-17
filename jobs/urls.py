@@ -1,6 +1,12 @@
 from django.urls import path
 from .views import *
 
+app_name = "jobs"
+
 urlpatterns = [
-    # path("debt-review/loan-status/<int:loan_id>", GetLoanStatuses.as_view()),
+    path(
+        "credit-life-submission/<int:report_type>",
+        LifeCreditAPIView.as_view(),
+        name="credit-life-submission",
+    ),
 ]

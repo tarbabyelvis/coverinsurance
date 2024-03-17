@@ -29,7 +29,7 @@ class PolicyPaymentScheduleAdmin(admin.ModelAdmin):
 
 @admin.register(PremiumPayment)
 class PremiumPaymentAdmin(admin.ModelAdmin):
-    list_display = ["policy_schedule", "payment_date", "amount", "payment_receipt"]
+    list_display = ["policy", "payment_date", "amount", "payment_receipt"]
     search_fields = ("policy_schedule",)
 
 

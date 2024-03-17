@@ -1,3 +1,4 @@
+from decimal import Decimal
 from rest_framework import serializers
 from django.db import IntegrityError, transaction
 from clients.models import ClientDetails, ClientEmploymentDetails
@@ -6,9 +7,17 @@ from config.models import BusinessSector, InsuranceCompany, Relationships
 from config.serializers import AgentSerializer, InsuranceCompanySerializer
 from core.utils import convert_to_datetime
 from policies.constants import STATUS_MAPPING
-from policies.models import Policy, Beneficiary, Dependant, PolicyPaymentSchedule
+from policies.models import (
+    Policy,
+    Beneficiary,
+    Dependant,
+    PolicyPaymentSchedule,
+    PremiumPayment,
+    PremiumPaymentScheduleLink,
+)
 from datetime import datetime
 from django.core.exceptions import ObjectDoesNotExist
+from datetime import timedelta
 
 
 class BeneficiarySerializer(serializers.ModelSerializer):
@@ -74,10 +83,6 @@ class PolicyPaymentScheduleSerializer(serializers.ModelSerializer):
 
 class PolicySerializer(serializers.ModelSerializer):
 
-    # client = ClientDetailsSerializer(read_only=True)
-    # insurer = InsuranceCompanySerializer()
-    # agent = AgentSerializer()
-
     def to_internal_value(self, data):
         # Convert QueryDict to a mutable dictionary
         mutable_data = data.copy()
@@ -117,6 +122,7 @@ class PolicySerializer(serializers.ModelSerializer):
                     str(policy_status), mutable_data["policy_status"]
                 )
 
+        print("Done here")
         return super().to_internal_value(mutable_data)
 
     class Meta:
@@ -135,11 +141,36 @@ class PolicySerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        print("create policy")
         beneficiaries_data = validated_data.pop("beneficiaries", [])
         dependants_data = validated_data.pop("dependants", [])
+        terms = validated_data.get("policy_term", 1)  # Default to 1 if not provided
 
+        # Calculate payment due date
+        payment_due_date = validated_data["commencement_date"] + timedelta(days=30)
+
+        # Calculate amount due per term
+        amount_due_per_term = validated_data["total_premium"] / terms
+
+        # Create the policy instance
         policy = Policy.objects.create(**validated_data)
 
+        # Create payment schedules for each term
+        print("before creating schedule")
+        for term in range(1, terms + 1):
+            print("creating the schedule")
+            payment_schedule = PolicyPaymentSchedule.objects.create(
+                term=term,
+                policy=policy,
+                payment_date=payment_due_date,
+                payment_due_date=payment_due_date,
+                amount_due=amount_due_per_term,
+            )
+
+            # Increment payment due date by one month
+            payment_due_date += timedelta(days=30)
+
+        # Create beneficiaries and dependants
         for beneficiary_data in beneficiaries_data:
             Beneficiary.objects.create(policy=policy, **beneficiary_data)
 
@@ -336,3 +367,106 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 class ClientPolicyResponseSerializer(serializers.Serializer):
     client = ClientDetailsSerializer()
     policy = PolicySerializer()
+
+
+class PremiumPaymentSerializer(serializers.ModelSerializer):
+    payment_receipt = serializers.FileField(required=False)
+    payment_receipt_date = serializers.DateField(required=False)
+    payment_method = serializers.CharField(max_length=200, required=False)
+    payment_reference = serializers.CharField(max_length=200, required=False)
+
+    class Meta:
+        model = PremiumPayment
+        exclude = ["policy"]
+
+    def get_fields(self):
+        fields = super().get_fields()
+        context = self.context.get("request")
+
+        # Exclude certain fields if the context indicates creation
+        if context and context.method == "POST":
+            fields.pop("deleted", None)
+            fields.pop("is_reversed", None)
+
+        return fields
+
+    @transaction.atomic
+    def create(self, validated_data):
+        policy_id = validated_data.pop("policy")
+        try:
+            policy = Policy.objects.get(pk=policy_id)
+        except ObjectDoesNotExist:
+            raise serializers.ValidationError(
+                "Policy with the provided ID does not exist."
+            )
+
+        payment_schedules = PolicyPaymentSchedule.objects.filter(
+            policy=policy
+        ).order_by("-id")
+
+        amount_paid = validated_data.get("amount")
+        payment_date = validated_data.get("payment_date")
+
+        premium_payment = PremiumPayment.objects.create(**validated_data, policy=policy)
+
+        for schedule in payment_schedules:
+            amount_due = schedule.amount_due
+
+            # Initialize amount_paid to 0 if it's None
+            if schedule.amount_paid is None:
+                schedule.amount_paid = Decimal("0")
+
+            # Calculate the amount to pay for this schedule
+            amount_to_pay = min(amount_paid, amount_due)
+
+            # Update the payment schedule
+            schedule.amount_paid += amount_to_pay
+            schedule.amount_due -= amount_to_pay
+            schedule.payment_date = payment_date
+            schedule.payment_due_date = (
+                schedule.payment_due_date
+            )  # Update payment_due_date as needed
+            schedule.is_paid = schedule.amount_due == 0
+            schedule.save()
+
+            # Deduct the paid amount
+            amount_paid -= amount_to_pay
+
+            # Create PremiumPaymentScheduleLink
+            PremiumPaymentScheduleLink.objects.create(
+                premium_payment=premium_payment, policy_payment_schedule=schedule
+            )
+
+        if policy.policy_payment_schedule.filter(is_paid=False).count() == 0:
+            policy.policy_status = "paid"
+            policy.save()
+
+        return premium_payment
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        # Update instance fields
+        instance.amount = validated_data.get("amount", instance.amount)
+        instance.payment_date = validated_data.get(
+            "payment_date", instance.payment_date
+        )
+        instance.save()
+
+        # Update other fields
+        instance.payment_receipt = validated_data.get(
+            "payment_receipt", instance.payment_receipt
+        )
+        instance.payment_receipt_date = validated_data.get(
+            "payment_receipt_date", instance.payment_receipt_date
+        )
+        instance.payment_method = validated_data.get(
+            "payment_method", instance.payment_method
+        )
+        instance.payment_reference = validated_data.get(
+            "payment_reference", instance.payment_reference
+        )
+        instance.is_reversed = validated_data.get("is_reversed", instance.is_reversed)
+        instance.deleted = validated_data.get("deleted", instance.deleted)
+        instance.save()
+
+        return instance

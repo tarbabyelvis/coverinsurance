@@ -31,4 +31,14 @@ urlpatterns = [
         PolicyBeneficiariesView.as_view(),
         name="policy-beneficiaries",
     ),
+    path(
+        "upload-client-and-policy",
+        UploadClientAndPolicyExcelAPIView.as_view(),
+        name="client-and-policy-excel",
+    ),
+    path(
+        "policy-payment/<int:policy_id>",
+        CapturePaymentView.as_view(),
+        name="policy-payments",
+    ),
 ]

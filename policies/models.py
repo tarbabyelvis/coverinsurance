@@ -66,6 +66,7 @@ class Policy(BaseModel):
 
 
 class PolicyPaymentSchedule(BaseModel):
+    term = models.IntegerField()
     policy = models.ForeignKey(
         Policy,
         on_delete=models.RESTRICT,
@@ -91,19 +92,17 @@ class PolicyPaymentSchedule(BaseModel):
 
 
 class PremiumPayment(BaseModel):
-    policy_schedule = models.ForeignKey(
-        PolicyPaymentSchedule,
+    policy = models.ForeignKey(
+        Policy,
         on_delete=models.RESTRICT,
-        related_name="policy_schedule_premium_payments",
+        related_name="policy_premium_payment",
     )
     payment_date = models.DateField(null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     payment_method = models.CharField(max_length=200, null=True, blank=True)
     payment_reference = models.CharField(max_length=200, null=True, blank=True)
     payment_details = models.JSONField(null=True, blank=True)
-    payment_status = models.CharField(max_length=20, choices=PolicyStatus.choices)
     payment_receipt = models.FileField(null=True, blank=True)
-    payment_receipt_date = models.DateField(null=True, blank=True)
     is_reversed = models.BooleanField(default=False)
 
     class Meta:
@@ -111,7 +110,18 @@ class PremiumPayment(BaseModel):
         verbose_name_plural = "Premium Payments"
 
     def __str__(self):
-        return f"{self.id} - {self.policy_schedule}"
+        return f"{self.id} - {self.policy}"
+
+
+class PremiumPaymentScheduleLink(models.Model):
+    premium_payment = models.ForeignKey(
+        "PremiumPayment", on_delete=models.CASCADE, related_name="premium_payment_links"
+    )
+    policy_payment_schedule = models.ForeignKey(
+        "PolicyPaymentSchedule",
+        on_delete=models.CASCADE,
+        related_name="premium_payment_links",
+    )
 
 
 class Dependant(BaseModel):
