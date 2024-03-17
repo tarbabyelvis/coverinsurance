@@ -1,7 +1,7 @@
 from django.db import models
 from clients.models import ClientDetails
 from config.models import Agent, InsuranceCompany, PolicyName, Relationships
-from core.enums import Gender, PolicyStatus
+from core.enums import Gender, PolicyStatus, PremiumFrequency
 from core.models import BaseModel
 from auditlog.registry import auditlog
 
@@ -27,6 +27,7 @@ class Policy(BaseModel):
     )
     policy_term = models.IntegerField(null=True, blank=True)  # in months
     policy_number = models.CharField(max_length=200, null=True, blank=True, unique=True)
+    business_unit = models.CharField(max_length=200, null=True, blank=True, unique=True)
     external_reference = models.CharField(
         max_length=60, null=True, blank=True, unique=True
     )
@@ -44,6 +45,13 @@ class Policy(BaseModel):
     )
     policy_details = models.JSONField(null=True, blank=True)
     policy_status = models.CharField(max_length=20, choices=PolicyStatus.choices)
+    premium_frequency = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        choices=PremiumFrequency.choices,
+        default="Monthly",
+    )
     commission_percentage = models.FloatField(null=True, blank=True)
     commission_amount = models.DecimalField(default=0, max_digits=20, decimal_places=2)
     admin_fee = models.DecimalField(default=0, max_digits=20, decimal_places=2)
