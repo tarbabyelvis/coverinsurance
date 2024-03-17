@@ -87,10 +87,12 @@ class PolicySerializer(serializers.ModelSerializer):
         # Convert QueryDict to a mutable dictionary
         mutable_data = data.copy()
 
-        if isinstance(mutable_data["client"], ClientDetails):
+        if "client" in mutable_data and isinstance(
+            mutable_data["client"], ClientDetails
+        ):
             # If the value is an instance of ClientDetails, use it directly
             mutable_data["client"] = mutable_data["client"].pk
-        elif isinstance(mutable_data["client"], str):
+        elif "client" in mutable_data and isinstance(mutable_data["client"], str):
             # If the value is a string, check if it's a number
             if mutable_data["client"].isdigit():
                 # If it's a number, retrieve the ClientDetails instance using the primary key
@@ -100,7 +102,7 @@ class PolicySerializer(serializers.ModelSerializer):
             else:
                 raise serializers.ValidationError("Invalid client ID.")
 
-        else:
+        elif "client" in mutable_data:
             # If it's already a primary key, retrieve the ClientDetails instance using the primary key
             try:
                 mutable_data["client"] = ClientDetails.objects.get(

@@ -10,6 +10,11 @@ class Gender(models.TextChoices):
     UNKNOWN = "Unknown", "Unknown"
 
 
+class PremiumFrequency(models.TextChoices):
+    MONTHLY = "Monthly", "Monthly"
+    ONCE_OFF = "Once Off", "Once Off"
+
+
 # class PolicyStatus(models.TextChoices):
 #     PENDING = "PENDING", "Pending"
 #     APPROVED = "APPROVED", "Approved"
