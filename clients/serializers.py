@@ -8,6 +8,8 @@ from config.serializers import BusinessSectorSerializer
 from .models import ClientDetails, ClientEmploymentDetails, IdDocumentType
 from django.core.exceptions import ObjectDoesNotExist
 from marshmallow import Schema, fields, validates_schema, ValidationError
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 
 def in_memory_file_exists(in_memory_file):
@@ -127,26 +129,53 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         return super().to_internal_value(mutable_data)
 
     def validate(self, data):
+        print("Hello validation")
         errors = {}
+
+        # Define fields that should not be None
+        non_nullable_fields = [
+            "first_name",
+            "last_name",
+            "primary_id_number",
+            "primary_id_document_type",
+            "entity_type",
+            "gender",
+        ]  # Add your field names here
+        print("starting data validation")
 
         # Iterate over each field in the serializer
         for field_name, value in data.items():
+            print(f"{field_name}: {value}")
             # Get the corresponding model field
             model_field = self.fields[field_name]
 
+            # Check if the field is supposed to be non-nullable
+            if field_name in non_nullable_fields and value is None:
+                errors[field_name] = ["This field cannot be None."]
+                continue
+
             # Validate the data type
             try:
-                # Attempt to convert the value to the correct data type
-                if model_field.field_name == "date_of_birth" and isinstance(
-                    value, datetime
-                ):
-                    # If the field is 'date_of_birth' and the value is datetime, cast it to date
-                    data[field_name] = value.date()
-                else:
-                    data[field_name] = model_field.to_internal_value(value)
+                if value is not None:
+                    if model_field.field_name == "date_of_birth" and isinstance(
+                        value, datetime
+                    ):
+                        # If the field is 'date_of_birth' and the value is datetime, cast it to date
+                        data[field_name] = value.date()
+                    elif model_field.field_name == "email":
+                        print("validating email")
+                        # Validate email field
+                        validate_email(value)
+                    else:
+                        data[field_name] = model_field.to_internal_value(value)
             except serializers.ValidationError as e:
-                print("Error with datatypes")
+                print(f"Error with datatypes for {field_name} {value}")
                 errors[field_name] = e.detail
+            except DjangoValidationError as e:
+                print(f"Error with email validation for {field_name} {value}")
+                errors[field_name] = f"Invalid email address {value}"
+            except Exception as e:
+                print("Error: ", e)
 
         if errors:
             print("Error validation")
@@ -194,6 +223,7 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         ):
             validated_data["date_of_birth"] = validated_data["date_of_birth"].date()
 
+        print("validated data: ", validated_data)
         # Create the ClientDetails instance
         instance = ClientDetails.objects.create(
             **validated_data, primary_id_document_type=id_document_type_instance

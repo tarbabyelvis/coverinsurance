@@ -1,7 +1,12 @@
 import logging
-from policies.constants import CLIENT_COLUMNS, POLICY_COLUMNS
+from core.utils import CustomPagination
+from policies.constants import (
+    CLIENT_COLUMNS,
+    CLIENT_COLUMNS_BORDREX,
+    POLICY_COLUMNS,
+    POLICY_COLUMNS_BORDREX,
+)
 from policies.models import Beneficiary, Dependant, Policy, PremiumPayment
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
@@ -23,12 +28,14 @@ from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django.db import transaction
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.db.models import Q
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
 class PolicyView(APIView):
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPagination
 
     @swagger_auto_schema(
         operation_description="Create a new policy",
@@ -66,13 +73,70 @@ class PolicyView(APIView):
             201: openapi.Response("Request Successful", PolicyListSerializer),
             400: "Bad Request",
         },
+        manual_parameters=[
+            openapi.Parameter(
+                "policy_type",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+                description="Policy type ID",
+                required=False,
+            ),
+            openapi.Parameter(
+                "query",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                description="Search query",
+                required=False,
+            ),
+            openapi.Parameter(
+                "from",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="Start date",
+                required=False,
+            ),
+            openapi.Parameter(
+                "to",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="End date",
+                required=False,
+            ),
+        ],
     )
     def get(self, request):
         policy_type = request.GET.get("policy_type", None)
+        query = request.GET.get("query", None)
+        from_date = request.GET.get("from", None)
+        to_date = request.GET.get("to", None)
+        policies = Policy.objects.all()
+        if query:
+            policies = policies.filter(
+                Q(client__first_name__icontains=query)
+                | Q(client__last_name__icontains=query)
+                | Q(client__middle_name__icontains=query)
+                | Q(client__external_id__icontains=query)
+                | Q(client__email__icontains=query)
+                | Q(client__phone_number__icontains=query)
+                | Q(insurer__name__icontains=query)
+                | Q(policy_number__icontains=query)
+                | Q(external_reference__icontains=query)
+            )
         if policy_type != None:
-            policies = Policy.objects.filter(policy_type_id=policy_type)
-        else:
-            policies = Policy.objects.all()
+            policies = policies.filter(policy_type_id=policy_type)
+
+        if policy_type is not None:
+            policies = policies.filter(policy_type_id=policy_type)
+
+        if from_date:
+            from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+            policies = policies.filter(created__gte=from_date)
+
+        if to_date:
+            to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+            policies = policies.filter(created__lte=to_date)
 
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(policies, request)
@@ -149,13 +213,23 @@ class UploadClientAndPolicyExcelAPIView(APIView):
         ],
         responses={400: "Bad Request", 201: "Resource created successfully"},
     )
-    def post(self, request):
+    def post(self, request, source):
         try:
             file_obj = request.data.get("file")
             if file_obj is None:
                 return HTTPResponse.error(message="File is missing in the request.")
 
-            upload_clients_and_policies(file_obj, CLIENT_COLUMNS, POLICY_COLUMNS)
+            if source == "bordrex":
+                upload_clients_and_policies(
+                    file_obj, CLIENT_COLUMNS_BORDREX, POLICY_COLUMNS_BORDREX
+                )
+            elif source == "guardrisk":
+                upload_clients_and_policies(file_obj, CLIENT_COLUMNS, POLICY_COLUMNS)
+            else:
+                return HTTPResponse.success(
+                    message="Incorrect report type",
+                    status_code=status.HTTP_409_CONFLICT,
+                )
             return HTTPResponse.success(
                 message="Resource created successfully",
                 status_code=status.HTTP_201_CREATED,

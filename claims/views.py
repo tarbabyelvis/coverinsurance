@@ -1,10 +1,11 @@
 import logging
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
-from rest_framework.pagination import PageNumberPagination
 from drf_yasg import openapi
 from claims.models import Claim
 from drf_yasg.utils import swagger_auto_schema
+
+from core.utils import CustomPagination
 from .serializers import ClaimSerializer
 from rest_framework import status
 
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class ClaimCreateAPIView(APIView):
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPagination
 
     @swagger_auto_schema(
         operation_description="Create a new claim",

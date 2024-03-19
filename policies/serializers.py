@@ -336,10 +336,29 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             print("policy data")
             print(policy_data)
             if "policy_number" in policy_data and policy_data["policy_number"]:
-                policy_instance, _ = Policy.objects.get_or_create(
+                policy_instance, created = Policy.objects.get_or_create(
                     policy_number=policy_data["policy_number"],
                     defaults={"client": client_instance, **policy_data},
                 )
+                print(policy_data)
+                print("created")
+                if created:
+                    terms = validated_data.get("policy_term", 1)
+                    amount_due_per_term = validated_data["total_premium"] / terms
+                    # create payment schedule
+                    for term in range(1, terms + 1):
+                        print("creating the schedule")
+                        payment_schedule = PolicyPaymentSchedule.objects.create(
+                            term=term,
+                            policy=policy_instance,
+                            payment_date=payment_due_date,
+                            payment_due_date=payment_due_date,
+                            amount_due=amount_due_per_term,
+                        )
+
+                        # Increment payment due date by one month
+                        payment_due_date += timedelta(days=30)
+
             else:
                 print(policy_data)
                 policy_instance = Policy.objects.create(
