@@ -68,7 +68,12 @@ class PolicyView(APIView):
         },
     )
     def get(self, request):
-        policies = Policy.objects.all()
+        policy_type = request.GET.get("policy_type", None)
+        if policy_type != None:
+            policies = Policy.objects.filter(policy_type_id=policy_type)
+        else:
+            policies = Policy.objects.all()
+
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(policies, request)
         serializer = PolicyListSerializer(result_page, many=True)
