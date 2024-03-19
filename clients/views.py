@@ -1,11 +1,11 @@
 import logging
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.pagination import PageNumberPagination
 from clients.services import upload_clients
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
 from rest_framework import status
 from clients.models import ClientDetails
+from core.utils import CustomPagination
 from .serializers import ClientDetailsSerializer, ExcelSchema
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class ClientsView(APIView):
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPagination
 
     @swagger_auto_schema(
         operation_description="Create a new client",

@@ -1,5 +1,12 @@
 from typing import List
 from datetime import date, datetime
+from rest_framework.pagination import PageNumberPagination
+
+
+class CustomPagination(PageNumberPagination):
+    page_size = 20  # Set your desired page size here
+    page_size_query_param = "page_size"
+    max_page_size = 1000  # Optionally set a maximum page size
 
 
 def get_dict_values(input_dict) -> List:

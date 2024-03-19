@@ -1,4 +1,5 @@
 import logging
+from core.utils import CustomPagination
 from policies.constants import (
     CLIENT_COLUMNS,
     CLIENT_COLUMNS_BORDREX,
@@ -6,7 +7,6 @@ from policies.constants import (
     POLICY_COLUMNS_BORDREX,
 )
 from policies.models import Beneficiary, Dependant, Policy, PremiumPayment
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 class PolicyView(APIView):
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPagination
 
     @swagger_auto_schema(
         operation_description="Create a new policy",
@@ -132,11 +132,11 @@ class PolicyView(APIView):
 
         if from_date:
             from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
-            policies = policies.filter(start_date__gte=from_date)
+            policies = policies.filter(created__gte=from_date)
 
         if to_date:
             to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
-            policies = policies.filter(end_date__lte=to_date)
+            policies = policies.filter(created__lte=to_date)
 
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(policies, request)
