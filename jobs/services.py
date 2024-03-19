@@ -1,5 +1,6 @@
 from asyncio import Task
 
+from config.enums import PolicyType
 from integrations.enums import Integrations
 from integrations.guardrisk.guardrisk import GuardRisk
 from integrations.models import IntegrationConfigs
@@ -19,12 +20,16 @@ def credit_life(request_type, start_date, end_date):
     try:
         # fetch the data
         policy = Policy.objects.filter(
-            commencement_date__gte=start_date, commencement_date__lte=end_date
+            commencement_date__gte=start_date,
+            commencement_date__lte=end_date,
+            policy_type__policy_type=PolicyType.CREDIT_LIFE,
         )
-        serializer = PolicyDetailSerializer(policy)
+
+        serializer = PolicyDetailSerializer(policy, many=True)
         guardrisk = GuardRisk(integration.access_key, integration.base_url)
         data, response_status = guardrisk.lifeCredit(serializer)
         log.data = data
+        print(response_status)
         if response_status.startWith("2"):
             log.status = "completed"
             log.save()

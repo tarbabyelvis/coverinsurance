@@ -5,7 +5,7 @@ app_name = "jobs"
 
 urlpatterns = [
     path(
-        "credit-life-submission/<int:report_type>",
+        "credit-life-submission/<str:report_type>",
         LifeCreditAPIView.as_view(),
         name="credit-life-submission",
     ),
