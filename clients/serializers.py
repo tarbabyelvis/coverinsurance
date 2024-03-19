@@ -127,25 +127,44 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         return super().to_internal_value(mutable_data)
 
     def validate(self, data):
+        print("Hello validation")
+        print(data)
         errors = {}
+
+        # Define fields that should not be None
+        non_nullable_fields = [
+            "first_name",
+            "last_name",
+            "primary_id_number",
+            "primary_id_document_type",
+            "entity_type",
+            "gender",
+        ]  # Add your field names here
+        print("starting data validation")
 
         # Iterate over each field in the serializer
         for field_name, value in data.items():
+            print(f"{field_name}: {value}")
             # Get the corresponding model field
             model_field = self.fields[field_name]
 
+            # Check if the field is supposed to be non-nullable
+            if field_name in non_nullable_fields and value is None:
+                errors[field_name] = ["This field cannot be None."]
+                continue
+
             # Validate the data type
             try:
-                # Attempt to convert the value to the correct data type
-                if model_field.field_name == "date_of_birth" and isinstance(
-                    value, datetime
-                ):
-                    # If the field is 'date_of_birth' and the value is datetime, cast it to date
-                    data[field_name] = value.date()
-                else:
-                    data[field_name] = model_field.to_internal_value(value)
+                if value is not None:
+                    if model_field.field_name == "date_of_birth" and isinstance(
+                        value, datetime
+                    ):
+                        # If the field is 'date_of_birth' and the value is datetime, cast it to date
+                        data[field_name] = value.date()
+                    else:
+                        data[field_name] = model_field.to_internal_value(value)
             except serializers.ValidationError as e:
-                print("Error with datatypes")
+                print(f"Error with datatypes for {field_name} {value}")
                 errors[field_name] = e.detail
 
         if errors:
