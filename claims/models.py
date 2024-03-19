@@ -1,3 +1,4 @@
+from email.policy import Policy
 from django.db import models
 from config.models import ClaimType, DocumentType, IdDocumentType
 from core.models import BaseModel
@@ -5,6 +6,11 @@ from auditlog.registry import auditlog
 
 
 class Claim(BaseModel):
+    policy = models.ForeignKey(
+        Policy,
+        on_delete=models.RESTRICT,
+        related_name="claim_policy",
+    )
     name = models.CharField(max_length=200, null=True, blank=True)
     claim_type = models.ForeignKey(
         ClaimType,
