@@ -2,5 +2,10 @@ from django.urls import path
 from .views import *
 
 urlpatterns = [
-    # path("debt-review/loan-status/<int:loan_id>", GetLoanStatuses.as_view()),
+    path("bordrex-report", BordrexReportView.as_view(), name="bordrex-report"),
+    path(
+        "bordrex-report-excel",
+        BordrexExcelExportView.as_view(),
+        name="bordrex-report-excel",
+    ),
 ]
