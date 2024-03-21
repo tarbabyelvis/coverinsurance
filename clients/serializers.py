@@ -4,6 +4,7 @@ from django.db import transaction
 import json
 from rest_framework import serializers
 from clients.commons import CLIENTS_EXPECTED_COLUMNS
+from config.models import BusinessSector
 from config.serializers import BusinessSectorSerializer
 from .models import ClientDetails, ClientEmploymentDetails, IdDocumentType
 from django.core.exceptions import ObjectDoesNotExist
@@ -23,8 +24,103 @@ def in_memory_file_exists(in_memory_file):
         return False
 
 
+# class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
+#     sector = BusinessSectorSerializer(required=False)
+
+#     class Meta:
+#         model = ClientEmploymentDetails
+#         exclude = ["client"]
+
+#     def to_representation(self, instance):
+#         representation = super().to_representation(instance)
+#         representation["client"] = (
+#             instance.client_id
+#         )  # Assuming 'client_id' is the field in ClientEmploymentDetails storing the client's ID
+#         return representation
+
+#     def validate_sector(self, value):
+#         try:
+#             if isinstance(value, BusinessSector):
+#                 # If the value is an instance of IdDocumentType, use its primary key
+#                 value = value.pk
+#             # Check if the provided ID exists in the IdDocumentType table
+#             # if string get using name
+#             if isinstance(value, str):
+#                 value = BusinessSector.objects.get(sector__iexact=value).pk
+#             else:
+#                 value = BusinessSector.objects.get(pk=value).pk
+#         except ObjectDoesNotExist:
+#             # If the object does not exist, raise a validation error
+#             raise serializers.ValidationError("Invalid Business sector ID.")
+
+#         return value
+
+#     def to_internal_value(self, data):
+#         data = data.copy()
+#         sector_data = data.pop("sector", None)
+#         client_id = data.pop("client", None)
+#         instance = super().to_internal_value(data)
+#         if client_id is not None:
+#             instance["client"] = client_id
+#         if sector_data is not None:
+#             try:
+#                 if isinstance(
+#                     sector_data, int
+#                 ):  # Check if sector_data is an ID (integer)
+#                     sector_object = BusinessSector.objects.get(id=sector_data)
+#                     instance["sector"] = sector_object.pk
+#                 elif isinstance(sector_data, BusinessSector):
+#                     instance["sector"] = sector_data.pk
+#                 if isinstance(sector_data, str):
+#                     if sector_data.isdigit():
+#                         sector_object = BusinessSector.objects.get(id=sector_data)
+#                         instance["sector"] = sector_object.pk
+#                     else:
+#                         sector_object = BusinessSector.objects.get(
+#                             sector__iexact=sector_data
+#                         )
+#                         instance["sector"] = sector_object.pk
+#             except BusinessSector.DoesNotExist:
+#                 raise serializers.ValidationError("Invalid business sector value.")
+#         return instance
+
+#     @transaction.atomic
+#     def create(self, validated_data):
+#         sector = validated_data.pop("sector")
+
+#         try:
+#             if isinstance(sector, BusinessSector):
+#                 # If the value is an instance of BusinessSector, use it directly
+#                 business_sector = sector
+#             elif isinstance(sector, str):
+#                 # If the value is a string, check if it represents a digit
+#                 if sector.isdigit():
+#                     # If it's a digit, retrieve the BusinessSector instance using the primary key
+#                     business_sector = BusinessSector.objects.get(pk=sector)
+#                 else:
+#                     # If it's not a digit, get the BusinessSector instance using the name
+#                     business_sector = BusinessSector.objects.get(
+#                         type_name__iexact=sector
+#                     )
+#             else:
+#                 # If it's already a primary key, retrieve the BusinessSector instance using the primary key
+#                 business_sector = BusinessSector.objects.get(pk=sector)
+#         except BusinessSector.DoesNotExist:
+#             # Handle the case where the BusinessSector instance does not exist
+#             raise serializers.ValidationError("Invalid sector value.")
+
+#         instance = ClientEmploymentDetails.objects.create(
+#             **validated_data, sector=business_sector
+#         )
+
+#         return instance
+
+
 class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
-    sector = BusinessSectorSerializer(required=False)
+    sector = serializers.PrimaryKeyRelatedField(
+        queryset=BusinessSector.objects.all(),
+        required=False,
+    )
 
     class Meta:
         model = ClientEmploymentDetails
@@ -32,9 +128,8 @@ class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation["client"] = (
-            instance.client_id
-        )  # Assuming 'client_id' is the field in ClientEmploymentDetails storing the client's ID
+        representation["client"] = instance.client_id
+        representation["sector"] = BusinessSectorSerializer(instance.sector).data
         return representation
 
     def to_internal_value(self, data):
@@ -45,12 +140,33 @@ class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
         if client_id is not None:
             instance["client"] = client_id
         if sector_data is not None:
-            if isinstance(sector_data, int):  # Check if sector_data is an ID (integer)
-                instance["sector"] = sector_data
-            else:
-                sector_serializer = BusinessSectorSerializer(data=sector_data)
-                sector_serializer.is_valid(raise_exception=True)
-                instance["sector"] = sector_serializer.save()
+            try:
+                print(type(sector_data))
+                if isinstance(sector_data, int):
+                    instance["sector"] = BusinessSector.objects.get(id=sector_data)
+                elif isinstance(sector_data, str):
+                    instance["sector"] = BusinessSector.objects.get(
+                        sector__iexact=sector_data
+                    )
+                else:
+                    instance["sector"] = sector_data
+
+            except BusinessSector.DoesNotExist:
+                raise serializers.ValidationError("Invalid business sector value.")
+
+        return instance
+
+    @transaction.atomic
+    def create(self, validated_data):
+        print("saving employment")
+        sector = validated_data.pop("sector", None)
+        if isinstance(sector, int):
+            sector = BusinessSector.objects.get(id=sector)
+            validated_data["sector"] = sector
+        else:
+            validated_data["sector"] = sector
+
+        instance = ClientEmploymentDetails.objects.create(**validated_data)
         return instance
 
 
@@ -116,6 +232,7 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
                 ).pk
 
         else:
+            print("We are validating the id number")
             # If it's already a primary key, retrieve the IdDocumentType instance using the primary key
             try:
                 mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(
@@ -129,7 +246,6 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         return super().to_internal_value(mutable_data)
 
     def validate(self, data):
-        print("Hello validation")
         errors = {}
 
         # Define fields that should not be None
@@ -141,11 +257,9 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
             "entity_type",
             "gender",
         ]  # Add your field names here
-        print("starting data validation")
 
         # Iterate over each field in the serializer
         for field_name, value in data.items():
-            print(f"{field_name}: {value}")
             # Get the corresponding model field
             model_field = self.fields[field_name]
 
@@ -172,7 +286,6 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
                 print(f"Error with datatypes for {field_name} {value}")
                 errors[field_name] = e.detail
             except DjangoValidationError as e:
-                print(f"Error with email validation for {field_name} {value}")
                 errors[field_name] = f"Invalid email address {value}"
             except Exception as e:
                 print("Error: ", e)
@@ -185,7 +298,7 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        employment_details_data = validated_data.pop("employment_details", [])
+        employment_details_data = validated_data.pop("employment_details", None)
         # Extract the nested IdDocumentType data from the validated data
         primary_id_document_type_value = validated_data.pop("primary_id_document_type")
 
@@ -223,16 +336,15 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         ):
             validated_data["date_of_birth"] = validated_data["date_of_birth"].date()
 
-        print("validated data: ", validated_data)
         # Create the ClientDetails instance
         instance = ClientDetails.objects.create(
             **validated_data, primary_id_document_type=id_document_type_instance
         )
 
         # Create the ClientEmploymentDetails instances
-        for employment_detail_data in employment_details_data:
+        if employment_details_data:
             ClientEmploymentDetails.objects.create(
-                client=instance, **employment_detail_data
+                client=instance, **employment_details_data
             )
 
         return instance

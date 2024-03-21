@@ -12,6 +12,8 @@ from drf_yasg import openapi
 from marshmallow import ValidationError
 from django.shortcuts import get_object_or_404
 from django.http import Http404
+from django.db.models import Q
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +34,6 @@ class ClientsView(APIView):
 
         try:
             if serializer.is_valid():
-                logger.info("Validated data: %s", serializer.validated_data)
                 # Save the validated data to create a new ClientDetails instance
                 serializer.save()
                 return HTTPResponse.success(
@@ -56,9 +57,55 @@ class ClientsView(APIView):
     @swagger_auto_schema(
         operation_description="Endpoint Operation Description for GET",
         responses={200: "Success", 400: "Bad Request"},
+        manual_parameters=[
+            openapi.Parameter(
+                "query",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                description="Search query",
+                required=False,
+            ),
+            openapi.Parameter(
+                "from",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="Start date",
+                required=False,
+            ),
+            openapi.Parameter(
+                "to",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="End date",
+                required=False,
+            ),
+        ],
     )
     def get(self, request):
+        query = request.GET.get("query", None)
+        from_date = request.GET.get("from", None)
+        to_date = request.GET.get("to", None)
+
         clients = ClientDetails.objects.all()
+        if query:
+            clients = clients.filter(
+                Q(first_name__icontains=query)
+                | Q(last_name__icontains=query)
+                | Q(middle_name__icontains=query)
+                | Q(external_id__icontains=query)
+                | Q(email__icontains=query)
+            )
+
+        if from_date:
+            from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+            clients = clients.filter(created__gte=from_date)
+
+        if to_date:
+            to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+            clients = clients.filter(created__lte=to_date)
+
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(clients, request)
         serializer = ClientDetailsSerializer(result_page, many=True)

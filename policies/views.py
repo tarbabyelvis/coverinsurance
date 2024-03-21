@@ -124,8 +124,6 @@ class PolicyView(APIView):
                 | Q(policy_number__icontains=query)
                 | Q(external_reference__icontains=query)
             )
-        if policy_type != None:
-            policies = policies.filter(policy_type_id=policy_type)
 
         if policy_type is not None:
             policies = policies.filter(policy_type_id=policy_type)
