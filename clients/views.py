@@ -211,3 +211,53 @@ class ClientDetailView(APIView):
             return HTTPResponse.error(
                 message="Client not found", status_code=status.HTTP_404_NOT_FOUND
             )
+
+    @swagger_auto_schema(
+        request_body=ClientDetailsSerializer,
+        responses={200: ClientDetailsSerializer, 404: "Client not found"},
+        operation_description="Update a client instance.",
+    )
+    def put(self, request, pk):
+        try:
+            client = get_object_or_404(ClientDetails, pk=pk)
+            serializer = ClientDetailsSerializer(client, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return HTTPResponse.success(
+                    data=serializer.data,
+                    message="Update successful",
+                    status_code=status.HTTP_200_OK,
+                )
+            return HTTPResponse.error(
+                message=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST
+            )
+        except Http404:
+            return HTTPResponse.error(
+                message="Client not found", status_code=status.HTTP_404_NOT_FOUND
+            )
+
+    @swagger_auto_schema(
+        request_body=ClientDetailsSerializer,
+        responses={200: ClientDetailsSerializer, 404: "Client not found"},
+        operation_description="Partial update of a client instance.",
+    )
+    def patch(self, request, pk):
+        try:
+            client = get_object_or_404(ClientDetails, pk=pk)
+            serializer = ClientDetailsSerializer(
+                client, data=request.data, partial=True
+            )
+            if serializer.is_valid():
+                serializer.save()
+                return HTTPResponse.success(
+                    data=serializer.data,
+                    message="Update successful",
+                    status_code=status.HTTP_200_OK,
+                )
+            return HTTPResponse.error(
+                message=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST
+            )
+        except Http404:
+            return HTTPResponse.error(
+                message="Client not found", status_code=status.HTTP_404_NOT_FOUND
+            )

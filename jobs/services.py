@@ -16,18 +16,19 @@ def credit_life(request_type, start_date, end_date):
     print(Processes.CREDIT_LIFE.name)
     print(Task.objects.filter().values())
     task = Task.objects.get(task=Processes.CREDIT_LIFE.name)
-    print(task)
-    integration = IntegrationConfigs.objects.get(name=Integrations.GUARDRISK.name)
+    integration = IntegrationConfigs.objects.get(
+        name=Integrations.GUARDRISK.name, is_enabled=True
+    )
     log = TaskLog.objects.create(task=task, status="running", manual_run=True)
     try:
         # fetch the data
         policy = Policy.objects.filter(
             commencement_date__gte=start_date,
             commencement_date__lte=end_date,
-            policy_type__policy_type=PolicyType.CREDIT_LIFE.name,
+            # policy_type__policy_type=PolicyType.CREDIT_LIFE.name,
         )
 
-        serializer = PolicyDetailSerializer(policy, many=True)
+        serializer = PolicyDetailSerializer(policy, many=True).data
         guardrisk = GuardRisk(integration.access_key, integration.base_url)
         data, response_status = guardrisk.lifeCredit(serializer)
         log.data = data

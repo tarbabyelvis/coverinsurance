@@ -18,6 +18,8 @@ from policies.models import (
 from datetime import datetime
 from django.core.exceptions import ObjectDoesNotExist
 from datetime import timedelta
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework.validators import UniqueValidator
 
 
 class BeneficiarySerializer(serializers.ModelSerializer):
@@ -82,6 +84,61 @@ class PolicyPaymentScheduleSerializer(serializers.ModelSerializer):
 
 
 class PolicySerializer(serializers.ModelSerializer):
+
+    def validate_policy_number(self, value):
+        print("Validating policy number")
+        return value
+
+    def validate(self, data):
+        print("validating policy")
+        errors = {}
+
+        # Define fields that should not be None
+        non_nullable_fields = [
+            "policy_type",
+            "client",
+            "sum_insured",
+            "insurer",
+            "policy_status",
+        ]
+
+        # Remove the UniqueValidator for policy_number if it exists
+        unique_validators = [
+            validator
+            for validator in self.fields.get("policy_number").validators
+            if isinstance(validator, UniqueValidator)
+        ]
+        for validator in unique_validators:
+            self.fields["policy_number"].validators.remove(validator)
+
+        # Iterate over each field in the serializer
+        for field_name, value in data.items():
+            # Get the corresponding model field
+            model_field = self.fields[field_name]
+
+            # Check if the field is supposed to be non-nullable
+            if field_name in non_nullable_fields and value is None:
+                errors[field_name] = ["This field cannot be None."]
+                continue
+
+            # Validate the data type
+            try:
+                if value is not None:
+                    data[field_name] = model_field.to_internal_value(value)
+
+            except serializers.ValidationError as e:
+                print(f"Error with datatypes for {field_name} {value}")
+                errors[field_name] = e.detail
+            except DjangoValidationError as e:
+                errors[field_name] = f"Invalid email address {value}"
+            except Exception as e:
+                print("Error: ", e)
+
+        if errors:
+            print("Error validation")
+            raise serializers.ValidationError(errors)
+        print("Done validation policy data")
+        return data
 
     def to_internal_value(self, data):
         # Convert QueryDict to a mutable dictionary
@@ -247,9 +304,6 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
         # Convert datetime to date for specified fields if needed
         for field in ["commencement_date", "expiry_date"]:
-            print(field)
-            print(mutable_data["policy"][field])
-            print(type(mutable_data["policy"][field]))
             if field in mutable_data.get("policy", {}) and isinstance(
                 mutable_data["policy"][field], str
             ):
@@ -284,15 +338,14 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             elif isinstance(date_of_birth, str):
                 client_data["date_of_birth"] = convert_to_datetime(date_of_birth)
 
-        print(mutable_data)
         # Convert insurer to proper datatype
+        print("completed the policy check")
         return super().to_internal_value(mutable_data)
 
     @transaction.atomic
     def create(self, validated_data):
+        print("saving transaction")
         client_data = validated_data.pop("client")
-        print("---------------------------------------------")
-        print(client_data)
         policy_data = validated_data.pop("policy")
         beneficiaries_data = (
             policy_data.pop("beneficiaries") if "beneficiaries" in policy_data else []
@@ -333,22 +386,19 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
         # Check if the policy with the policy number and external reference already exists
         try:
-            print("policy data")
-            print(policy_data)
+            print("trying to create a policy")
             if "policy_number" in policy_data and policy_data["policy_number"]:
                 policy_instance, created = Policy.objects.get_or_create(
                     policy_number=policy_data["policy_number"],
                     defaults={"client": client_instance, **policy_data},
                 )
-                print(policy_data)
-                print("created")
+
                 if created:
                     terms = validated_data.get("policy_term", 1)
                     amount_due_per_term = validated_data["total_premium"] / terms
                     # create payment schedule
                     for term in range(1, terms + 1):
-                        print("creating the schedule")
-                        payment_schedule = PolicyPaymentSchedule.objects.create(
+                        PolicyPaymentSchedule.objects.create(
                             term=term,
                             policy=policy_instance,
                             payment_date=payment_due_date,
@@ -360,7 +410,6 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
                         payment_due_date += timedelta(days=30)
 
             else:
-                print(policy_data)
                 policy_instance = Policy.objects.create(
                     client=client_instance, **policy_data
                 )

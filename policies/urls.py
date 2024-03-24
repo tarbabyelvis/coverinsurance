@@ -12,11 +12,6 @@ urlpatterns = [
         name="client-and-policy",
     ),
     path(
-        "client-and-policy",
-        CreateClientAndPolicyAPIView.as_view(),
-        name="client-and-policy",
-    ),
-    path(
         "upload-client-and-policy/<str:source>",
         UploadClientAndPolicyExcelAPIView.as_view(),
         name="client-and-policy-excel",
@@ -35,5 +30,10 @@ urlpatterns = [
         "policy-payment/<int:policy_id>",
         CapturePaymentView.as_view(),
         name="policy-payments",
+    ),
+    path(
+        "policy-payment/<str:source>",
+        UploadPaymentFileView.as_view(),
+        name="policy-payments-file",
     ),
 ]

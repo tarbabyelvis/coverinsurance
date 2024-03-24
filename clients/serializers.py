@@ -141,7 +141,6 @@ class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
             instance["client"] = client_id
         if sector_data is not None:
             try:
-                print(type(sector_data))
                 if isinstance(sector_data, int):
                     instance["sector"] = BusinessSector.objects.get(id=sector_data)
                 elif isinstance(sector_data, str):
@@ -158,7 +157,6 @@ class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        print("saving employment")
         sector = validated_data.pop("sector", None)
         if isinstance(sector, int):
             sector = BusinessSector.objects.get(id=sector)
@@ -212,13 +210,17 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         ):
             mutable_data["date_of_birth"] = mutable_data["date_of_birth"].date()
 
-        if isinstance(mutable_data["primary_id_document_type"], IdDocumentType):
+        if "primary_id_document_type" in mutable_data and isinstance(
+            mutable_data["primary_id_document_type"], IdDocumentType
+        ):
             # If the value is an instance of IdDocumentType, use it directly
             mutable_data["primary_id_document_type"] = mutable_data[
                 "primary_id_document_type"
             ].pk
 
-        elif isinstance(mutable_data["primary_id_document_type"], str):
+        elif "primary_id_document_type" in mutable_data and isinstance(
+            mutable_data["primary_id_document_type"], str
+        ):
             # If the value is a string, check if it's a number
             if mutable_data["primary_id_document_type"].isdigit():
                 # If it's a number, retrieve the IdDocumentType instance using the primary key
@@ -235,9 +237,12 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
             print("We are validating the id number")
             # If it's already a primary key, retrieve the IdDocumentType instance using the primary key
             try:
-                mutable_data["primary_id_document_type"] = IdDocumentType.objects.get(
-                    pk=mutable_data["primary_id_document_type"]
-                ).pk
+                if "primary_id_document_type" in mutable_data:
+                    mutable_data["primary_id_document_type"] = (
+                        IdDocumentType.objects.get(
+                            pk=mutable_data["primary_id_document_type"]
+                        ).pk
+                    )
             except ObjectDoesNotExist:
                 raise serializers.ValidationError(
                     "Invalid primary_id_document_type ID."
@@ -277,7 +282,6 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
                         # If the field is 'date_of_birth' and the value is datetime, cast it to date
                         data[field_name] = value.date()
                     elif model_field.field_name == "email":
-                        print("validating email")
                         # Validate email field
                         validate_email(value)
                     else:

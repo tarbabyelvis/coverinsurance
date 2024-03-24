@@ -6,7 +6,7 @@ POLICY_COLUMNS = {
     "policy_status": "Policy Status",
     "commencement_date": "Policy Commencement Date",
     "expiry_date": "Policy Expiry Date",
-    "policy_terms": "Term Of Policy",
+    "policy_term": "Term Of Policy",
     "json_new_policy_indicator": "New Policy Indicator",
     "json_sales_channel": "Sales Channel",
     "json_death_premium": "Death Premium",

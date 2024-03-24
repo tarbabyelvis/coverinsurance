@@ -25,12 +25,18 @@ def extract_json_fields(dictionary):
 
 @transaction.atomic
 def upload_clients_and_policies(
-    file_obj: Any, client_columns: List, policy_columns
+    file_obj: Any, client_columns: List, policy_columns, source
 ) -> None:
     print("The columns loaded")
     # Convert received column definitions from JSON strings
     # received_policy_columns = json.loads(policy_columns)
     # received_client_columns = json.loads(client_columns)
+
+    policy_type = None
+    if source == "guardrisk":
+        policy_type = 2
+    elif source == "bordrex":
+        policy_type = 2
 
     received_policy_columns = policy_columns
     received_client_columns = client_columns
@@ -77,6 +83,8 @@ def upload_clients_and_policies(
         policy_data = merge_dict_into_another(policy_data, DEFAULT_POLICY_FIELDS)
         # convert all fields that have json prefix
         policy_data = extract_json_fields(policy_data)
+        if policy_type is not None:
+            policy_data["policy_type"] = policy_type
 
         serializer = ClientPolicyRequestSerializer(
             data={"client": client_data, "policy": policy_data},
