@@ -275,8 +275,8 @@ class PolicyListSerializer(serializers.ModelSerializer):
     client = ClientDetailsSerializer(read_only=True)
     insurer = InsuranceCompanySerializer(read_only=True)
     agent = AgentSerializer(read_only=True)
-    policy_beneficiary = BeneficiarySerializer(read_only=True)
-    policy_dependants = DependantSerializer(read_only=True)
+    # policy_beneficiary = BeneficiarySerializer(read_only=True, many=True)
+    # policy_dependants = DependantSerializer(read_only=True, many=True)
 
     class Meta:
         model = Policy
