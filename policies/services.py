@@ -34,9 +34,9 @@ def upload_clients_and_policies(
 
     policy_type = None
     if source == "guardrisk":
-        policy_type = 2
+        policy_type = 1
     elif source == "bordrex":
-        policy_type = 2
+        policy_type = 1
 
     received_policy_columns = policy_columns
     received_client_columns = client_columns
