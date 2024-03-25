@@ -64,6 +64,7 @@ class Policy(BaseModel):
         default="Monthly",
     )
     admin_fee = models.DecimalField(default=0, max_digits=20, decimal_places=2)
+    submitted_to_insurer = models.BooleanField(default=False)
 
     def get_status_symbol(self):
         """

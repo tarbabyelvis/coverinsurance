@@ -1,25 +1,46 @@
-def prepare_life_credit_payload(data:list):
+from datetime import date, datetime
+
+
+def prepare_life_credit_payload(data: list, start_date: date, end_date: date):
+    original_date = datetime.now()
+    timestamp = original_date.strftime("%Y/%m/%d")
+    start_date = start_date.strftime("%Y/%m/%d")
+    end_date = end_date.strftime("%Y/%m/%d")
+
     result = []
-    for item in data:
+    for policy in data:
+        client = policy["client"]
+        policy_beneficiary = policy["policy_beneficiary"]
+        policy_dependants = policy["policy_dependants"]
+        insurer = policy["insurer"]
+
+        # spouse = {
+        #     key: value
+        #     for key, value in data.items()
+        #     if key == "relationship" and value == "FK"
+        # }
+        print(policy_beneficiary)
+        print(type(policy_beneficiary))
+
         result.append(
             {
-                "TimeStamp": "sample text 1",
-                "ReportPeriodStart": "sample text 2",
-                "ReportPeriodEnd": "sample text 3",
+                "TimeStamp": timestamp,
+                "ReportPeriodStart": start_date,
+                "ReportPeriodEnd": end_date,
                 "AdministratorIdentifier": "sample text 4",
-                "InsurerName": "sample text 5",
-                "ClientIdentifier": "00123",
+                "InsurerName": insurer.get("name", ""),
+                "ClientIdentifier": client["primary_id_number"],
                 "DivisionIdentifier": "0001",
-                "SubSchemeName": "sample text 6",
-                "PolicyNumber": "sample text 7",
+                "SubSchemeName": policy["sub_scheme"],
+                "PolicyNumber": policy["policy_number"],
                 "PricingModelVersion": "sample text 8",
-                "ProductName": "sample text 9",
+                "ProductName": policy["product_name"],
                 "ProductOption": "sample text 10",
-                "PolicyCommencementDate": "sample text 11",
-                "PolicyExpiryDate": "sample text 12",
-                "TermOfPolicy": "sample text 13",
-                "PolicyStatus": "sample text 14",
-                "PolicyStatusDate": "sample text 15",
+                "PolicyCommencementDate": policy["commencement_date"],
+                "PolicyExpiryDate": policy["expiry_date"],
+                "TermOfPolicy": policy["policy_term"],
+                "PolicyStatus": policy["policy_status"],
+                "PolicyStatusDate": timestamp,
                 "NewPolicyIndicator": "sample text 16",
                 "SalesChannel": "sample text 17",
                 "CancelledbyPolicyholderCoolingPeriodInsurer": "sample text 18",
@@ -87,9 +108,9 @@ def prepare_life_credit_payload(data:list):
                 "TotalReinsurancePremium": "sample text 80",
                 "TotalReinsurancePremiumPayable": "sample text 81",
                 "TotalFinancialReinsuranceCashflows": "sample text 82",
-                "CommissionFrequency": "sample text 83",
-                "Commission": "sample text 84",
-                "AdminBinderFees": "sample text 85",
+                "CommissionFrequency": policy["commission_frequency"],
+                "Commission": float(policy["commission_amount"]),
+                "AdminBinderFees": policy["admin_fee"],
                 "OutsourcingFees": "sample text 86",
                 "MarketingAdvertisingFees": "sample text 87",
                 "ManagementFees": "sample text 88",
@@ -100,33 +121,26 @@ def prepare_life_credit_payload(data:list):
                 "OriginalLoanBalance": "sample text 93",
                 "CurrentOutstandingBalance": "sample text 94",
                 "InstallmentAmount": "sample text 95",
-                "PrincipalSurname": "sample text 96",
-                "PrincipalFirstName": "sample text 97",
-                "PrincipalInitials": "sample text 98",
-                "PrincipalID": "sample text 99",
-                "PrincipalGender": "sample text 100",
-                "PrincipalDateofBirth": "sample text 101",
-                "PrincipalMemberPhysicalAddress": "sample text 102",
-                "PostalCode": "sample text 103",
-                "PrincipalTelephoneNumber": "sample text 104",
-                "PrincipalMemberEmailAddress": "sample text 105",
+                "PrincipalSurname": client.get("last_name", ""),
+                "PrincipalFirstName": client.get("first_name", ""),
+                "PrincipalInitials": client.get("middle_name", ""),
+                "PrincipalID": client.get("primary_id_number", ""),
+                "PrincipalGender": client.get("gender", ""),
+                "PrincipalDateofBirth": client.get("date_of_birth", ""),
+                "PrincipalMemberPhysicalAddress": f"{client['address_street']} {client['address_suburb']} {client['address_town']} {client['address_province']}",
+                "PostalCode": client["postal_code"],
+                "PrincipalTelephoneNumber": client["phone_number"],
+                "PrincipalMemberEmailAddress": client.get("email", ""),
                 "IncomeGroup": "sample text 106",
                 "SpouseIndicator": "sample text 107",
-                "SpouseSurname": "sample text 108",
-                "SpouseFirstName": "sample text 109",
-                "SpouseInitials": "sample text 110",
+                "SpouseSurname": client.get("last_name", ""),
+                "SpouseFirstName": client.get("first_name", ""),
+                "SpouseInitials": client.get("middle_name", ""),
                 "SpouseID": "sample text 111",
-                "SpouseGender": "sample text 112",
-                "SpouseDateofBirth": "sample text 113",
+                "SpouseGender": client.get("gender", ""),
+                "SpouseDateofBirth": client.get("date_of_birth", ""),
                 "SpouseCoverAmount": "sample text 114",
-                "FreeText1": "sample text 115",
-                "FreeText2": "sample text 116",
-                "FreeText3": "sample text 117",
-                "FreeText4": "sample text 118",
-                "FreeText5": "sample text 119"
             }
         )
 
     return result
-    
-
