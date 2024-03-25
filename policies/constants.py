@@ -2,7 +2,7 @@ POLICY_COLUMNS = {
     "json_ref_id": "Ref Id",
     "json_batch_ref": "Batch Ref",
     "created": "Create Date",
-    "external_id": "Loan Ref",
+    "policy_number": "Loan Ref",
     "policy_status": "Policy Status",
     "commencement_date": "Policy Commencement Date",
     "expiry_date": "Policy Expiry Date",
