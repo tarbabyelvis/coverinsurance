@@ -1,4 +1,5 @@
 from decimal import Decimal
+import traceback
 from rest_framework import serializers
 from django.db import IntegrityError, transaction
 from clients.models import ClientDetails, ClientEmploymentDetails
@@ -360,6 +361,8 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             if "employment_details" in client_data
             else None
         )
+        # Calculate payment due date
+        payment_due_date = policy_data["commencement_date"] + timedelta(days=30)
 
         # Check if the client with the primary ID number already exists
         client_instance, _ = ClientDetails.objects.get_or_create(
@@ -389,6 +392,7 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
         # Check if the policy with the policy number and external reference already exists
         try:
             print("trying to create a policy")
+            print(policy_data)
             if "policy_number" in policy_data and policy_data["policy_number"]:
                 policy_instance, created = Policy.objects.get_or_create(
                     policy_number=policy_data["policy_number"],
@@ -396,8 +400,8 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
                 )
 
                 if created:
-                    terms = validated_data.get("policy_term", 1)
-                    amount_due_per_term = validated_data["total_premium"] / terms
+                    terms = policy_data.get("policy_term", 1)
+                    amount_due_per_term = policy_data["total_premium"] / terms
                     # create payment schedule
                     for term in range(1, terms + 1):
                         PolicyPaymentSchedule.objects.create(
@@ -422,6 +426,10 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Policy with the given policy number or external reference already exists."
             )
+        except Exception as e:
+            print("error creating policy")
+            traceback.print_exc()
+            raise serializers.ValidationError("Error creating policy.")
 
         # Create beneficiaries and dependants
         for beneficiary_data in beneficiaries_data:
