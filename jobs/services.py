@@ -10,29 +10,26 @@ from .models import Task
 
 
 def credit_life(request_type, start_date, end_date):
-    print(start_date)
-    print(end_date)
-    print(request_type)
-    print(Processes.CREDIT_LIFE.name)
-    print(Task.objects.filter().values())
+
     task = Task.objects.get(task=Processes.CREDIT_LIFE.name)
-    print(task)
-    integration = IntegrationConfigs.objects.get(name=Integrations.GUARDRISK.name)
+    integration = IntegrationConfigs.objects.get(
+        name=Integrations.GUARDRISK.name, is_enabled=True
+    )
     log = TaskLog.objects.create(task=task, status="running", manual_run=True)
     try:
         # fetch the data
         policy = Policy.objects.filter(
             commencement_date__gte=start_date,
             commencement_date__lte=end_date,
-            policy_type__policy_type=PolicyType.CREDIT_LIFE.name,
+            # policy_type__policy_type=PolicyType.CREDIT_LIFE.name,
         )
 
-        serializer = PolicyDetailSerializer(policy, many=True)
+        serializer = PolicyDetailSerializer(policy, many=True).data
         guardrisk = GuardRisk(integration.access_key, integration.base_url)
-        data, response_status = guardrisk.lifeCredit(serializer)
+        data, response_status = guardrisk.lifeCredit(serializer, start_date, end_date)
         log.data = data
         print(response_status)
-        if response_status.startWith("2"):
+        if str(response_status).startswith("2"):
             log.status = "completed"
             log.save()
         else:

@@ -12,6 +12,10 @@ class Gender(models.TextChoices):
 
 class PremiumFrequency(models.TextChoices):
     MONTHLY = "Monthly", "Monthly"
+    QUARTERLY = "Quarterly", "Quarterly"
+    ANNUAL = "Annual", "Annual"
+    SEMI_ANNUAL = "Semi Annual", "Semi Annual"
+    BI_ANNUAL = "Bi Annual", "Bi Annual"
     ONCE_OFF = "Once Off", "Once Off"
 
 

@@ -9,6 +9,7 @@ from core.models import BaseModel
 class ClientDetails(BaseModel):
     first_name = models.CharField(max_length=200)
     middle_name = models.CharField(max_length=200, null=True, blank=True)
+    title = models.CharField(max_length=200, null=True, blank=True)
     last_name = models.CharField(
         max_length=200,
         null=True,
@@ -27,7 +28,7 @@ class ClientDetails(BaseModel):
         max_length=20, choices=MaritalStatus.choices, null=True, blank=True
     )
     date_of_birth = models.DateField(null=True, blank=True)
-    email = models.EmailField(null=True, blank=True)
+    email = models.CharField(max_length=100, null=True, blank=True)
     phone_number = models.CharField(max_length=200, null=True, blank=True)
     address_street = models.TextField(null=True, blank=True)
     address_suburb = models.CharField(max_length=200, null=True, blank=True)
@@ -35,6 +36,7 @@ class ClientDetails(BaseModel):
     address_province = models.CharField(max_length=200, null=True, blank=True)
     postal_code = models.CharField(max_length=200, null=True, blank=True)
     upload_ref = models.CharField(max_length=200, null=True, blank=True)
+    client_details = models.JSONField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:

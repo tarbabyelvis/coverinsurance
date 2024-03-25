@@ -120,6 +120,7 @@ class PolicyView(APIView):
                 | Q(client__external_id__icontains=query)
                 | Q(client__email__icontains=query)
                 | Q(client__phone_number__icontains=query)
+                | Q(client__primary_id_number__icontains=query)
                 | Q(insurer__name__icontains=query)
                 | Q(policy_number__icontains=query)
                 | Q(external_reference__icontains=query)
@@ -174,6 +175,54 @@ class PolicyDetailView(APIView):
                 message="Policy not found", status_code=status.HTTP_404_NOT_FOUND
             )
 
+    @swagger_auto_schema(
+        request_body=PolicySerializer,
+        responses={200: PolicySerializer, 404: "Policy not found"},
+        operation_description="Update a policy instance.",
+    )
+    def put(self, request, pk):
+        try:
+            policy = get_object_or_404(Policy, pk=pk)
+            serializer = PolicySerializer(policy, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return HTTPResponse.success(
+                    data=serializer.data,
+                    message="Update successful",
+                    status_code=status.HTTP_200_OK,
+                )
+            return HTTPResponse.error(
+                message=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST
+            )
+        except Http404:
+            return HTTPResponse.error(
+                message="Policy not found", status_code=status.HTTP_404_NOT_FOUND
+            )
+
+    @swagger_auto_schema(
+        request_body=PolicySerializer,
+        responses={200: PolicySerializer, 404: "Policy not found"},
+        operation_description="Partial update of a policy instance.",
+    )
+    def patch(self, request, pk):
+        try:
+            policy = get_object_or_404(Policy, pk=pk)
+            serializer = PolicySerializer(policy, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return HTTPResponse.success(
+                    data=serializer.data,
+                    message="Update successful",
+                    status_code=status.HTTP_200_OK,
+                )
+            return HTTPResponse.error(
+                message=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST
+            )
+        except Http404:
+            return HTTPResponse.error(
+                message="Policy not found", status_code=status.HTTP_404_NOT_FOUND
+            )
+
 
 class CreateClientAndPolicyAPIView(APIView):
 
@@ -219,10 +268,12 @@ class UploadClientAndPolicyExcelAPIView(APIView):
 
             if source == "bordrex":
                 upload_clients_and_policies(
-                    file_obj, CLIENT_COLUMNS_BORDREX, POLICY_COLUMNS_BORDREX
+                    file_obj, CLIENT_COLUMNS_BORDREX, POLICY_COLUMNS_BORDREX, source
                 )
             elif source == "guardrisk":
-                upload_clients_and_policies(file_obj, CLIENT_COLUMNS, POLICY_COLUMNS)
+                upload_clients_and_policies(
+                    file_obj, CLIENT_COLUMNS, POLICY_COLUMNS, source
+                )
             else:
                 return HTTPResponse.success(
                     message="Incorrect report type",
@@ -343,8 +394,6 @@ class PolicyBeneficiariesView(APIView):
 
 
 # policy payments
-
-
 class CapturePaymentView(APIView):
     @swagger_auto_schema(
         request_body=PremiumPaymentSerializer,
@@ -380,14 +429,44 @@ class UploadPaymentFileView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     @swagger_auto_schema(
-        request_body=MultiPartParser, responses={200: "File uploaded successfully."}
+        operation_description="Upload payments from excel sheet",
+        manual_parameters=[
+            openapi.Parameter(
+                name="file",
+                in_=openapi.IN_FORM,
+                type=openapi.TYPE_FILE,
+                required=True,
+                description="The file to upload",
+            )
+        ],
+        responses={400: "Bad Request", 201: "Resource created successfully"},
     )
-    def put(self, request, format=None):
-        """
-        Upload payment file.
-        """
-        file_obj = request.FILES["file"]
-        # Additional logic to parse and process the file
-        return HTTPResponse.success(
-            message="Payments successfully uploaded", status_code=status.HTTP_200_OK
-        )
+    def post(self, request, source):
+        try:
+            file_obj = request.data.get("file")
+            if file_obj is None:
+                return HTTPResponse.error(message="File is missing in the request.")
+
+            if source == "compuloan":
+                pass
+                # upload_clients_and_policies(
+                #     file_obj, CLIENT_COLUMNS_BORDREX, POLICY_COLUMNS_BORDREX, source
+                # )
+            elif source == "fincloud":
+                pass
+                # upload_clients_and_policies(
+                #     file_obj, CLIENT_COLUMNS, POLICY_COLUMNS, source
+                # )
+            else:
+                return HTTPResponse.success(
+                    message="Incorrect report type",
+                    status_code=status.HTTP_409_CONFLICT,
+                )
+            return HTTPResponse.success(
+                message="Resource created successfully",
+                status_code=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            logger.error(e)
+            return HTTPResponse.error(message=str(e))

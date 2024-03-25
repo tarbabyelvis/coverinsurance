@@ -28,6 +28,8 @@ class Policy(BaseModel):
     policy_term = models.IntegerField(null=True, blank=True)  # in months
     policy_number = models.CharField(max_length=200, null=True, blank=True, unique=True)
     business_unit = models.CharField(max_length=200, null=True, blank=True)
+    sub_scheme = models.CharField(max_length=200, null=True, blank=True)
+    product_name = models.CharField(max_length=200, null=True, blank=True)
     external_reference = models.CharField(
         max_length=60, null=True, blank=True, unique=True
     )
@@ -54,7 +56,15 @@ class Policy(BaseModel):
     )
     commission_percentage = models.FloatField(null=True, blank=True)
     commission_amount = models.DecimalField(default=0, max_digits=20, decimal_places=2)
+    commission_frequency = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        choices=PremiumFrequency.choices,
+        default="Monthly",
+    )
     admin_fee = models.DecimalField(default=0, max_digits=20, decimal_places=2)
+    submitted_to_insurer = models.BooleanField(default=False)
 
     def get_status_symbol(self):
         """
