@@ -37,76 +37,6 @@ class ClaimCreateAPIView(APIView):
             )
         return HTTPResponse.error(message=serializer.errors)
 
-
-class ClaimDetailAPIView(APIView):
-
-    @swagger_auto_schema(
-        operation_description="Retrieve a specific policy by ID",
-        responses={
-            200: openapi.Response("Success", ClaimSerializer),
-            404: "Policy not found",
-        },
-    )
-    def get(self, request, pk):
-        try:
-            policy = get_object_or_404(Claim, pk=pk)
-            serializer = ClaimSerializer(policy)
-            return HTTPResponse.success(
-                message="Request Successful",
-                status_code=status.HTTP_200_OK,
-                data=serializer.data,
-            )
-        except Http404:
-            return HTTPResponse.error(
-                message="Policy not found", status_code=status.HTTP_404_NOT_FOUND
-            )
-
-    @swagger_auto_schema(
-        request_body=ClaimSerializer,
-        responses={200: ClaimSerializer, 404: "Claim not found"},
-        operation_description="Update a claim instance.",
-    )
-    def put(self, request, pk, format=None):
-        try:
-            claim = Claim.objects.get(pk=pk)
-        except Claim.DoesNotExist:
-            return HTTPResponse.error(
-                message="Claim not found", status_code=status.HTTP_404_NOT_FOUND
-            )
-
-        serializer = ClaimSerializer(claim, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return HTTPResponse.success(
-                data=serializer.data, status_code=status.HTTP_200_OK
-            )
-        return HTTPResponse.error(
-            message=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST
-        )
-
-    @swagger_auto_schema(
-        request_body=ClaimSerializer,
-        responses={200: ClaimSerializer, 404: "Claim not found"},
-        operation_description="Update a claim instance.",
-    )
-    def patch(self, request, pk, format=None):
-        try:
-            claim = Claim.objects.get(pk=pk)
-        except Claim.DoesNotExist:
-            return HTTPResponse.error(
-                message="Claim not found", status_code=status.HTTP_404_NOT_FOUND
-            )
-
-        serializer = ClaimSerializer(claim, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return HTTPResponse.success(
-                data=serializer.data, status_code=status.HTTP_200_OK
-            )
-        return HTTPResponse.error(
-            message=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST
-        )
-
     @swagger_auto_schema(
         operation_description="Get all claims",
         responses={200: ClaimSerializer(many=True)},
@@ -182,4 +112,74 @@ class ClaimDetailAPIView(APIView):
                 "next": paginator.get_next_link(),
                 "previous": paginator.get_previous_link(),
             },
+        )
+
+
+class ClaimDetailAPIView(APIView):
+
+    @swagger_auto_schema(
+        operation_description="Retrieve a specific Claim by ID",
+        responses={
+            200: openapi.Response("Success", ClaimSerializer),
+            404: "Claim not found",
+        },
+    )
+    def get(self, request, pk):
+        try:
+            policy = get_object_or_404(Claim, pk=pk)
+            serializer = ClaimSerializer(policy)
+            return HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+                data=serializer.data,
+            )
+        except Http404:
+            return HTTPResponse.error(
+                message="Claim not found", status_code=status.HTTP_404_NOT_FOUND
+            )
+
+    @swagger_auto_schema(
+        request_body=ClaimSerializer,
+        responses={200: ClaimSerializer, 404: "Claim not found"},
+        operation_description="Update a claim instance.",
+    )
+    def put(self, request, pk, format=None):
+        try:
+            claim = Claim.objects.get(pk=pk)
+        except Claim.DoesNotExist:
+            return HTTPResponse.error(
+                message="Claim not found", status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = ClaimSerializer(claim, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return HTTPResponse.success(
+                data=serializer.data, status_code=status.HTTP_200_OK
+            )
+        return HTTPResponse.error(
+            message=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+    @swagger_auto_schema(
+        request_body=ClaimSerializer,
+        responses={200: ClaimSerializer, 404: "Claim not found"},
+        operation_description="Update a claim instance.",
+    )
+    def patch(self, request, pk, format=None):
+        try:
+            claim = Claim.objects.get(pk=pk)
+        except Claim.DoesNotExist:
+            return HTTPResponse.error(
+                message="Claim not found", status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = ClaimSerializer(claim, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return HTTPResponse.success(
+                data=serializer.data, status_code=status.HTTP_200_OK
+            )
+        return HTTPResponse.error(
+            message=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST
         )
