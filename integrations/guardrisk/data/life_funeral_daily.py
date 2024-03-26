@@ -1,4 +1,4 @@
-def prepare_life_funeral_daily_payload(data:list):
+def prepare_life_funeral_daily_payload(data: list):
     result = []
     for item in data:
         result.append(
@@ -153,11 +153,6 @@ def prepare_life_funeral_daily_payload(data:list):
                 "Dependent16Type": "sample text 147",
                 "Dependent16CoverAmount": "sample text 148",
                 "Dependent16CoverCommencementDate": "sample text 149",
-                "FreeText1": "sample text 150",
-                "FreeText2": "sample text 151",
-                "FreeText3": "sample text 152",
-                "FreeText4": "sample text 153",
-                "FreeText5": "sample text 154"
             }
         )
 
