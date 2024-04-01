@@ -10,137 +10,155 @@ def prepare_life_credit_payload(data: list, start_date: date, end_date: date):
     result = []
     for policy in data:
         client = policy["client"]
-        policy_beneficiary = policy["policy_beneficiary"]
         policy_dependants = policy["policy_dependants"]
         insurer = policy["insurer"]
-
-        # spouse = {
-        #     key: value
-        #     for key, value in data.items()
-        #     if key == "relationship" and value == "FK"
-        # }
-        print(policy_beneficiary)
-        print(type(policy_beneficiary))
-
-        result.append(
-            {
-                "TimeStamp": timestamp,
-                "ReportPeriodStart": start_date,
-                "ReportPeriodEnd": end_date,
-                "AdministratorIdentifier": "sample text 4",
-                "InsurerName": insurer.get("name", ""),
-                "ClientIdentifier": client["primary_id_number"],
-                "DivisionIdentifier": "0001",
-                "SubSchemeName": policy["sub_scheme"],
-                "PolicyNumber": policy["policy_number"],
-                "PricingModelVersion": "sample text 8",
-                "ProductName": policy["product_name"],
-                "ProductOption": "sample text 10",
-                "PolicyCommencementDate": policy["commencement_date"],
-                "PolicyExpiryDate": policy["expiry_date"],
-                "TermOfPolicy": policy["policy_term"],
-                "PolicyStatus": policy["policy_status"],
-                "PolicyStatusDate": timestamp,
-                "NewPolicyIndicator": "sample text 16",
-                "SalesChannel": "sample text 17",
-                "CancelledbyPolicyholderCoolingPeriodInsurer": "sample text 18",
-                "DeathIndicator": "sample text 19",
-                "PTDIndicator": "sample text 20",
-                "IncomeContinuationIndicator": "sample text 21",
-                "DreadDiseaseIndicator": "sample text 22",
-                "RetrenchmentIndicator": "sample text 23",
-                "DeathCoverTermIfDifferenttoPolicyTerm": "sample text 24",
-                "PTDCoverTermIfDifferenttoPolicyTerm": "sample text 25",
-                "IncomeContinuationCoverTermIfDifferenttoPolicyTerm": "sample text 26",
-                "DreadDiseaseCoverTermIfDifferenttoPolicyTerm": "sample text 27",
-                "RetrenchmentCoverTermIfDifferenttoPolicyTerm": "sample text 28",
-                "DeathPremium": "sample text 29",
-                "PTDPremium": "sample text 30",
-                "IncomeContinuationPremium": "sample text 31",
-                "DreadDiseasePremium": "sample text 32",
-                "RetrenchmentPremium": "sample text 33",
-                "PremiumFrequency": "sample text 34",
-                "PremiumType": "sample text 35",
-                "DeathOriginalSumAssured": "sample text 36",
-                "PTDOriginalSumAssured": "sample text 37",
-                "IncomeContinuationOriginalSumAssured": "sample text 38",
-                "DreadDiseaseOriginalSumAssured": "sample text 39",
-                "RetrenchmentOriginalSumAssured": "sample text 40",
-                "DeathCoverStructure": "sample text 41",
-                "PTDCoverStructure": "sample text 42",
-                "IncomeContinuationCoverStructure": "sample text 43",
-                "DreadDiseaseCoverStructure": "sample text 44",
-                "RetrenchmentCoverStructure": "sample text 45",
-                "DeathCoverBenefitPaymentPeriod": "sample text 46",
-                "PTDCoverBenefitPaymentPeriod": "sample text 47",
-                "IncomeContinuationCoverBenefitPaymentPeriod": "sample text 48",
-                "DreadDiseaseCoverBenefitPaymentPeriod": "sample text 49",
-                "RetrenchmentCoverBenefitPaymentPeriod": "sample text 50",
-                "DeathCoverWaitingPeriod": "sample text 51",
-                "PTDCoverWaitingPeriod": "sample text 52",
-                "IncomeContinuationCoverWaitingPeriod": "sample text 53",
-                "PHICoverWaitingPeriod": "sample text 54",
-                "RetrenchmentCoverWaitingPeriod": "sample text 55",
-                "DeathCurrentSumAssured": "sample text 56",
-                "PTDCurrentSumAssured": "sample text 57",
-                "IncomeContinuationCurrentSumAssured": "sample text 58",
-                "DreadDiseaseCurrentSumAssured": "sample text 59",
-                "RetrenchmentCurrentSumAssured": "sample text 60",
-                "ReinsurerName": "sample text 61",
-                "DeathCurrentRISumAssured": "sample text 62",
-                "PTDCurrentRISumAssured": "sample text 63",
-                "IncomeContinuationCurrentRISumAssured": "sample text 64",
-                "DreadDiseaseCurrentRISumAssured": "sample text 65",
-                "RetrenchmentCurrentRISumAssured": "sample text 66",
-                "DeathRIPremium": "sample text 67",
-                "PTDRIPremium": "sample text 68",
-                "IncomeContinuationRIPremium": "sample text 69",
-                "DreadDiseaseRIPremium": "sample text 70",
-                "RetrenchmentRIPremium": "sample text 71",
-                "DeathRIPercentage": "sample text 72",
-                "PTDRIPercentage": "sample text 73",
-                "IncomeContinuationRIPercentage": "sample text 74",
-                "DreadDiseaseRIPercentage": "sample text 75",
-                "RetrenchmentRIPercentage": "sample text 76",
-                "TotalPolicyPremiumCollected": "sample text 77",
-                "TotalPolicyPremiumPayable": "sample text 78",
-                "TotalPolicyPremiumSubsidy": "sample text 79",
-                "TotalReinsurancePremium": "sample text 80",
-                "TotalReinsurancePremiumPayable": "sample text 81",
-                "TotalFinancialReinsuranceCashflows": "sample text 82",
-                "CommissionFrequency": policy["commission_frequency"],
-                "Commission": float(policy["commission_amount"]),
-                "AdminBinderFees": policy["admin_fee"],
-                "OutsourcingFees": "sample text 86",
-                "MarketingAdvertisingFees": "sample text 87",
-                "ManagementFees": "sample text 88",
-                "ClaimsHandlingFee": "sample text 89",
-                "TotalGrossClaimAmount": "sample text 90",
-                "GrossClaimPaid": "sample text 91",
-                "ReinsuranceRecoveries": "sample text 92",
-                "OriginalLoanBalance": "sample text 93",
-                "CurrentOutstandingBalance": "sample text 94",
-                "InstallmentAmount": "sample text 95",
-                "PrincipalSurname": client.get("last_name", ""),
-                "PrincipalFirstName": client.get("first_name", ""),
-                "PrincipalInitials": client.get("middle_name", ""),
-                "PrincipalID": client.get("primary_id_number", ""),
-                "PrincipalGender": client.get("gender", ""),
-                "PrincipalDateofBirth": client.get("date_of_birth", ""),
-                "PrincipalMemberPhysicalAddress": f"{client['address_street']} {client['address_suburb']} {client['address_town']} {client['address_province']}",
-                "PostalCode": client["postal_code"],
-                "PrincipalTelephoneNumber": client["phone_number"],
-                "PrincipalMemberEmailAddress": client.get("email", ""),
-                "IncomeGroup": "sample text 106",
-                "SpouseIndicator": "sample text 107",
-                "SpouseSurname": client.get("last_name", ""),
-                "SpouseFirstName": client.get("first_name", ""),
-                "SpouseInitials": client.get("middle_name", ""),
-                "SpouseID": "sample text 111",
-                "SpouseGender": client.get("gender", ""),
-                "SpouseDateofBirth": client.get("date_of_birth", ""),
-                "SpouseCoverAmount": "sample text 114",
-            }
+        spouse = filter(
+            lambda x: x if x["relationship"].lower() == "spouse" else None,
+            policy_dependants,
         )
+        spouse = list(spouse)
+
+        policy_details = {
+            "TimeStamp": timestamp,
+            "ReportPeriodStart": start_date,
+            "ReportPeriodEnd": end_date,
+            "AdministratorIdentifier": "",
+            "InsurerName": insurer.get("name", ""),
+            "ClientIdentifier": client["primary_id_number"],
+            "DivisionIdentifier": "0001",
+            "SubSchemeName": policy["sub_scheme"],
+            "PolicyNumber": policy["policy_number"],
+            "PricingModelVersion": "",
+            "ProductName": policy["product_name"],
+            "ProductOption": "",
+            "PolicyCommencementDate": policy["commencement_date"],
+            "PolicyExpiryDate": policy["expiry_date"],
+            "TermOfPolicy": policy["policy_term"],
+            "PolicyStatus": policy["policy_status"],
+            "PolicyStatusDate": timestamp,
+            "NewPolicyIndicator": "",
+            "SalesChannel": "",
+            "CancelledbyPolicyholderCoolingPeriodInsurer": "",
+            "DeathIndicator": "",
+            "PTDIndicator": "",
+            "IncomeContinuationIndicator": "",
+            "DreadDiseaseIndicator": "",
+            "RetrenchmentIndicator": "",
+            "DeathCoverTermIfDifferenttoPolicyTerm": "",
+            "PTDCoverTermIfDifferenttoPolicyTerm": "",
+            "IncomeContinuationCoverTermIfDifferenttoPolicyTerm": "",
+            "DreadDiseaseCoverTermIfDifferenttoPolicyTerm": "",
+            "RetrenchmentCoverTermIfDifferenttoPolicyTerm": "",
+            "DeathPremium": "",
+            "PTDPremium": "",
+            "IncomeContinuationPremium": "",
+            "DreadDiseasePremium": "",
+            "RetrenchmentPremium": "",
+            "PremiumFrequency": "",
+            "PremiumType": "",
+            "DeathOriginalSumAssured": "",
+            "PTDOriginalSumAssured": "",
+            "IncomeContinuationOriginalSumAssured": "",
+            "DreadDiseaseOriginalSumAssured": "",
+            "RetrenchmentOriginalSumAssured": "",
+            "DeathCoverStructure": "",
+            "PTDCoverStructure": "",
+            "IncomeContinuationCoverStructure": "",
+            "DreadDiseaseCoverStructure": "",
+            "RetrenchmentCoverStructure": "",
+            "DeathCoverBenefitPaymentPeriod": "",
+            "PTDCoverBenefitPaymentPeriod": "",
+            "IncomeContinuationCoverBenefitPaymentPeriod": "",
+            "DreadDiseaseCoverBenefitPaymentPeriod": "",
+            "RetrenchmentCoverBenefitPaymentPeriod": "",
+            "DeathCoverWaitingPeriod": "",
+            "PTDCoverWaitingPeriod": "",
+            "IncomeContinuationCoverWaitingPeriod": "",
+            "PHICoverWaitingPeriod": "",
+            "RetrenchmentCoverWaitingPeriod": "",
+            "DeathCurrentSumAssured": "",
+            "PTDCurrentSumAssured": "",
+            "IncomeContinuationCurrentSumAssured": "",
+            "DreadDiseaseCurrentSumAssured": "",
+            "RetrenchmentCurrentSumAssured": "",
+            "ReinsurerName": "",
+            "DeathCurrentRISumAssured": "",
+            "PTDCurrentRISumAssured": "",
+            "IncomeContinuationCurrentRISumAssured": "",
+            "DreadDiseaseCurrentRISumAssured": "",
+            "RetrenchmentCurrentRISumAssured": "",
+            "DeathRIPremium": "",
+            "PTDRIPremium": "",
+            "IncomeContinuationRIPremium": "",
+            "DreadDiseaseRIPremium": "",
+            "RetrenchmentRIPremium": "",
+            "DeathRIPercentage": "",
+            "PTDRIPercentage": "",
+            "IncomeContinuationRIPercentage": "",
+            "DreadDiseaseRIPercentage": "",
+            "RetrenchmentRIPercentage": "",
+            "TotalPolicyPremiumCollected": "",
+            "TotalPolicyPremiumPayable": "",
+            "TotalPolicyPremiumSubsidy": "",
+            "TotalReinsurancePremium": "",
+            "TotalReinsurancePremiumPayable": "",
+            "TotalFinancialReinsuranceCashflows": "",
+            "CommissionFrequency": policy["commission_frequency"],
+            "Commission": float(policy["commission_amount"]),
+            "AdminBinderFees": policy["admin_fee"],
+            "OutsourcingFees": "",
+            "MarketingAdvertisingFees": "",
+            "ManagementFees": "",
+            "ClaimsHandlingFee": "",
+            "TotalGrossClaimAmount": "",
+            "GrossClaimPaid": "",
+            "ReinsuranceRecoveries": "",
+            "OriginalLoanBalance": "",
+            "CurrentOutstandingBalance": "",
+            "InstallmentAmount": "",
+            "PrincipalSurname": client.get("last_name", ""),
+            "PrincipalFirstName": client.get("first_name", ""),
+            "PrincipalInitials": client.get("middle_name", ""),
+            "PrincipalID": client.get("primary_id_number", ""),
+            "PrincipalGender": client.get("gender", ""),
+            "PrincipalDateofBirth": client.get("date_of_birth", ""),
+            "PrincipalMemberPhysicalAddress": f"{client['address_street']} {client['address_suburb']} {client['address_town']} {client['address_province']}",
+            "PostalCode": client["postal_code"],
+            "PrincipalTelephoneNumber": client["phone_number"],
+            "PrincipalMemberEmailAddress": client.get("email", ""),
+            "IncomeGroup": "",
+        }
+        # add spouse if they exists
+        if spouse:
+            # split full name it first name middlename and last name
+            full_name = spouse[0]["dependant_name"]
+            full_name = full_name.split(" ")
+            if len(full_name) == 1:
+                policy_details["SpouseName"] = full_name[0]
+                policy_details["SpouseMiddleName"] = ""
+                policy_details["SpouseLastName"] = ""
+            elif len(full_name) == 2:
+                policy_details["SpouseName"] = full_name[0]
+                policy_details["SpouseMiddleName"] = ""
+                policy_details["SpouseLastName"] = full_name[1]
+            elif len(full_name) == 3:
+                policy_details["SpouseName"] = full_name[0]
+                policy_details["SpouseMiddleName"] = full_name[1]
+                policy_details["SpouseLastName"] = full_name[2]
+            else:
+                policy_details["SpouseName"] = full_name[0]
+                policy_details["SpouseMiddleName"] = " ".join(full_name[1:-1])
+                policy_details["SpouseLastName"] = full_name[-1]
+
+            spouse = spouse[0]
+            policy_details["SpouseID"] = spouse["primary_id_number"]
+            policy_details["SpouseGender"] = spouse["dependant_gender"]
+            policy_details["SpouseDateofBirth"] = spouse["dependant_dob"]
+            policy_details["SpouseIndicator"] = True
+            # policy_details["SpouseCoverAmount"] = spouse["cover_amount"]
+            # policy_details["SpouseCoverCommencementDate"] = spouse[
+            #     "cover_commencement_date"
+            # ]
+        result.append(policy_details)
 
     return result
