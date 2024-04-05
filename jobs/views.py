@@ -13,7 +13,7 @@ class LifeCreditAPIView(APIView):
         request_body=JobsSerializer,
         responses={200: "Request Successful", 409: "Conflict"},
     )
-    def post(self, request, report_type):
+    def post(self, request, identifier):
         """
         Post Guardrisk report job.
 
@@ -26,7 +26,7 @@ class LifeCreditAPIView(APIView):
         try:
             serializer = JobsSerializer(data=request.data)
             if serializer.is_valid(raise_exception=True):
-                credit_life(report_type, **serializer.validated_data)
+                credit_life(identifier, **serializer.validated_data)
                 return HTTPResponse.success(
                     message="Request Successful",
                     status_code=status.HTTP_200_OK,

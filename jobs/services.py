@@ -1,3 +1,5 @@
+from datetime import datetime
+import traceback
 from config.enums import PolicyType
 from integrations.enums import Integrations
 from integrations.guardrisk.guardrisk import GuardRisk
@@ -9,24 +11,33 @@ from policies.serializers import PolicyDetailSerializer
 from .models import Task
 
 
-def credit_life(request_type, start_date, end_date):
+def credit_life(
+    identifier, start_date=datetime.now().date(), end_date=datetime.now().date()
+):
+    print("Credit life")
 
     task = Task.objects.get(task=Processes.CREDIT_LIFE.name)
     integration = IntegrationConfigs.objects.get(
-        name=Integrations.GUARDRISK.name, is_enabled=True
+        name=Integrations.GUARDRISK.name, is_enabled=True, entity__icontains=identifier
     )
     log = TaskLog.objects.create(task=task, status="running", manual_run=True)
     try:
         # fetch the data
         policy = Policy.objects.filter(
-            commencement_date__gte=start_date,
-            commencement_date__lte=end_date,
+            # commencement_date__gte=start_date,
+            # commencement_date__lte=end_date,
             # policy_type__policy_type=PolicyType.CREDIT_LIFE.name,
         )
 
+        if not policy.exists():
+            print("Empty")
+            raise Exception("Policies are empty")
+
         serializer = PolicyDetailSerializer(policy, many=True).data
         guardrisk = GuardRisk(integration.access_key, integration.base_url)
-        data, response_status = guardrisk.lifeCredit(serializer, start_date, end_date)
+        data, response_status = guardrisk.lifeCredit(
+            serializer, start_date, end_date, identifier
+        )
         log.data = data
         print(response_status)
         if str(response_status).startswith("2"):
@@ -37,8 +48,10 @@ def credit_life(request_type, start_date, end_date):
             log.save()
     except Exception as e:
         print(e)
+        traceback.print_exc()
         log.status = "failed"
         log.save()
+        raise Exception(e)
 
 
 def funeral_cover(request_type, start_date, end_date):

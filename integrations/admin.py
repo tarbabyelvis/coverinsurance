@@ -4,8 +4,8 @@ from integrations.models import IntegrationConfigs, IntegrationLogs
 
 @admin.register(IntegrationConfigs)
 class IntegrationConfigsAdmin(admin.ModelAdmin):
-    list_display = ["name", "is_enabled"]
-    search_fields = ("name",)
+    list_display = ["name", "entity", "is_enabled"]
+    search_fields = ("name", "entity")
 
 
 @admin.register(IntegrationLogs)

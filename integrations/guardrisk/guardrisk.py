@@ -22,7 +22,7 @@ class GuardRisk:
 
         # Call the function to post the request and save it along with the response
         response_data, response_status, _ = post_request_and_save(
-            request_data, url, headers, Integrations.GUARDRISK
+            request_data, url, headers, Integrations.GUARDRISK.name
         )
 
         return response_data, response_status
@@ -37,22 +37,24 @@ class GuardRisk:
 
         # Call the function to post the request and save it along with the response
         response_data, response_status, _ = post_request_and_save(
-            request_data, url, headers, Integrations.GUARDRISK
+            request_data, url, headers, Integrations.GUARDRISK.name
         )
 
         return response_data, response_status
 
     # critical
-    def lifeCredit(self, data, start_date, end_date):
+    def lifeCredit(self, data, start_date, end_date, identifier):
         path = "/DeltaV2/api/LifeCredit"
-        request_data = prepare_life_credit_payload(data, start_date, end_date)
+        request_data = prepare_life_credit_payload(
+            data, start_date, end_date, identifier
+        )
 
         url = self.base_url + path
         headers = {"CallerId": self.access_key, "RowCount": str(len(request_data))}
 
         # Call the function to post the request and save it along with the response
         response_data, response_status, _ = post_request_and_save(
-            request_data, url, headers, Integrations.GUARDRISK
+            request_data, url, headers, Integrations.GUARDRISK.name
         )
 
         return response_data, response_status
