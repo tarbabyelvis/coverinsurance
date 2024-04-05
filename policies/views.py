@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
 from rest_framework import status
-from policies.services import upload_clients_and_policies
+from policies.services import upload_clients_and_policies,upload_buk_repayments
 from .serializers import (
     BeneficiarySerializer,
     ClientPolicyRequestSerializer,
@@ -457,6 +457,10 @@ class UploadPaymentFileView(APIView):
                 # upload_clients_and_policies(
                 #     file_obj, CLIENT_COLUMNS, POLICY_COLUMNS, source
                 # )
+            elif source == "africancash":
+                upload_buk_repayments(
+                    file_obj, CLIENT_COLUMNS, POLICY_COLUMNS, source
+                )
             else:
                 return HTTPResponse.success(
                     message="Incorrect report type",
