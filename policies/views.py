@@ -4,7 +4,7 @@ from policies.constants import (
     CLIENT_COLUMNS,
     CLIENT_COLUMNS_BORDREX,
     POLICY_COLUMNS,
-    POLICY_COLUMNS_BORDREX,
+    POLICY_COLUMNS_BORDREX, REPAYMENT_COLUMNS,
 )
 from policies.models import Beneficiary, Dependant, Policy, PremiumPayment
 from rest_framework.views import APIView
@@ -459,7 +459,7 @@ class UploadPaymentFileView(APIView):
                 # )
             elif source == "africancash":
                 upload_buk_repayments(
-                    file_obj, CLIENT_COLUMNS, POLICY_COLUMNS, source
+                    file_obj, REPAYMENT_COLUMNS
                 )
             else:
                 return HTTPResponse.success(

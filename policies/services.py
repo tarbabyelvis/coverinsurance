@@ -95,7 +95,7 @@ def upload_clients_and_policies(
 
 @transaction.atomic
 def upload_buk_repayments(
-    file_obj: Any, repayment_columns, source
+    file_obj: Any, repayment_columns
 ) -> None:
     print("The columns loaded")
     received_repayment_columns = repayment_columns
