@@ -4,14 +4,14 @@ from policies.constants import (
     CLIENT_COLUMNS,
     CLIENT_COLUMNS_BORDREX,
     POLICY_COLUMNS,
-    POLICY_COLUMNS_BORDREX,
+    POLICY_COLUMNS_BORDREX, FUNERAL_POLICY_CLIENT_COLUMNS, FUNERAL_POLICY_COLUMNS,
 )
 from policies.models import Beneficiary, Dependant, Policy, PremiumPayment
 from rest_framework.views import APIView
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
 from rest_framework import status
-from policies.services import upload_clients_and_policies
+from policies.services import upload_clients_and_policies, upload_funeral_clients_and_policies
 from .serializers import (
     BeneficiarySerializer,
     ClientPolicyRequestSerializer,
@@ -273,6 +273,10 @@ class UploadClientAndPolicyExcelAPIView(APIView):
             elif source == "guardrisk":
                 upload_clients_and_policies(
                     file_obj, CLIENT_COLUMNS, POLICY_COLUMNS, source
+                )
+            elif source == "funeral":
+                upload_funeral_clients_and_policies(
+                    file_obj, FUNERAL_POLICY_CLIENT_COLUMNS, FUNERAL_POLICY_COLUMNS, source
                 )
             else:
                 return HTTPResponse.success(
