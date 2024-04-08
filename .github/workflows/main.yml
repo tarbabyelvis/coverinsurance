@@ -71,7 +71,7 @@ jobs:
 
   build-and-push-to-ecr-qa:
     runs-on: ubuntu-latest
-    needs: build-and-push-to-ecr-dev
+  #  needs: build-and-push-to-ecr-dev
     environment: QA
     if: github.ref == 'refs/heads/development-trunk'
 
