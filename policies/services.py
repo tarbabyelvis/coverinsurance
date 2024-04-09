@@ -128,6 +128,7 @@ def upload_buk_repayments(
         # Search Policy By LoanId
         policy = Policy.objects.filter(policy_number = repayment_data['policy_id'])
 
+        # Raise an error so that it rows back the other transactions
         if not policy.exists():
             raise Exception(f"Policy {repayment_data['policy_id']} does not exist!")
 
