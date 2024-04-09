@@ -158,8 +158,8 @@ def prepare_life_credit_payload(
             "IncomeGroup": "",
         }
         # add spouse if they exists
-        if spouse:
-            # split full name it first name middlename and last name
+        # split full name it first name middlename and last name
+        if spouse:  # Check if spouse list is not empty
             full_name = spouse[0]["dependant_name"]
             full_name = full_name.split(" ")
             if len(full_name) == 1:
@@ -184,10 +184,20 @@ def prepare_life_credit_payload(
             policy_details["SpouseGender"] = spouse["dependant_gender"]
             policy_details["SpouseDateofBirth"] = spouse["dependant_dob"]
             policy_details["SpouseIndicator"] = True
-            # policy_details["SpouseCoverAmount"] = spouse["cover_amount"]
-            # policy_details["SpouseCoverCommencementDate"] = spouse[
-            #     "cover_commencement_date"
-            # ]
+        else:
+            # Set default values to "n/a"
+            policy_details["SpouseName"] = "n/a"
+            policy_details["SpouseMiddleName"] = "n/a"
+            policy_details["SpouseLastName"] = "n/a"
+            policy_details["SpouseID"] = "n/a"
+            policy_details["SpouseGender"] = "n/a"
+            policy_details["SpouseDateofBirth"] = "n/a"
+            policy_details["SpouseIndicator"] = False
+
+        # policy_details["SpouseCoverAmount"] = spouse["cover_amount"]
+        # policy_details["SpouseCoverCommencementDate"] = spouse[
+        #     "cover_commencement_date"
+        # ]
         result.append(policy_details)
 
     return result
