@@ -11,6 +11,7 @@ POLICY_COLUMNS = {
     "json_sales_channel": "Sales Channel",
     "json_death_premium": "Death Premium",
     "json_PTD_premium": "PTDPremium",
+    "sum_insured": "Original Loan Balance",
     "json_retrenchment_premium": "Retrenchment Premium",
     "json_death_original_sum_assured": "Death Original Sum Assured",
     "json_death_current_sum_assured": "Death Current Sum Assured",
@@ -18,10 +19,9 @@ POLICY_COLUMNS = {
     "json_retrenchment_current_sum_assured": "Retrenchment Current Sum Assured",
     "json_total_policy_premium_collected": "Total Policy Premium Collected",
     "total_premium": "Total Policy Premium Payable",
-    "json_original_loan_balance": "Original Loan Balance",
-    "current_outstanding_balance": "Current Outstanding Balance",
-    "instalment_amount": "Installment Amount",
-    "sum_insured": "PTDOriginal Sum Assured",
+    "json_current_outstanding_balance": "Current Outstanding Balance",
+    "json_instalment_amount": "Installment Amount",
+    "json_ptd_original_sum_insured": "PTDOriginal Sum Assured",
     "json_retrenchment_sum_insured": "Retrenchment Original Sum Assured",
     "json_income_group": "Income Group",
     "admin_fee": "Admin Binder Fees",
@@ -58,10 +58,10 @@ POLICY_COLUMNS_BORDREX = {
     "admin_fee": "GR Admin Fee",
     "premium_frequency": "Premium Frequency",
     "json_death_indicator": "Death indicator",
-    "pdt_indicator": "PTD indicator",
-    "ttd_indicator": "TTD indicator",
-    "retrenchment_indicator": "Retrenchment indicator",
-    "dread_disease_indicator": "Dread disease indicator",
+    "json_ptd_indicator": "PTD indicator",
+    "json_ttd_indicator": "TTD indicator",
+    "json_retrenchment_indicator": "Retrenchment indicator",
+    "json_dread_disease_indicator": "Dread disease indicator",
     "identify_theft_indicator": "Identity theft indicator",
     "json_accident_death_indicator": "Accidental death indicator",
     "sum_insured": "Original loan balance",
@@ -101,4 +101,13 @@ STATUS_MAPPING = {
     "Surrendered": "S",
     "Surrendered due to replacement": "SR",
     "Transferred out": "T",
+}
+
+
+# Repayment Columns Mapping
+REPAYMENT_COLUMNS = {
+    "policy_id": "LoanNo",
+    "payment_date": "LoanAdvanceDate",
+    "amount": "PremiumAmount",
+    "payment_reference": "Receipt"
 }

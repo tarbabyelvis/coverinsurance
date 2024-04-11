@@ -1,8 +1,8 @@
 from integrations.enums import Integrations
 from integrations.guardrisk.data.life_claims_global import prepare_life_claims_payload
 from integrations.guardrisk.data.life_credit import prepare_life_credit_payload
-from integrations.guardrisk.data.life_funeral_daily import (
-    prepare_life_funeral_daily_payload,
+from integrations.guardrisk.data.life_funeral import (
+    prepare_life_funeral_payload,
 )
 from integrations.utils import post_request_and_save
 
@@ -22,37 +22,39 @@ class GuardRisk:
 
         # Call the function to post the request and save it along with the response
         response_data, response_status, _ = post_request_and_save(
-            request_data, url, headers
+            request_data, url, headers, Integrations.GUARDRISK.name
         )
 
         return response_data, response_status
 
     # critical
-    def lifeFuneralDaily(self, data):
-        path = "/DeltaV2/api/LifeFuneralDaily"
-        request_data = prepare_life_funeral_daily_payload(data)
+    def lifeFuneral(self, data):
+        path = "/DeltaV2/api/LifeFuneral"
+        request_data = prepare_life_funeral_payload(data)
 
         url = self.base_url + path
         headers = {"CallerId": self.base_url, "RowCount": str(len(request_data))}
 
         # Call the function to post the request and save it along with the response
         response_data, response_status, _ = post_request_and_save(
-            request_data, url, headers
+            request_data, url, headers, Integrations.GUARDRISK.name
         )
 
         return response_data, response_status
 
     # critical
-    def lifeCredit(self, data, start_date, end_date):
+    def lifeCredit(self, data, start_date, end_date, identifier):
         path = "/DeltaV2/api/LifeCredit"
-        request_data = prepare_life_credit_payload(data, start_date, end_date)
+        request_data = prepare_life_credit_payload(
+            data, start_date, end_date, identifier
+        )
 
         url = self.base_url + path
         headers = {"CallerId": self.access_key, "RowCount": str(len(request_data))}
 
         # Call the function to post the request and save it along with the response
         response_data, response_status, _ = post_request_and_save(
-            request_data, url, headers, Integrations.GUARDRISK
+            request_data, url, headers, Integrations.GUARDRISK.name
         )
 
         return response_data, response_status

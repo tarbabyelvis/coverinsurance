@@ -2,11 +2,13 @@ from django.db import models
 from integrations.enums import Integrations
 from auditlog.registry import auditlog
 
+
 class IntegrationConfigs(models.Model):
     name = models.CharField(max_length=20, choices=Integrations.choices)
     access_key = models.CharField(max_length=100, null=True, blank=True)
     base_url = models.URLField()
     is_enabled = models.BooleanField(default=False)
+    entity = models.CharField(max_length=20, null=True, blank=True)
 
     class Meta:
         verbose_name = "Integration Config"
@@ -14,7 +16,7 @@ class IntegrationConfigs(models.Model):
 
     def __str__(self):
         return self.name
-    
+
 
 class IntegrationLogs(models.Model):
     request_data = models.JSONField()
@@ -30,6 +32,7 @@ class IntegrationLogs(models.Model):
     class Meta:
         verbose_name = "Integration Request"
         verbose_name_plural = "Integration Requests"
+
 
 auditlog.register(IntegrationConfigs)
 auditlog.register(IntegrationLogs)
