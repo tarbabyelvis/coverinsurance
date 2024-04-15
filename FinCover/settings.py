@@ -179,9 +179,9 @@ DATABASES = {
     "default": {
         "ENGINE": "django_tenants.postgresql_backend",
         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
-        "USER": os.getenv("DATABASE_USER", "postgres"),
-        "PASSWORD": os.getenv("DATABASE_PASSWORD", "Unleashed.b3ast42*"),
-        "HOST": os.getenv("DATABASE_HOST", "127.0.0.1"),
+        "USER": os.getenv("DATABASE_USER", "xWniG2oMKu85"),
+        "PASSWORD": os.getenv("DATABASE_PASSWORD", "BzjUftSC7JDSf%]["),
+        "HOST": os.getenv("DATABASE_HOST", "dev-core-pg.cluster-clzcsbthrzqz.eu-central-1.rds.amazonaws.com"),
         "PORT": os.getenv("DATABASE_PORT", 5432),
     },
 }

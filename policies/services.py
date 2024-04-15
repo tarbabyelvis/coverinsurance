@@ -397,12 +397,14 @@ def match_beneficiaries_to_policies(beneficiaries, policies):
 
 @transaction.atomic
 def save_client_policy_beneficiary_dependents_data(client_policy_data: List[Dict[str, Any]]) -> None:
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        futures = [executor.submit(save_client_policy, client) for client in client_policy_data]
-
-        # Wait for all futures to complete
-        for future in futures:
-            future.result()
+    for client in client_policy_data:
+        save_client_policy(client)
+    # with ThreadPoolExecutor(max_workers=20) as executor:
+    #     futures = [executor.submit(save_client_policy, client) for client in client_policy_data]
+    #
+    #     # Wait for all futures to complete
+    #     for future in futures:
+    #         future.result()
 
 
 @transaction.atomic

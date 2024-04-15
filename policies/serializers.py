@@ -433,6 +433,7 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             )
         except Exception as e:
             print("error creating policy")
+            print(e)
             traceback.print_exc()
             raise serializers.ValidationError("Error creating policy.")
 
