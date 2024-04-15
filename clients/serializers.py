@@ -202,16 +202,17 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
 
     def to_internal_value(self, data):
         # Convert QueryDict to a mutable dictionary
+        print(data)
         mutable_data = data.copy()
 
         # Convert datetime to date for the 'date_of_birth' field if needed
         if "date_of_birth" in mutable_data and isinstance(
-            mutable_data["date_of_birth"], datetime
+                mutable_data["date_of_birth"], datetime
         ):
             mutable_data["date_of_birth"] = mutable_data["date_of_birth"].date()
 
         if "primary_id_document_type" in mutable_data and isinstance(
-            mutable_data["primary_id_document_type"], IdDocumentType
+                mutable_data["primary_id_document_type"], IdDocumentType
         ):
             # If the value is an instance of IdDocumentType, use it directly
             mutable_data["primary_id_document_type"] = mutable_data[
@@ -219,7 +220,7 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
             ].pk
 
         elif "primary_id_document_type" in mutable_data and isinstance(
-            mutable_data["primary_id_document_type"], str
+                mutable_data["primary_id_document_type"], str
         ):
             # If the value is a string, check if it's a number
             if mutable_data["primary_id_document_type"].isdigit():
@@ -277,7 +278,7 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
             try:
                 if value is not None:
                     if model_field.field_name == "date_of_birth" and isinstance(
-                        value, datetime
+                            value, datetime
                     ):
                         # If the field is 'date_of_birth' and the value is datetime, cast it to date
                         data[field_name] = value.date()
@@ -336,7 +337,7 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
 
         # Cast date_of_birth value to date if it's datetime
         if "date_of_birth" in validated_data and isinstance(
-            validated_data["date_of_birth"], datetime
+                validated_data["date_of_birth"], datetime
         ):
             validated_data["date_of_birth"] = validated_data["date_of_birth"].date()
 
@@ -357,6 +358,7 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
 class ExcelSchema(Schema):
     file = fields.Field(required=True)
     columns = fields.List(fields.String(), required=True)
+
     # columns = fields.Dict(required=True, keys=fields.String(), values=fields.String())
 
     @validates_schema

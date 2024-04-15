@@ -31,6 +31,7 @@ urlpatterns = [
     path("v1/tenants/", include("tenants.urls"), name="tenants-app"),
     path("v1/config/", include("config.urls"), name="config-app"),
     path("v1/jobs/", include("jobs.urls"), name="jobs-app"),
+    path("v1/auth/", include("authentication.urls"), name="authentication-app"),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
