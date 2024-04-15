@@ -169,7 +169,7 @@ def extract_funeral_dependant_fields(client_details)-> List[Dict[str, Any]]:
                             "dependant_gender": gender_mapping.get(
                                 client["policy_details"].get(f"dependent_{dependent_number}_gender "), "Unknown"),
                             "dependant_dob": parser.parse(str(date_of_birth)).strftime("%Y-%m-%d") if date_of_birth != "1900-01-01" else None,
-                            "relationship": 4
+                            "relationship": 1
                         }
                         dependents_list.append(dependent)
                         added_dependents.add(dependent_number)
@@ -262,7 +262,7 @@ def process_beneficiary_data(beneficiary_data: Dict[str, Any]) -> Dict[str, Any]
 
     beneficiary_data["beneficiary_name"] = str(beneficiary_data["beneficiary_first_name"]) + " " + str(
         beneficiary_data["beneficiary_last_name"])
-    beneficiary_data["relationship"] = 4
+    beneficiary_data["relationship"] = 1
     beneficiary_data.pop("beneficiary_first_name")
     beneficiary_data.pop("beneficiary_last_name")
     # policy_number = beneficiary_data["beneficiary_policy_number"]
