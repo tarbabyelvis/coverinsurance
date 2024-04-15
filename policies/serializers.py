@@ -54,7 +54,6 @@ class BeneficiarySerializer(serializers.ModelSerializer):
 
 
 class DependantSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Dependant
         exclude = ["policy", "deleted"]
@@ -85,6 +84,8 @@ class PolicyPaymentScheduleSerializer(serializers.ModelSerializer):
 
 
 class PolicySerializer(serializers.ModelSerializer):
+    beneficiaries = BeneficiarySerializer(required=False, many=True)
+    dependants = DependantSerializer(required=False, many=True)
 
     def validate_policy_number(self, value):
         print("Validating policy number")
@@ -146,7 +147,7 @@ class PolicySerializer(serializers.ModelSerializer):
         mutable_data = data.copy()
 
         if "client" in mutable_data and isinstance(
-            mutable_data["client"], ClientDetails
+                mutable_data["client"], ClientDetails
         ):
             # If the value is an instance of ClientDetails, use it directly
             mutable_data["client"] = mutable_data["client"].pk
@@ -279,6 +280,7 @@ class PolicyListSerializer(serializers.ModelSerializer):
     policy_status_display = serializers.CharField(
         source="get_policy_status_display", read_only=True
     )
+
     # policy_beneficiary = BeneficiarySerializer(read_only=True, many=True)
     # policy_dependants = DependantSerializer(read_only=True, many=True)
 
@@ -311,13 +313,13 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
         # Convert datetime to date for specified fields if needed
         for field in ["commencement_date", "expiry_date"]:
             if field in mutable_data.get("policy", {}) and isinstance(
-                mutable_data["policy"][field], str
+                    mutable_data["policy"][field], str
             ):
                 date_time = convert_to_datetime(mutable_data["policy"][field])
                 if date_time is not None:
                     mutable_data["policy"][field] = date_time.date()
             if field in mutable_data.get("policy", {}) and isinstance(
-                mutable_data["policy"][field], datetime
+                    mutable_data["policy"][field], datetime
             ):
                 print("it is a date instance")
                 mutable_data["policy"][field] = mutable_data["policy"][field].date()

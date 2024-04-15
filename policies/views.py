@@ -4,7 +4,7 @@ from policies.constants import (
     CLIENT_COLUMNS,
     CLIENT_COLUMNS_BORDREX,
     POLICY_COLUMNS,
-    POLICY_COLUMNS_BORDREX, FUNERAL_POLICY_CLIENT_COLUMNS, FUNERAL_POLICY_COLUMNS,
+    POLICY_COLUMNS_BORDREX,
 )
 from policies.models import Beneficiary, Dependant, Policy, PremiumPayment
 from rest_framework.views import APIView
@@ -276,7 +276,7 @@ class UploadClientAndPolicyExcelAPIView(APIView):
                 )
             elif source == "funeral":
                 upload_funeral_clients_and_policies(
-                    file_obj, FUNERAL_POLICY_CLIENT_COLUMNS, FUNERAL_POLICY_COLUMNS, source
+                    file_obj
                 )
             else:
                 return HTTPResponse.success(
