@@ -118,7 +118,7 @@ class PremiumPayment(BaseModel):
     payment_date = models.DateField(null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     payment_method = models.CharField(max_length=200, null=True, blank=True)
-    payment_reference = models.CharField(max_length=200, null=True, blank=True)
+    payment_reference = models.CharField(max_length=200, null=True, blank=True, unique=True)
     payment_details = models.JSONField(null=True, blank=True)
     payment_receipt = models.FileField(null=True, blank=True)
     is_reversed = models.BooleanField(default=False)

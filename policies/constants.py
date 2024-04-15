@@ -414,3 +414,12 @@ STATUS_MAPPING = {
     "Surrendered due to replacement": "SR",
     "Transferred out": "T",
 }
+
+
+# Repayment Columns Mapping
+REPAYMENT_COLUMNS = {
+    "policy_id": "LoanNo",
+    "payment_date": "LoanAdvanceDate",
+    "amount": "PremiumAmount",
+    "payment_reference": "Receipt"
+}

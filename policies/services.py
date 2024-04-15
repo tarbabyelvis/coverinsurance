@@ -16,6 +16,9 @@ from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, FUN
     FUNERAL_POLICY_CLIENT_COLUMNS, DEFAULT_BENEFICIARY_FIELDS
 from policies.models import Policy
 from policies.serializers import ClientPolicyRequestSerializer, BeneficiarySerializer
+from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS
+from policies.models import Policy
+from policies.serializers import ClientPolicyRequestSerializer, PremiumPaymentSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -410,3 +413,60 @@ def save_policy_beneficiary_data(policy_beneficiary_data: List[Dict[str, Any]]) 
         # Wait for all futures to complete
         for future in futures:
             future.result()
+
+
+@transaction.atomic
+def upload_buk_repayments(
+    file_obj: Any, repayment_columns
+) -> None:
+    print("The columns loaded")
+    received_repayment_columns = repayment_columns
+
+    # Load the Excel workbook
+    wb = openpyxl.load_workbook(file_obj.file)
+
+    # Extract expected column headers for repayments
+    expected_repayment_headers: List[str] = get_dict_values(received_repayment_columns)
+
+    # Select the active worksheet
+    ws = wb.active
+
+    # Extract headers from the worksheet
+    headers: List[str] = [cell.value.strip() for cell in ws[1]]
+
+    if not set(expected_repayment_headers).issubset(set(headers)):
+        raise ValidationError("Headers not matching the ones on the excel sheet")
+
+    # Iterate over rows in the worksheet
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        # Create dictionary mapping headers to row values
+        row_dict: Dict[str, Any] = dict(zip(headers, row))
+        # Replace column keys with expected keys
+        row_dict = replace_keys(received_repayment_columns, row_dict)
+
+        # Extract repayment data
+        repayment_data = {k: row_dict[k] for k in received_repayment_columns}
+
+        # Search Policy By LoanId
+        policy = Policy.objects.filter(policy_number = repayment_data['policy_id'])
+
+        # Raise an error so that it rows back the other transactions
+        if not policy.exists():
+            raise Exception(f"Policy {repayment_data['policy_id']} does not exist!")
+
+        # Set the PolicyId
+        repayment_data["policy_id"] = policy.id
+
+        serializer = PremiumPaymentSerializer(
+            data=repayment_data
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+
+
+
+
+
+
+
