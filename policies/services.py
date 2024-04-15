@@ -19,6 +19,7 @@ from policies.serializers import ClientPolicyRequestSerializer, BeneficiarySeria
 from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS
 from policies.models import Policy
 from policies.serializers import ClientPolicyRequestSerializer, PremiumPaymentSerializer
+from asgiref.sync import sync_to_async
 
 logger = logging.getLogger(__name__)
 
@@ -105,10 +106,7 @@ def upload_clients_and_policies(
         serializer.save()
 
 
-@transaction.atomic
-def upload_funeral_clients_and_policies(
-        file_obj: Any
-) -> None:
+def multi_tenant_thread_executer(file_obj: Any):
     wb = openpyxl.load_workbook(file_obj.file)
 
     with ThreadPoolExecutor() as executor:
@@ -119,9 +117,19 @@ def upload_funeral_clients_and_policies(
                                                     FUNERAL_POLICY_BENEFICIARY_COLUMNS,
                                                     "beneficiary")
 
-        client_policy_data = client_policy_future.result()
+        return client_policy_future,policy_beneficiary_future
 
-        policy_beneficiary_data = policy_beneficiary_future.result()
+
+@transaction.atomic
+async def upload_funeral_clients_and_policies(
+        file_obj: Any
+) -> None:
+
+    client_policy_future,policy_beneficiary_future = await sync_to_async(multi_tenant_thread_executer, thread_sensitive=True)(file_obj)
+
+    client_policy_data = client_policy_future.result()
+
+    policy_beneficiary_data = policy_beneficiary_future.result()
 
     client_policy_beneficiary_data = match_beneficiaries_to_policies(policy_beneficiary_data, client_policy_data)
 
