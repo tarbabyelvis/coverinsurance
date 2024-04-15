@@ -180,7 +180,7 @@ DATABASES = {
         "ENGINE": "django_tenants.postgresql_backend",
         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
         "USER": os.getenv("DATABASE_USER", "postgres"),
-        "PASSWORD": os.getenv("DATABASE_PASSWORD", "dominicd"),
+        "PASSWORD": os.getenv("DATABASE_PASSWORD", "Unleashed.b3ast42*"),
         "HOST": os.getenv("DATABASE_HOST", "127.0.0.1"),
         "PORT": os.getenv("DATABASE_PORT", 5432),
     },
