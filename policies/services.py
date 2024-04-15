@@ -19,7 +19,7 @@ from policies.serializers import ClientPolicyRequestSerializer, BeneficiarySeria
 from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS
 from policies.models import Policy
 from policies.serializers import ClientPolicyRequestSerializer, PremiumPaymentSerializer
-from asgiref.sync import sync_to_async
+
 
 logger = logging.getLogger(__name__)
 
@@ -106,30 +106,26 @@ def upload_clients_and_policies(
         serializer.save()
 
 
-def multi_tenant_thread_executer(file_obj: Any):
-    wb = openpyxl.load_workbook(file_obj.file)
-
-    with ThreadPoolExecutor() as executor:
-        client_policy_future = executor.submit(process_worksheet, wb, "Funeral All", FUNERAL_POLICY_CLIENT_COLUMNS,
-                                               "client_policy")
-
-        policy_beneficiary_future = executor.submit(process_worksheet, wb, "Beneficiary Details",
-                                                    FUNERAL_POLICY_BENEFICIARY_COLUMNS,
-                                                    "beneficiary")
-
-        return client_policy_future,policy_beneficiary_future
-
-
 @transaction.atomic
-async def upload_funeral_clients_and_policies(
+def upload_funeral_clients_and_policies(
         file_obj: Any
 ) -> None:
+    wb = openpyxl.load_workbook(file_obj.file)
 
-    client_policy_future,policy_beneficiary_future = await sync_to_async(multi_tenant_thread_executer, thread_sensitive=True)(file_obj)
+    # with ThreadPoolExecutor() as executor:
+    #     client_policy_future = executor.submit(process_worksheet, wb, "Funeral All", FUNERAL_POLICY_CLIENT_COLUMNS,
+    #                                            "client_policy")
+    #
+    #     policy_beneficiary_future = executor.submit(process_worksheet, wb, "Beneficiary Details",
+    #                                                 FUNERAL_POLICY_BENEFICIARY_COLUMNS,
+    #                                                 "beneficiary")
+    #
+    #     client_policy_data = client_policy_future.result()
+    #
+    #     policy_beneficiary_data = policy_beneficiary_future.result()
+    client_policy_data = process_worksheet(wb, "Funeral All", FUNERAL_POLICY_CLIENT_COLUMNS,"client_policy")
 
-    client_policy_data = client_policy_future.result()
-
-    policy_beneficiary_data = policy_beneficiary_future.result()
+    policy_beneficiary_data = process_worksheet(wb, "Beneficiary Details", FUNERAL_POLICY_BENEFICIARY_COLUMNS,"beneficiary")
 
     client_policy_beneficiary_data = match_beneficiaries_to_policies(policy_beneficiary_data, client_policy_data)
 
