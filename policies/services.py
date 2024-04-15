@@ -1,5 +1,7 @@
 import copy
 import datetime
+import json
+
 from dateutil import parser
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -33,7 +35,7 @@ def extract_json_fields(dictionary):
             policy_details[new_key] = dictionary.pop(key)
 
     dictionary["policy_details"] = policy_details
-    return dictionary
+    return json.dumps(dictionary)
 
 
 @transaction.atomic
@@ -358,6 +360,17 @@ def save_client_policy(client_policy_data):
                                                            "marital_status",
                                                            "primary_id_document_type",
                                                            "entity_type"]}
+
+    # for key, value in client_policy_data["policy_details"].items():
+    #     print(type(value))
+
+    policy_details = client_policy_data["policy_details"]
+    for key, value in policy_details.items():
+        if isinstance(value, datetime.time):
+            policy_details[key] = value.strftime("%H:%M:%S")
+
+    # Serialize to JSON
+    client_policy_data["policy_details"] = json.dumps(policy_details)
 
     serializer = ClientPolicyRequestSerializer(
         data={"client": client, "policy": client_policy_data},
