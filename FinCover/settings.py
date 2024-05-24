@@ -9,7 +9,6 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
-
 from pathlib import Path
 import os
 from celery.schedules import crontab
@@ -34,7 +33,9 @@ DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://fin-za.localhost",
+    "http://fin_za.localhost",
+    "http://za-uat.localhost",
+    "http://localhost",
     "https://dev-cover-workflow.fin-connect.net",
     "https://*.dev-cover-workflow.fin-connect.net",
 ]
@@ -180,7 +181,7 @@ DATABASES = {
         "ENGINE": "django_tenants.postgresql_backend",
         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
         "USER": os.getenv("DATABASE_USER", "postgres"),
-        "PASSWORD": os.getenv("DATABASE_PASSWORD", "Unleashed.b3ast42*"),
+        "PASSWORD": os.getenv("DATABASE_PASSWORD", "postgres"),
         "HOST": os.getenv("DATABASE_HOST", "127.0.0.1"),
         "PORT": os.getenv("DATABASE_PORT", 5432),
     },
@@ -295,14 +296,17 @@ CELERY_RESULT_BACKEND = "redis://localhost:6379/0"  # Redis URL for results
 CELERY_BEAT_SCHEDULE = {
     "task1": {
         "task": "yourapp.tasks.process_task1",
-        "schedule": crontab(minute=0, hour=0),  # Replace with your cron schedule
+        # Replace with your cron schedule
+        "schedule": crontab(minute=0, hour=0),
     },
     "task2": {
         "task": "yourapp.tasks.process_task2",
-        "schedule": crontab(minute=0, hour=0),  # Replace with your cron schedule
+        # Replace with your cron schedule
+        "schedule": crontab(minute=0, hour=0),
     },
     "task3": {
         "task": "yourapp.tasks.process_task3",
-        "schedule": crontab(minute=0, hour=0),  # Replace with your cron schedule
+        # Replace with your cron schedule
+        "schedule": crontab(minute=0, hour=0),
     },
 }
