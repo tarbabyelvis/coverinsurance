@@ -4,9 +4,9 @@ from clients.services import upload_clients
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
 from rest_framework import status
-from clients.models import ClientDetails
+from clients.models import ClientDetails, ClientEmploymentDetails
 from core.utils import CustomPagination
-from .serializers import ClientDetailsSerializer, ExcelSchema
+from .serializers import ClientDetailsSerializer, ExcelSchema, ClientEmploymentDetailsSerializer
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from marshmallow import ValidationError
@@ -42,14 +42,16 @@ class ClientsView(APIView):
                 )
 
             else:
-                print(serializer.errors)
+                print('serializer errors', serializer.errors)
                 return HTTPResponse.error(message=serializer.errors)
 
         except ValidationError as e:
+            print('validation error')
             print(e)
             return HTTPResponse.error(message=str(e))
 
         except Exception as e:
+            print(f'exception happened...')
             print(e)
             return HTTPResponse.error(message=str(e))
 
@@ -109,6 +111,7 @@ class ClientsView(APIView):
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(clients, request)
         serializer = ClientDetailsSerializer(result_page, many=True)
+        logger.info(f'clients response {serializer.data}')
         return HTTPResponse.success(
             message="Request Successful",
             status_code=status.HTTP_200_OK,
@@ -201,11 +204,31 @@ class ClientDetailView(APIView):
     def get(self, request, pk):
         try:
             client = get_object_or_404(ClientDetails, pk=pk)
-            serializer = ClientDetailsSerializer(client)
+            employment_details = ClientEmploymentDetails.objects.filter(
+                client_id=pk).first()
+            serializer = ClientDetailsSerializer(client) 
+            if employment_details:
+                employment_details = {
+                    "id": employment_details.id,
+                    "employer_name": employment_details.employer_name,
+                    "employer_address_street": employment_details.employer_address_street,
+                    "employer_address_suburb": employment_details.employer_address_suburb,
+                    "employer_address_town": employment_details.employer_address_town,
+                    "employer_address_province": employment_details.employer_address_province,
+                    "employer_phone_number": employment_details.employer_phone_number,
+                    "employer_email": employment_details.employer_email,
+                    "employer_website": employment_details.employer_website,
+                    "gross_pay": employment_details.gross_pay,
+                    "basic_pay": employment_details.basic_pay,
+                    "job_title": employment_details.job_title,
+                }
+            client_details = serializer.data
+            if employment_details: 
+                client_details['employment_details'] = employment_details
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
-                data=serializer.data,
+                data=client_details
             )
         except Http404:
             return HTTPResponse.error(
@@ -249,6 +272,7 @@ class ClientDetailView(APIView):
             )
             if serializer.is_valid():
                 serializer.save()
+                logger.info('saved now...')
                 return HTTPResponse.success(
                     data=serializer.data,
                     message="Update successful",

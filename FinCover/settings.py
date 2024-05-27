@@ -33,7 +33,7 @@ DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://fin_za.localhost",
+    "http://fin-za.localhost",
     "http://za-uat.localhost",
     "http://localhost",
     "https://dev-cover-workflow.fin-connect.net",
@@ -182,7 +182,7 @@ DATABASES = {
         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
         "USER": os.getenv("DATABASE_USER", "postgres"),
         "PASSWORD": os.getenv("DATABASE_PASSWORD", "postgres"),
-        "HOST": os.getenv("DATABASE_HOST", "127.0.0.1"),
+        "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
         "PORT": os.getenv("DATABASE_PORT", 5432),
     },
 }
