@@ -36,8 +36,6 @@ class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        print('instance ::')
-        print(instance)
         return representation
 
     def to_internal_value(self, data):
