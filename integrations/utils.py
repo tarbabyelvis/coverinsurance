@@ -30,7 +30,7 @@ def post_request_and_save(request_data, url, headers, service):
     return response_data, response_status, life_payments_request
 
 
-def getFrequencyNumber(frequency):
+def get_frequency_number(frequency):
     if frequency == 'Monthly':
         return 12
     elif frequency == 'Quarterly':

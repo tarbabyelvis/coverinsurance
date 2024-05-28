@@ -35,7 +35,7 @@ def credit_life(
 
         serializer = PolicyDetailSerializer(policy, many=True).data
         guardrisk = GuardRisk(integration.access_key, integration.base_url)
-        data, response_status = guardrisk.lifeCredit(
+        data, response_status = guardrisk.life_credit(
             serializer, start_date, end_date, identifier
         )
         log.data = data
@@ -71,7 +71,7 @@ def funeral_cover(request_type, start_date, end_date):
 
         serializer = PolicyDetailSerializer(policy, many=True).data
         guardrisk = GuardRisk(integration.access_key, integration.base_url)
-        data, response_status = guardrisk.lifeFuneral(serializer, start_date, end_date)
+        data, response_status = guardrisk.life_funeral(serializer, start_date, end_date)
         log.data = data
         print(response_status)
         if str(response_status).startswith("2"):

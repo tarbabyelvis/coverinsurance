@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from integrations.utils import getFrequencyNumber
+from integrations.utils import get_frequency_number
 
 
 def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
@@ -51,7 +51,7 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
             "DeathIndicator": "Y",
             "PTDIndicator": "Y",
             "IncomeContinuationIndicator": "N",
-            "PremiumFrequency": getFrequencyNumber(policy["premium_frequency"]),
+            "PremiumFrequency": get_frequency_number(policy["premium_frequency"]),
             "PremiumType": "Regular",
             "DeathOriginalSumAssured": policy["sum_insured"],
             "PTDOriginalSumAssured": policy["sum_insured"],
@@ -70,7 +70,7 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
             "TotalReinsurancePremiumPayable": policy["total_premium_total"],
             "TotalFinancialReinsuranceCashflows": policy["total_premium_total"],
             "TotalFinancialReinsurancePayable": policy["total_premium_total"],
-            "CommissionFrequency": getFrequencyNumber(policy["commission_frequency"]),
+            "CommissionFrequency": get_frequency_number(policy["commission_frequency"]),
             "Commission": policy["commission_amount"],
             "AdminBinderFees": "0.00",
             "OutsourcingFees": "0.00",
