@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from integrations.utils import getFrequencyNumber
 
 
 def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
@@ -6,14 +7,15 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
     timestamp = original_date.strftime("%Y/%m/%d")
     start_date = start_date.strftime("%Y/%m/%d")
     end_date = end_date.strftime("%Y/%m/%d")
-    insurer = policy["insurer"]
 
     result = []
     for policy in data:
+        insurer = policy["insurer"]
         client = policy["client"]
         policy_beneficiary = policy["policy_beneficiary"]
+        no_of_dependencies = len(policy["policy_dependants"])
         # get spouse from dependants using relationship
-        spouse = filter(
+        spouse = (
             lambda x: x if x["relationship"].lower() == "spouse" else None,
             policy["policy_dependants"],
         )
@@ -30,50 +32,54 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
             "ReportPeriodEnd": end_date,
-            "AdministratorIdentifier": "sample text 4",
+            "AdministratorIdentifier": "Getsure",
             "InsurerName": insurer.get("name", ""),
-            "ClientIdentifier": "00123",
-            "DivisionIdentifier": "sample text 6",
-            "SubSchemeName": "sample text 7",
-            "PolicyNumber": policy["policy_term"],
+            "ClientIdentifier": "143",
+            "DivisionIdentifier": "1",
+            "SubSchemeName": "Getsure (Pty) Ltd",
+            "PolicyNumber": policy["policy_number"],
             "ProductName": policy["product_name"],
-            "ProductOption": "sample text 10",
-            "PolicyCommencementDate": "sample text 11",
+            "ProductOption": "N/A",
+            "PolicyCommencementDate": policy["commencement_date"],
             "PolicyExpiryDate": policy["expiry_date"],
             "TermofPolicy": policy["policy_term"],
             "PolicyStatus": policy["policy_status"],
-            "PolicyStatusDate": "sample text 15",
-            "NewPolicyIndicator": "sample text 16",
-            "SalesChannel": "sample text 17",
-            "CancelledbyPolicyholderCoolingPeriodInsurer": "sample text 18",
-            "DeathIndicator": "sample text 19",
-            "PremiumFrequency": "sample text 20",
-            "PremiumType": "sample text 21",
-            "DeathOriginalSumAssured": "sample text 22",
-            "DeathCoverStructure": "sample text 23",
-            "DeathCurrentSumAssured": "sample text 24",
-            "ReinsurerName": "sample text 25",
-            "DeathCurrentRISumAssured": "sample text 26",
-            "DeathRIPremium": "sample text 27",
-            "DeathRIPercentage": "sample text 28",
+            "PolicyStatusDate": policy["updated"],
+            "NewPolicyIndicator": "P",
+            "SalesChannel": "Voice Only",
+            "CancelledbyPolicyholderCoolingPeriodInsurer": "",
+            "DeathIndicator": "Y",
+            "PTDIndicator": "Y",
+            "IncomeContinuationIndicator": "N",
+            "PremiumFrequency": getFrequencyNumber(policy["premium_frequency"]),
+            "PremiumType": "Regular",
+            "DeathOriginalSumAssured": policy["sum_insured"],
+            "PTDOriginalSumAssured": policy["sum_insured"],
+            "DeathCoverStructure": "Lump Sum",
+            "DeathCurrentSumAssured": policy["sum_insured"],
+            "PTDCoverStructure": "Combined",
+            "ReinsurerName": "N/A",
+            "DeathCurrentRISumAssured": "N/A",
+            "DeathRIPremium": "N/A",
+            "DeathRIPercentage": "N/A",
             "TotalPolicyPremiumCollected": "sample text 29",
             "TotalPolicyPremiumPayable": "sample text 30",
-            "TotalPolicyPremium": "sample text 31",
-            "TotalPolicyPremiumSubsidy": "sample text 32",
-            "TotalReinsurancePremium": "sample text 33",
-            "TotalReinsurancePremiumPayable": "sample text 34",
-            "TotalFinancialReinsuranceCashflows": "sample text 35",
-            "TotalFinancialReinsurancePayable": "sample text 36",
-            "CommissionFrequency": "sample text 37",
-            "Commission": "sample text 38",
-            "AdminBinderFees": "sample text 39",
-            "OutsourcingFees": "sample text 40",
-            "MarketingAdvertisingFees": "sample text 41",
-            "ManagementFees": "sample text 42",
-            "ClaimsHandlingFee": "sample text 43",
-            "TotalGrossClaimAmount": "sample text 44",
-            "GrossClaimPaid": "sample text 45",
-            "ReinsuranceRecoveries": "sample text 46",
+            "TotalPolicyPremium": policy["total_premium_total"],
+            "TotalPolicyPremiumSubsidy": policy["total_premium_total"],
+            "TotalReinsurancePremium": policy["total_premium_total"],
+            "TotalReinsurancePremiumPayable": policy["total_premium_total"],
+            "TotalFinancialReinsuranceCashflows": policy["total_premium_total"],
+            "TotalFinancialReinsurancePayable": policy["total_premium_total"],
+            "CommissionFrequency": getFrequencyNumber(policy["commission_frequency"]),
+            "Commission": policy["commission_amount"],
+            "AdminBinderFees": "0.00",
+            "OutsourcingFees": "0.00",
+            "MarketingAdvertisingFees": "0.00",
+            "ManagementFees": "0.00",
+            "ClaimsHandlingFee": "0.00",
+            "TotalGrossClaimAmount": "0.00",
+            "GrossClaimPaid": "0.00",
+            "ReinsuranceRecoveries": "0.00",
             "PrincipalSurname": client.get("last_name", ""),
             "PrincipalFirstName": client.get("first_name", ""),
             "PrincipalInitials": client.get("middle_name", ""),
@@ -84,11 +90,11 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
             "PostalCode": client["postal_code"],
             "PrincipalTelephoneNumber": client["phone_number"],
             "PrincipalMemberEmailAddress": client.get("email", ""),
-            "IncomeGroup": "sample text 57",
-            "SpouseIndicator": "sample text 58",
-            "NumberofAdultDependents": "sample text 59",
-            "NumberofChildDependents": "sample text 60",
-            "NumberofExtendedFamily": "sample text 61",
+            "IncomeGroup": "",
+            "SpouseIndicator": "N",
+            "NumberofAdultDependents": "0",
+            "NumberofChildDependents": "0",
+            "NumberofExtendedFamily": "0",
         }
         # add spouse if they exists
         if spouse:
@@ -127,23 +133,31 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
             full_name = dependant["dependant_name"]
             full_name = full_name.split(" ")
             if len(full_name) == 1:
-                policy_details[f"Dependent{dependant['index']}FirstName"] = full_name[0]
+                policy_details[f"Dependent{
+                    dependant['index']}FirstName"] = full_name[0]
                 policy_details[f"Dependent{dependant['index']}Initials"] = ""
                 policy_details[f"Dependent{dependant['index']}Surname"] = ""
             elif len(full_name) == 2:
-                policy_details[f"Dependent{dependant['index']}FirstName"] = full_name[0]
+                policy_details[f"Dependent{
+                    dependant['index']}FirstName"] = full_name[0]
                 policy_details[f"Dependent{dependant['index']}Initials"] = ""
-                policy_details[f"Dependent{dependant['index']}Surname"] = full_name[1]
+                policy_details[f"Dependent{
+                    dependant['index']}Surname"] = full_name[1]
             elif len(full_name) == 3:
-                policy_details[f"Dependent{dependant['index']}FirstName"] = full_name[0]
-                policy_details[f"Dependent{dependant['index']}Initials"] = full_name[1]
-                policy_details[f"Dependent{dependant['index']}Surname"] = full_name[2]
+                policy_details[f"Dependent{
+                    dependant['index']}FirstName"] = full_name[0]
+                policy_details[f"Dependent{
+                    dependant['index']}Initials"] = full_name[1]
+                policy_details[f"Dependent{
+                    dependant['index']}Surname"] = full_name[2]
             else:
-                policy_details[f"Dependent{dependant['index']}FirstName"] = full_name[0]
+                policy_details[f"Dependent{
+                    dependant['index']}FirstName"] = full_name[0]
                 policy_details[f"Dependent{dependant['index']}Initials"] = " ".join(
                     full_name[1:-1]
                 )
-                policy_details[f"Dependent{dependant['index']}Surname"] = full_name[-1]
+                policy_details[f"Dependent{
+                    dependant['index']}Surname"] = full_name[-1]
 
             policy_details[f"Dependent{dependant['index']}ID"] = dependant[
                 "primary_id_number"

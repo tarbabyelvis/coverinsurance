@@ -18,7 +18,23 @@ class GuardRisk:
         request_data = prepare_life_claims_payload(claim_data)
 
         url = self.base_url + path
-        headers = {"CallerId": self.base_url, "RowCount": str(len(request_data))}
+        headers = {"CallerId": self.base_url,
+                   "RowCount": str(len(request_data))}
+
+        # Call the function to post the request and save it along with the response
+        response_data, response_status, _ = post_request_and_save(
+            request_data, url, headers, Integrations.GUARDRISK.name
+        )
+
+        return response_data, response_status
+
+    def life_claims_global_daily:
+        path = "/DeltaV2/api/LifeClaimsGlobalDaily"
+        request_data = prepare_life_claims_payload(claim_data)
+
+        url = self.base_url + path
+        headers = {"CallerId": self.base_url,
+                   "RowCount": str(len(request_data))}
 
         # Call the function to post the request and save it along with the response
         response_data, response_status, _ = post_request_and_save(
@@ -28,12 +44,29 @@ class GuardRisk:
         return response_data, response_status
 
     # critical
+
     def lifeFuneral(self, data):
         path = "/DeltaV2/api/LifeFuneral"
         request_data = prepare_life_funeral_payload(data)
 
         url = self.base_url + path
-        headers = {"CallerId": self.base_url, "RowCount": str(len(request_data))}
+        headers = {"CallerId": self.base_url,
+                   "RowCount": str(len(request_data))}
+
+        # Call the function to post the request and save it along with the response
+        response_data, response_status, _ = post_request_and_save(
+            request_data, url, headers, Integrations.GUARDRISK.name
+        )
+
+        return response_data, response_status
+
+    def lifeFuneralDaily(self, data):
+        path = "/DeltaV2/api/LifeFuneralDaily"
+        request_data = prepare_life_funeral_payload(data)
+
+        url = self.base_url + path
+        headers = {"CallerId": self.base_url,
+                   "RowCount": str(len(request_data))}
 
         # Call the function to post the request and save it along with the response
         response_data, response_status, _ = post_request_and_save(
@@ -50,7 +83,25 @@ class GuardRisk:
         )
 
         url = self.base_url + path
-        headers = {"CallerId": self.access_key, "RowCount": str(len(request_data))}
+        headers = {"CallerId": self.access_key,
+                   "RowCount": str(len(request_data))}
+
+        # Call the function to post the request and save it along with the response
+        response_data, response_status, _ = post_request_and_save(
+            request_data, url, headers, Integrations.GUARDRISK.name
+        )
+
+        return response_data, response_status
+    
+    def lifeCreditDaily(self, data, start_date, end_date, identifier):
+        path = "/DeltaV2/api/LifeCreditDaily"
+        request_data = prepare_life_credit_payload(
+            data, start_date, end_date, identifier
+        )
+
+        url = self.base_url + path
+        headers = {"CallerId": self.access_key,
+                   "RowCount": str(len(request_data))}
 
         # Call the function to post the request and save it along with the response
         response_data, response_status, _ = post_request_and_save(

@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from integrations.utils import getFrequencyNumber
 
 
 def prepare_life_credit_payload(
@@ -73,7 +74,7 @@ def prepare_life_credit_payload(
             "IncomeContinuationPremium": 0,
             "DreadDiseasePremium": 0,
             "RetrenchmentPremium": policy_details.get("retrenchment_premium", 0),
-            "PremiumFrequency": policy["premium_frequency"],
+            "PremiumFrequency": getFrequencyNumber(policy["premium_frequency"]),
             "PremiumType": premium_type,
             "DeathOriginalSumAssured": policy_details.get(
                 "death_original_sum_assured", 0
@@ -130,7 +131,7 @@ def prepare_life_credit_payload(
             "TotalReinsurancePremium": None,
             "TotalReinsurancePremiumPayable": None,
             "TotalFinancialReinsuranceCashflows": None,
-            "CommissionFrequency": policy["commission_frequency"],
+            "CommissionFrequency": getFrequencyNumber(policy["commission_frequency"]),
             "Commission": float(policy["commission_amount"]),
             "AdminBinderFees": policy["admin_fee"],
             "OutsourcingFees": None,
