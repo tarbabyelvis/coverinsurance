@@ -22,7 +22,6 @@ def bordrex_report_util(data_list):
             "policy_term": item["policy_term"],
             "sum_insured": item["sum_insured"],
             "expiry_date": item["expiry_date"],
-            "sum_insured": item["sum_insured"],
             "total_premium": item["total_premium"],
             "business_unit": item["business_unit"],
             "policy_status": item["policy_status"],

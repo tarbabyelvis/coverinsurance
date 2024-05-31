@@ -1,7 +1,12 @@
-from decimal import Decimal
 import traceback
-from rest_framework import serializers
+from datetime import datetime
+from datetime import timedelta
+from decimal import Decimal
+
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError, transaction
+from rest_framework import serializers
+
 from clients.models import ClientDetails, ClientEmploymentDetails
 from clients.serializers import ClientDetailsSerializer
 from config.models import BusinessSector, InsuranceCompany, Relationships
@@ -16,11 +21,6 @@ from policies.models import (
     PremiumPayment,
     PremiumPaymentScheduleLink,
 )
-from datetime import datetime
-from django.core.exceptions import ObjectDoesNotExist
-from datetime import timedelta
-from django.core.exceptions import ValidationError as DjangoValidationError
-from rest_framework.validators import UniqueValidator
 
 
 class BeneficiarySerializer(serializers.ModelSerializer):

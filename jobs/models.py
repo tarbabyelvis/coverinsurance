@@ -1,4 +1,3 @@
-# models.py
 from django.db import models
 from celery import current_app
 from jobs.enums import Processes
@@ -28,17 +27,6 @@ class Task(models.Model):
             "schedule": self.cron_schedule,  # Use the cron schedule from the model
             "args": (self.pk,),
         }
-
-    # def save(self, *args, **kwargs):
-    #     super().save(*args, **kwargs)
-    #     app = current_app._get_current_object()
-
-    #     # Dynamically add the task to CELERY_BEAT_SCHEDULE
-    #     app.conf.CELERY_BEAT_SCHEDULE[f"task_{self.pk}"] = {
-    #         "task": f"jobs.tasks.{self.task}",
-    #         "schedule": self.cron_schedule,  # Use the cron schedule from the model
-    #         "args": (self.pk,),
-    #     }
 
 
 class TaskLog(models.Model):

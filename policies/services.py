@@ -1,27 +1,23 @@
-import copy
 import datetime
 import json
-
-from dateutil import parser
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List
 
 import openpyxl
+from dateutil import parser
 from django.db import transaction
 from django.forms import ValidationError
 
 from clients.enums import MaritalStatus
 from core.enums import PremiumFrequency
 from core.utils import get_dict_values, merge_dict_into_another, replace_keys
-from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, FUNERAL_POLICY_BENEFICIARY_COLUMNS, \
+from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS
+from policies.constants import FUNERAL_POLICY_BENEFICIARY_COLUMNS, \
     FUNERAL_POLICY_CLIENT_COLUMNS, DEFAULT_BENEFICIARY_FIELDS
 from policies.models import Policy
-from policies.serializers import ClientPolicyRequestSerializer, BeneficiarySerializer
-from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS
-from policies.models import Policy
+from policies.serializers import BeneficiarySerializer
 from policies.serializers import ClientPolicyRequestSerializer, PremiumPaymentSerializer
-
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +121,10 @@ def upload_funeral_clients_and_policies(
     #     client_policy_data = client_policy_future.result()
     #
     #     policy_beneficiary_data = policy_beneficiary_future.result()
-    client_policy_data = process_worksheet(wb, "Funeral All", FUNERAL_POLICY_CLIENT_COLUMNS,"client_policy")
+    client_policy_data = process_worksheet(wb, "Funeral All", FUNERAL_POLICY_CLIENT_COLUMNS, "client_policy")
 
-    policy_beneficiary_data = process_worksheet(wb, "Beneficiary Details", FUNERAL_POLICY_BENEFICIARY_COLUMNS,"beneficiary")
+    policy_beneficiary_data = process_worksheet(wb, "Beneficiary Details", FUNERAL_POLICY_BENEFICIARY_COLUMNS,
+                                                "beneficiary")
 
     client_policy_beneficiary_data = match_beneficiaries_to_policies(policy_beneficiary_data, client_policy_data)
 
@@ -152,7 +149,7 @@ def extract_funeral_json_fields(dictionary):
         return dictionary
 
 
-def extract_funeral_dependant_fields(client_details)-> List[Dict[str, Any]]:
+def extract_funeral_dependant_fields(client_details) -> List[Dict[str, Any]]:
     client_policy_beneficiary_dependents = []
     for client in client_details:
         dependents_list = []
@@ -174,7 +171,8 @@ def extract_funeral_dependant_fields(client_details)-> List[Dict[str, Any]]:
                             "number": dependent_number,
                             "dependant_gender": gender_mapping.get(
                                 client["policy_details"].get(f"dependent_{dependent_number}_gender "), "Unknown"),
-                            "dependant_dob": parser.parse(str(date_of_birth)).strftime("%Y-%m-%d") if date_of_birth != "1900-01-01" else None,
+                            "dependant_dob": parser.parse(str(date_of_birth)).strftime(
+                                "%Y-%m-%d") if date_of_birth != "1900-01-01" else None,
                             "relationship": 1
                         }
                         dependents_list.append(dependent)
@@ -192,7 +190,8 @@ def extract_funeral_dependant_fields(client_details)-> List[Dict[str, Any]]:
                             client["policy_details"].get(f"spouse_surname ")),
                         "dependant_gender": gender_mapping.get(client["policy_details"].get(f"spouse_gender "),
                                                                "Unknown"),
-                        "dependant_dob": parser.parse(str(spouse_dob)).strftime("%Y-%m-%d") if spouse_dob != "1900-01-01" else None,
+                        "dependant_dob": parser.parse(str(spouse_dob)).strftime(
+                            "%Y-%m-%d") if spouse_dob != "1900-01-01" else None,
                         "relationship": 2
                     }
                     dependents_list.append(dependent)
@@ -436,7 +435,7 @@ def save_policy_beneficiary_data(policy_beneficiary_data: List[Dict[str, Any]]) 
 
 @transaction.atomic
 def upload_buk_repayments(
-    file_obj: Any, repayment_columns
+        file_obj: Any, repayment_columns
 ) -> None:
     print("The columns loaded")
     received_repayment_columns = repayment_columns
@@ -467,7 +466,7 @@ def upload_buk_repayments(
         repayment_data = {k: row_dict[k] for k in received_repayment_columns}
 
         # Search Policy By LoanId
-        policy = Policy.objects.filter(policy_number = repayment_data['policy_id'])
+        policy = Policy.objects.filter(policy_number=repayment_data['policy_id'])
 
         # Raise an error so that it rows back the other transactions
         if not policy.exists():
@@ -481,11 +480,3 @@ def upload_buk_repayments(
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
-
-
-
-
-
-
-
