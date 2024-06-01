@@ -2,7 +2,7 @@ import json
 from datetime import date, datetime
 
 from config.models import Relationships
-from integrations.utils import get_frequency_number
+from integrations.utils import get_frequency_number, populate_dependencies
 
 
 def prepare_life_credit_payload(
@@ -25,6 +25,11 @@ def prepare_life_credit_payload(
             policy_dependants,
         )
         spouse = list(spouse)
+        other_dependants_filter = filter(
+            lambda x: x if relationships[x["relationship"]].lower() != "spouse" else None,
+            policy_dependants,
+        )
+        other_dependants = list(other_dependants_filter)
         try:
             print(f'policy id being loaded {policy["id"]}')
             policy_details = json.loads(policy["policy_details"])
@@ -157,7 +162,7 @@ def prepare_life_credit_payload(
                 "PostalCode": client["postal_code"],
                 "PrincipalTelephoneNumber": client["phone_number"],
                 "PrincipalMemberEmailAddress": client.get("email", ""),
-                "IncomeGroup": "L",
+                "IncomeGroup": policy_details.get("income_group", ""),
             }
             # add spouse if they exists
             # split full name it first name middlename and last name
@@ -206,5 +211,9 @@ def prepare_life_credit_payload(
                 details["SpouseCoverAmount"] = ""
                 details["SpouseInitials"] = ""
                 details["SpouseIndicator"] = 'N'
+
+            populate_dependencies(other_dependants, details)
+
             result.append(details)
+
     return result

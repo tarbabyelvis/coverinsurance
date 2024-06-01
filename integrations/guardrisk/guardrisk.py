@@ -7,6 +7,10 @@ from integrations.guardrisk.data.life_funeral import (
 from integrations.utils import post_request_and_save
 
 
+def create_url(base: str, path: str):
+    return base + path
+
+
 class GuardRisk:
     def __init__(self, access_key, base_url):
         self.access_key = access_key
@@ -23,7 +27,7 @@ class GuardRisk:
 
     def __life_claims(self, claim_data, start_date, end_date, path):
         request_data = prepare_life_claims_payload(claim_data, start_date, end_date)
-        url = self.base_url + path
+        url = create_url(self.base_url, path)
         data_size = len(request_data)
         print(f'submitting {data_size} claims')
         print(f'request sent:: {request_data}')
@@ -49,7 +53,7 @@ class GuardRisk:
 
     def __life_funeral(self, data, start_date, end_date, path):
         request_data = prepare_life_funeral_payload(data, start_date, end_date)
-        url = self.base_url + path
+        url = create_url(self.base_url, path)
         data_size = len(request_data)
         print(f'submitting {data_size} funeral policies')
         print(f'request sent:: {request_data}')
@@ -80,7 +84,7 @@ class GuardRisk:
         data_size = len(request_data)
         print(f'submitting {data_size} policies')
         print(f'request sent:: {request_data}')
-        url = self.base_url + path
+        url = create_url(self.base_url, path)
         headers = {"CallerId": self.access_key,
                    "RowCount": str(data_size)}
 

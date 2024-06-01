@@ -129,7 +129,7 @@ def last_day_of_previous_month():
     return first_day_of_current_month - timedelta(days=1)
 
 
-def get_initial_letter(string):
-    if string:
-        return str[0]
+def get_initial_letter(word: str):
+    if word:
+        return word[0]
     return ""

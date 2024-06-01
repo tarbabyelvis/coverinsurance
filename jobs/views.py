@@ -3,7 +3,8 @@ from core.http_response import HTTPResponse
 from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from jobs.services import credit_life, funeral_cover, credit_life_daily, funeral_cover_daily
+from jobs.services import credit_life, funeral_cover, credit_life_daily, funeral_cover_daily, life_claims_daily, \
+    life_claims
 from marshmallow import ValidationError
 
 
@@ -19,9 +20,7 @@ class LifeCreditDailyAPIView(APIView):
 
         This endpoint allows you to post a Guardrisk report job.
 
-        :param identifier:
         :param request: HTTP request object
-        :param report_type: Type of report
         :return: HTTP response indicating success or failure
         """
         try:
@@ -65,9 +64,7 @@ class LifeCreditAPIView(APIView):
 
         This endpoint allows you to post a Guardrisk report job.
 
-        :param identifier:
         :param request: HTTP request object
-        :param report_type: Type of report
         :return: HTTP response indicating success or failure
         """
         try:
@@ -144,7 +141,7 @@ class FuneralCoverDailyAPIView(APIView):
 
 class FuneralCoverAPIView(APIView):
     @swagger_auto_schema(
-        operation_description="Post Guardrisk report job",
+        operation_description="Post Guardrisk funeral cover report job",
         request_body=JobsSerializer,
         responses={200: "Request Successful", 409: "Conflict"},
     )
@@ -165,6 +162,92 @@ class FuneralCoverAPIView(APIView):
                     message="Request Successful",
                     status_code=status.HTTP_200_OK,
                 )
+        except ValidationError as e:
+            print("Validation Error: ", e)
+            return HTTPResponse.error(
+                message=e.messages,
+                status_code=status.HTTP_409_CONFLICT,
+            )
+        except KeyError as e:
+            print("Key Error: ", e)
+            return HTTPResponse.error(
+                message="Missing key in request data: " + str(e),
+                status_code=status.HTTP_409_CONFLICT,
+            )
+        except Exception as e:
+            print("Error: ", e)
+            return HTTPResponse.error(
+                message=str(e),
+                status_code=status.HTTP_409_CONFLICT,
+            )
+
+
+class LifeClaimsDailyAPIView(APIView):
+    @swagger_auto_schema(
+        operation_description="Post Guardrisk daily claims report job",
+        request_body=JobsSerializer,
+        responses={200: "Request Successful", 409: "Conflict"},
+    )
+    def post(self, request):
+        """
+        Post Guardrisk report job.
+
+        This endpoint allows you to post a Guardrisk claims report job.
+
+        :param request: HTTP request object
+        :return: HTTP response indicating success or failure
+        """
+        try:
+            serializer = JobsSerializer(data=request.data)
+            if serializer.is_valid(raise_exception=True):
+                life_claims_daily(**serializer.validated_data)
+            return HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+            )
+        except ValidationError as e:
+            print("Validation Error: ", e)
+            return HTTPResponse.error(
+                message=e.messages,
+                status_code=status.HTTP_409_CONFLICT,
+            )
+        except KeyError as e:
+            print("Key Error: ", e)
+            return HTTPResponse.error(
+                message="Missing key in request data: " + str(e),
+                status_code=status.HTTP_409_CONFLICT,
+            )
+        except Exception as e:
+            print("Error: ", e)
+            return HTTPResponse.error(
+                message=str(e),
+                status_code=status.HTTP_409_CONFLICT,
+            )
+
+
+class LifeClaimsAPIView(APIView):
+    @swagger_auto_schema(
+        operation_description="Post Guardrisk daily report job",
+        request_body=JobsSerializer,
+        responses={200: "Request Successful", 409: "Conflict"},
+    )
+    def post(self, request):
+        """
+        Post Guardrisk report job.
+
+        This endpoint allows you to post a Guardrisk claims report job.
+
+        :param request: HTTP request object
+        :return: HTTP response indicating success or failure
+        """
+        try:
+            serializer = JobsSerializer(data=request.data)
+            if serializer.is_valid(raise_exception=True):
+                life_claims(**serializer.validated_data)
+            return HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+            )
         except ValidationError as e:
             print("Validation Error: ", e)
             return HTTPResponse.error(

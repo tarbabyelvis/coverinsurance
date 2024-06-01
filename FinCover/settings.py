@@ -15,11 +15,11 @@ from celery.schedules import crontab
 from dotenv import load_dotenv
 
 from datetime import timedelta
+
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
@@ -42,7 +42,6 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ORIGIN_ALLOW_ALL = True
-
 
 # Application definition
 
@@ -122,9 +121,7 @@ TEMPLATES = [
     },
 ]
 
-
 WSGI_APPLICATION = "FinCover.wsgi.application"
-
 
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
@@ -187,7 +184,6 @@ DATABASES = {
     },
 }
 
-
 # DATABASES = {
 #     "default": {
 #         "ENGINE": "django_tenants.postgresql_backend",
@@ -220,7 +216,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
@@ -231,7 +226,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
@@ -253,27 +247,28 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {
-        "console": {
-            "level": "INFO",
-            "class": "logging.StreamHandler",
-            "filters": ["tenant_context"],  # tenant config
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'django_request.log',
+            'formatter': 'verbose',
         },
     },
     "loggers": {
-        "django": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": True,
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
         },
-        "django.request": {
-            "handlers": ["console"],
-            "level": "ERROR",
-            "propagate": False,
-        },
-        "": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": True,
+        '__main__': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
         },
     },
     # tenant configs
@@ -283,7 +278,17 @@ LOGGING = {
     "formatters": {
         "tenant_context": {
             "format": "[%(schema_name)s:%(domain_url)s] "
-            "%(levelname)-7s %(asctime)s %(message)s",
+                      "%(levelname)-7s %(asctime)s %(message)s",
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
         },
     },
 }

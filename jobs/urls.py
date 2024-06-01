@@ -24,4 +24,14 @@ urlpatterns = [
         FuneralCoverAPIView.as_view(),
         name="funeral-submission",
     ),
+    path(
+        "claims-submission/",
+        LifeClaimsAPIView.as_view(),
+        name="claims-submission",
+    ),
+    path(
+        "claims-daily-submission/",
+        LifeClaimsDailyAPIView.as_view(),
+        name="claims-daily-submission",
+    ),
 ]

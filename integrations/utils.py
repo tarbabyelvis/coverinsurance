@@ -33,7 +33,7 @@ def post_request_and_save(request_data, url, headers, service):
     return response_data, response_status, life_payments_request
 
 
-def get_frequency_number(frequency):
+def get_frequency_number(frequency: str):
     if frequency == 'Monthly':
         return 12
     elif frequency == 'Quarterly':
@@ -59,3 +59,40 @@ def extract_nested_field(json_str, parent_field, nested_field):
         parent_str = parent_match.group(1)
         return extract_field(parent_str, nested_field)
     return None
+
+
+def populate_dependencies(other_dependants, details):
+    for dependant in other_dependants:
+        full_name = dependant["dependant_name"]
+        full_name = full_name.split(" ")
+        if len(full_name) == 1:
+            details[f"Dependent{dependant['index']}FirstName"] = full_name[0]
+            details[f"Dependent{dependant['index']}Initials"] = ""
+            details[f"Dependent{dependant['index']}Surname"] = ""
+        elif len(full_name) == 2:
+            details[f"Dependent{dependant['index']}FirstName"] = full_name[0]
+            details[f"Dependent{dependant['index']}Initials"] = ""
+            details[f"Dependent{dependant['index']}Surname"] = full_name[1]
+        elif len(full_name) == 3:
+            details[f"Dependent{dependant['index']}FirstName"] = full_name[0]
+            details[f"Dependent{dependant['index']}Initials"] = full_name[1]
+            details[f"Dependent{dependant['index']}Surname"] = full_name[2]
+        else:
+            details[f"Dependent{dependant['index']}FirstName"] = full_name[0]
+            details[f"Dependent{dependant['index']}Initials"] = " ".join(
+                full_name[1:-1]
+            )
+            details[f"Dependent{dependant['index']}Surname"] = full_name[-1]
+
+        details[f"Dependent{dependant['index']}ID"] = dependant[
+            "primary_id_number"
+        ]
+        details[f"Dependent{dependant['index']}Gender"] = dependant[
+            "dependant_gender"
+        ]
+        details[f"Dependent{dependant['index']}DateofBirth"] = dependant[
+            "dependant_dob"
+        ]
+        details[f"Dependent{dependant['index']}Type"] = dependant["type"]
+        details[f"Dependent{dependant['index']}CoverAmount"] = dependant["cover_amount"]
+        details[f"Dependent{dependant['index']}CoverCommencementDate"] = dependant["cover_commencement_date"]
