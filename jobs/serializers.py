@@ -13,5 +13,4 @@ class JobsSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     "End Date cannot be less than Start Date."
                 )
-
         return data

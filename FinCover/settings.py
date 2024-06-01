@@ -14,7 +14,7 @@ import os
 from celery.schedules import crontab
 from dotenv import load_dotenv
 
-from datetime import timedelta
+from .file_handler import DailyRotatingFileHandler
 
 load_dotenv()
 
@@ -243,6 +243,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SHOW_PUBLIC_IF_NO_TENANT_FOUND = True
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+
+# Ensure the logs directory exists
+if not os.path.exists(LOGS_DIR):
+    os.makedirs(LOGS_DIR)
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -253,9 +261,10 @@ LOGGING = {
             'formatter': 'simple',
         },
         'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': 'django_request.log',
+            'level': 'DEBUG',
+            'class': DailyRotatingFileHandler,
+            'directory': os.path.join(BASE_DIR, 'logs'),
+            'prefix': 'cover-admin',
             'formatter': 'verbose',
         },
     },
@@ -300,17 +309,17 @@ CELERY_RESULT_BACKEND = "redis://localhost:6379/0"  # Redis URL for results
 
 CELERY_BEAT_SCHEDULE = {
     "task1": {
-        "task": "yourapp.tasks.process_task1",
+        "task": "jobs.tasks.process_task1",
         # Replace with your cron schedule
         "schedule": crontab(minute=0, hour=0),
     },
     "task2": {
-        "task": "yourapp.tasks.process_task2",
+        "task": "jobs.tasks.process_task2",
         # Replace with your cron schedule
         "schedule": crontab(minute=0, hour=0),
     },
     "task3": {
-        "task": "yourapp.tasks.process_task3",
+        "task": "jobs.tasks.process_task3",
         # Replace with your cron schedule
         "schedule": crontab(minute=0, hour=0),
     },

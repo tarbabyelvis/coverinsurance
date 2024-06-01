@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from policies.serializers import PolicySerializer
 from .models import Claim, ClaimDocument
 from config.models import ClaimType, DocumentType, IdDocumentType
 
@@ -22,8 +24,10 @@ class ClaimDocumentSerializer(serializers.ModelSerializer):
 
 
 class ClaimSerializer(serializers.ModelSerializer):
-    claim_type = serializers.PrimaryKeyRelatedField(queryset=ClaimType.objects.all())
+    # claim_type = serializers.PrimaryKeyRelatedField(queryset=ClaimType.objects.all())
+    claim_type = ClaimTypeSerializer(read_only=True)
     claim_document = ClaimDocumentSerializer(many=True, required=False)
+    policy = PolicySerializer(read_only=True)
 
     class Meta:
         model = Claim

@@ -28,9 +28,9 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date):
     end_date = end_date.strftime("%Y/%m/%d")
     result = []
     for claim in data:
-        log.debug('Processing claim: {}'.format(claim))
+        print('Processing claim: {}'.format(claim))
         policy = claim["policy"]
-        log.debug(f'Policy found: {policy}')
+        print(f'Policy found: {policy}')
         insurer = policy["insurer"]
         try:
             policy_details = json.loads(policy["policy_details"])
@@ -63,8 +63,8 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date):
                 "ClaimantIDNumber": claim["claimant_id_number"],
                 "ClaimEventDescription": claim["claim_details"],
                 "ClaimType": "L",  # TODO add the claim type in model either L(Lumpsum) or I(Installment)
-                "DateOfClaimEvent": claim["submitted-date"],
-                "DateOfClaimFirstNotification": claim["submitted-date"],
+                "DateOfClaimEvent": claim["submitted_date"],
+                "DateOfClaimFirstNotification": claim["submitted_date"],
                 "DateOfClaimFirstPayment": claim["claim_paid_date"],
                 "DateOfClaimLastPayment": claim["claim_paid_date"],  # TODO check the correct date
                 "CurrentMonthlyClaimPayment": claim["claim_amount"],  # TODO add claim monthly claim payment
