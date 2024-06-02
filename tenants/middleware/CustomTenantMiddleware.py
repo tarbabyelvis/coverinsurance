@@ -1,6 +1,7 @@
 from django_tenants.middleware import TenantMiddleware
 from django.http import Http404
 
+
 class CustomTenantMiddleware(TenantMiddleware):
     def process_request(self, request):
         try:

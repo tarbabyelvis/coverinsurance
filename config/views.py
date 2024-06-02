@@ -1,8 +1,8 @@
-from rest_framework.views import APIView
-from core.http_response import HTTPResponse
-from .models import *
-from .serializers import *
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework.views import APIView
+
+from core.http_response import HTTPResponse
+from .serializers import *
 
 
 class PolicyNameList(APIView):

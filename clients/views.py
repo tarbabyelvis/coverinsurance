@@ -1,19 +1,21 @@
 import logging
+from datetime import datetime
+
+from django.db.models import Q
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+from marshmallow import ValidationError
+from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.views import APIView
+
+from clients.models import ClientDetails, ClientEmploymentDetails
 from clients.services import upload_clients
 from core.http_response import HTTPResponse
-from rest_framework.views import APIView
-from rest_framework import status
-from clients.models import ClientDetails, ClientEmploymentDetails
 from core.utils import CustomPagination
-from .serializers import ClientDetailsSerializer, ExcelSchema, ClientEmploymentDetailsSerializer
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-from marshmallow import ValidationError
-from django.shortcuts import get_object_or_404
-from django.http import Http404
-from django.db.models import Q
-from datetime import datetime
+from .serializers import ClientDetailsSerializer, ExcelSchema
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,6 @@
 from typing import List
-from datetime import date, datetime
+from django.db import connection
+from datetime import date, datetime, timedelta
 from rest_framework.pagination import PageNumberPagination
 
 
@@ -109,3 +110,26 @@ def serialize_dates(obj):
         return [serialize_dates(item) for item in obj]
     else:
         return obj
+
+
+def get_current_schema():
+    with connection.cursor() as cursor:
+        cursor.execute("SHOW search_path")
+        row = cursor.fetchone()
+    return row[0] if row else None
+
+
+def first_day_of_previous_month():
+    return last_day_of_previous_month().replace(day=1)
+
+
+def last_day_of_previous_month():
+    today = datetime.today()
+    first_day_of_current_month = today.replace(day=1)
+    return first_day_of_current_month - timedelta(days=1)
+
+
+def get_initial_letter(word: str):
+    if word:
+        return word[0]
+    return ""

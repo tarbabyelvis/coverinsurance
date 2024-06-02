@@ -1,4 +1,23 @@
+import json
 from datetime import date, datetime
+
+from config.models import Relationships
+from core.utils import get_initial_letter
+from integrations.utils import get_frequency_number, populate_dependencies
+
+client_identifier = 75
+division_identifier = "0001"
+product_option = "all"
+premium_type = "Regular"
+death_cover_structure = "L"
+ptd_cover_structure = "L"
+retrenchment_cover_structure = "L"
+death_cover_benefit_payment_period = 1
+ptd_cover_benefit_payment_period = 1
+retrenchment_death_payment_period = 30
+death_waiting_period = 3
+ptd_waiting_period = 3
+retrenchment_waiting_period = 6
 
 
 def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
@@ -6,162 +25,164 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
     timestamp = original_date.strftime("%Y/%m/%d")
     start_date = start_date.strftime("%Y/%m/%d")
     end_date = end_date.strftime("%Y/%m/%d")
-    insurer = policy["insurer"]
 
     result = []
+    relationships = Relationships.objects.all()
+    print("Preparing funeral data...")
     for policy in data:
-        client = policy["client"]
-        policy_beneficiary = policy["policy_beneficiary"]
-        # get spouse from dependants using relationship
-        spouse = filter(
-            lambda x: x if x["relationship"].lower() == "spouse" else None,
-            policy["policy_dependants"],
-        )
-        spouse = list(spouse)
-        other_dependants = filter(
-            lambda x: x if x["relationship"].lower() != "spouse" else None,
-            policy["policy_dependants"],
-        )
-        other_dependants = list(other_dependants)
+        try:
+            print(f'policy id being loaded {policy["id"]}')
+            policy_details = json.loads(policy["policy_details"])
+            print(f'policy details successful:: {policy_details}')
+        except json.JSONDecodeError as e:
+            print(f"Invalid JSON data: {e}")
+        else:
+            print('1st stage ,,,')
+            insurer = policy["insurer"]
+            client = policy["client"]
+            policy_beneficiary = policy["policy_beneficiary"]
+            policy_dependants = policy["policy_dependants"]
+            no_of_dependencies = len(policy_dependants)
+            print(f'number of dependencies: {no_of_dependencies}')
+            # get spouse from dependants using relationship
+            spouse_filter = filter(
+                lambda x: x if relationships[x["relationship"]].name.lower() == "spouse" else None,
+                policy_dependants,
+            )
+            spouse = list(spouse_filter)
+            other_dependants = filter(
+                lambda x: x if relationships[x["relationship"]].lower() != "spouse" else None,
+                policy["policy_dependants"],
+            )
+            other_dependants = list(other_dependants)
+            number_of_dependencies = len(other_dependants)
+            insurer = policy["insurer"]
+            print(f'no of dependencies: {number_of_dependencies}')
+            details = {
+                "TimeStamp": timestamp,
+                "ReportPeriodStart": start_date,
+                "ReportPeriodEnd": end_date,
+                "AdministratorIdentifier": "Getsure",
+                "InsurerName": insurer.get("name", ""),
+                "ClientIdentifier": "143",
+                "DivisionIdentifier": division_identifier,
+                "SubSchemeName": "Getsure (Pty) Ltd",
+                "PolicyNumber": policy.get("policy_number", ""),
+                "ProductName": policy.get("product_name", ""),
+                "ProductOption": product_option,
+                "PolicyCommencementDate": policy.get("commencement_date", ""),
+                "PolicyExpiryDate": policy.get("expiry_date", ""),
+                "TermofPolicy": policy.get("policy_term", ""),
+                "PolicyStatus": policy.get("policy_status", ""),
+                "PolicyStatusDate": policy_details.get("policy_status_date", ""),
+                "NewPolicyIndicator": policy_details.get("new_policy_indicator", "P"),
+                "SalesChannel": policy_details.get("sales_channel", "Direct marketing via internet"),
+                "CancelledbyPolicyholderCoolingPeriodInsurer": "",
+                "DeathIndicator": policy_details.get("death_indicator", "Y"),
+                "PTDIndicator": "Y",
+                "IncomeContinuationIndicator": "N",
+                "PremiumFrequency": get_frequency_number(policy.get("premium_frequency", "Monthly")),
+                "PremiumType": premium_type,
+                "DeathOriginalSumAssured": policy.get("death_original_sum_assured", ""),
+                "PTDOriginalSumAssured": policy_details.get("ptd_original_sum_insured", ""),
+                "DeathCoverStructure": policy_details.get("death_cover_structure", "Lump sum"),
+                "DeathCurrentSumAssured": policy_details.get("death_current_sum_insured", ""),
+                "PTDCoverStructure": "Combined",
+                "ReinsurerName": "N/A",
+                "DeathCurrentRISumAssured": "N/A",
+                "DeathRIPremium": "N/A",
+                "DeathRIPercentage": "N/A",
+                "TotalPolicyPremiumCollected": policy["total_premium"],
+                "TotalPolicyPremiumPayable": policy["total_premium"],  # TODO subtract total premium from sum_insured
+                "TotalPolicyPremium": policy["total_premium"],
+                "TotalPolicyPremiumSubsidy": policy["total_premium"],
+                "TotalReinsurancePremium": policy["total_premium"],
+                "TotalReinsurancePremiumPayable": policy["total_premium"],
+                "TotalFinancialReinsuranceCashflows": policy["total_premium"],
+                "TotalFinancialReinsurancePayable": policy["total_premium"],
+                "CommissionFrequency": get_frequency_number(policy.get("commission_frequency", "Monthly")),
+                "Commission": policy["commission_amount"],
+                "AdminBinderFees": policy["admin_fee"],
+                "OutsourcingFees": None,
+                "MarketingAdvertisingFees": None,
+                "ManagementFees": policy_details.get("management_fee", ""),
+                "ClaimsHandlingFee": None,
+                "TotalGrossClaimAmount": None,
+                "GrossClaimPaid": None,
+                "ReinsuranceRecoveries": None,
+                "PrincipalSurname": client.get("last_name", ""),
+                "PrincipalFirstName": client.get("first_name", ""),
+                "PrincipalInitials": f"{get_initial_letter(client.get("first_name", ""))} {get_initial_letter(client.get("middle_name", ""))} {get_initial_letter(client.get("last_name", ""))}",
+                "PrincipalID": client.get("primary_id_number", ""),
+                "PrincipalGender": client.get("gender", "U"),
+                "PrincipalDateofBirth": client.get("date_of_birth", ""),
+                "PrincipalMemberPhysicalAddress": f"{client.get('address_street', '')} {client.get('address_suburb', '')} {client.get('address_town', '')} {client.get('address_province', '')}",
+                "PostalCode": client.get("postal_code", ""),
+                "PrincipalTelephoneNumber": client.get("phone_number", ""),
+                "PrincipalMemberEmailAddress": client.get("email", ""),
+                "IncomeGroup": "L",
+                "SpouseIndicator": "Y" if len(spouse) > 0 else "N",
+                "NumberofAdultDependents": f"{number_of_dependencies}",
+                "NumberofChildDependents": "",
+                "NumberofExtendedFamily": "",
+            }
+            print('details built,,,')
+            # add spouse if they exists
+            if spouse:
+                print('in spouse true')
+                print(f'spouse: {spouse}')
+                # split full name it first name middlename and last name
+                full_name = spouse[0]["dependant_name"]
+                print('full name built,,,')
+                full_name = full_name.split(" ")
+                if len(full_name) == 1:
+                    print('in name 1...')
+                    details["SpouseFirstName"] = full_name[0]
+                    details["SpouseMiddleName"] = ""
+                    details["SpouseSurname"] = ""
+                    details["SpouseInitials"] = full_name[0]
+                elif len(full_name) == 2:
+                    print('in name 2...')
+                    details["SpouseFirstName"] = full_name[0]
+                    details["SpouseMiddleName"] = ""
+                    details["SpouseSurname"] = full_name[1]
+                    details["SpouseInitials"] = f"{full_name[0][0]} {full_name[1][0]}"
+                elif len(full_name) == 3:
+                    print('in name 3...')
+                    details["SpouseFirstName"] = full_name[0]
+                    details["SpouseMiddleName"] = full_name[1]
+                    details["SpouseSurname"] = full_name[2]
+                    details["SpouseInitials"] = f"{full_name[0][0]} {full_name[1][0]} {full_name[2][0]}"
+                else:
+                    print('in name else...')
+                    details["SpouseFirstName"] = full_name[0]
+                    details["SpouseMiddleName"] = " ".join(full_name[1:-1])
+                    details["SpouseSurname"] = full_name[-1]
+                    details["SpouseInitials"] = f" {full_name[0][0]} {full_name[1][0]} {full_name[-1][0]}"
 
-        insurer = policy["insurer"]
-
-        policy_details = {
-            "TimeStamp": timestamp,
-            "ReportPeriodStart": start_date,
-            "ReportPeriodEnd": end_date,
-            "AdministratorIdentifier": "sample text 4",
-            "InsurerName": insurer.get("name", ""),
-            "ClientIdentifier": "00123",
-            "DivisionIdentifier": "sample text 6",
-            "SubSchemeName": "sample text 7",
-            "PolicyNumber": policy["policy_term"],
-            "ProductName": policy["product_name"],
-            "ProductOption": "sample text 10",
-            "PolicyCommencementDate": "sample text 11",
-            "PolicyExpiryDate": policy["expiry_date"],
-            "TermofPolicy": policy["policy_term"],
-            "PolicyStatus": policy["policy_status"],
-            "PolicyStatusDate": "sample text 15",
-            "NewPolicyIndicator": "sample text 16",
-            "SalesChannel": "sample text 17",
-            "CancelledbyPolicyholderCoolingPeriodInsurer": "sample text 18",
-            "DeathIndicator": "sample text 19",
-            "PremiumFrequency": "sample text 20",
-            "PremiumType": "sample text 21",
-            "DeathOriginalSumAssured": "sample text 22",
-            "DeathCoverStructure": "sample text 23",
-            "DeathCurrentSumAssured": "sample text 24",
-            "ReinsurerName": "sample text 25",
-            "DeathCurrentRISumAssured": "sample text 26",
-            "DeathRIPremium": "sample text 27",
-            "DeathRIPercentage": "sample text 28",
-            "TotalPolicyPremiumCollected": "sample text 29",
-            "TotalPolicyPremiumPayable": "sample text 30",
-            "TotalPolicyPremium": "sample text 31",
-            "TotalPolicyPremiumSubsidy": "sample text 32",
-            "TotalReinsurancePremium": "sample text 33",
-            "TotalReinsurancePremiumPayable": "sample text 34",
-            "TotalFinancialReinsuranceCashflows": "sample text 35",
-            "TotalFinancialReinsurancePayable": "sample text 36",
-            "CommissionFrequency": "sample text 37",
-            "Commission": "sample text 38",
-            "AdminBinderFees": "sample text 39",
-            "OutsourcingFees": "sample text 40",
-            "MarketingAdvertisingFees": "sample text 41",
-            "ManagementFees": "sample text 42",
-            "ClaimsHandlingFee": "sample text 43",
-            "TotalGrossClaimAmount": "sample text 44",
-            "GrossClaimPaid": "sample text 45",
-            "ReinsuranceRecoveries": "sample text 46",
-            "PrincipalSurname": client.get("last_name", ""),
-            "PrincipalFirstName": client.get("first_name", ""),
-            "PrincipalInitials": client.get("middle_name", ""),
-            "PrincipalID": client.get("primary_id_number", ""),
-            "PrincipalGender": client.get("gender", ""),
-            "PrincipalDateofBirth": client.get("date_of_birth", ""),
-            "PrincipalMemberPhysicalAddress": f"{client['address_street']} {client['address_suburb']} {client['address_town']} {client['address_province']}",
-            "PostalCode": client["postal_code"],
-            "PrincipalTelephoneNumber": client["phone_number"],
-            "PrincipalMemberEmailAddress": client.get("email", ""),
-            "IncomeGroup": "sample text 57",
-            "SpouseIndicator": "sample text 58",
-            "NumberofAdultDependents": "sample text 59",
-            "NumberofChildDependents": "sample text 60",
-            "NumberofExtendedFamily": "sample text 61",
-        }
-        # add spouse if they exists
-        if spouse:
-            # split full name it first name middlename and last name
-            full_name = spouse[0]["dependant_name"]
-            full_name = full_name.split(" ")
-            if len(full_name) == 1:
-                policy_details["SpouseName"] = full_name[0]
-                policy_details["SpouseMiddleName"] = ""
-                policy_details["SpouseLastName"] = ""
-            elif len(full_name) == 2:
-                policy_details["SpouseName"] = full_name[0]
-                policy_details["SpouseMiddleName"] = ""
-                policy_details["SpouseLastName"] = full_name[1]
-            elif len(full_name) == 3:
-                policy_details["SpouseName"] = full_name[0]
-                policy_details["SpouseMiddleName"] = full_name[1]
-                policy_details["SpouseLastName"] = full_name[2]
+                spouse = spouse[0]
+                details["SpouseID"] = spouse.get("primary_id_number", "")
+                details["SpouseGender"] = spouse.get("dependant_gender")
+                details["SpouseDateofBirth"] = spouse.get("dependant_dob")
+                details["SpouseCoverAmount"] = spouse.get("cover_amount", "0.00")
+                details["SpouseCoverCommencementDate"] = spouse.get("cover_commencement_date", "0.00")
+                details["SpouseIndicator"] = 'Y'
             else:
-                policy_details["SpouseName"] = full_name[0]
-                policy_details["SpouseMiddleName"] = " ".join(full_name[1:-1])
-                policy_details["SpouseLastName"] = full_name[-1]
+                details["SpouseFirstName"] = ""
+                details["SpouseMiddleName"] = ""
+                details["SpouseSurname"] = ""
+                details["SpouseID"] = ""
+                details["SpouseGender"] = ""
+                details["SpouseDateofBirth"] = ""
+                details["SpouseCoverAmount"] = ""
+                details["SpouseInitials"] = ""
+                details["SpouseIndicator"] = 'N'
 
-            spouse = spouse[0]
-            policy_details["SpouseID"] = spouse["primary_id_number"]
-            policy_details["SpouseGender"] = spouse["dependant_gender"]
-            policy_details["SpouseDateofBirth"] = spouse["dependant_dob"]
-            # policy_details["SpouseCoverAmount"] = spouse["cover_amount"]
-            # policy_details["SpouseCoverCommencementDate"] = spouse[
-            #     "cover_commencement_date"
-            # ]
+                # add dependants of they exists
+            print('did we get past dependencies...')
+            print(f'other deps len: {len(other_dependants)}')
+            populate_dependencies(other_dependants, details)
 
-        # add dependants of they exists
-        for dependant in other_dependants:
-            # split full name it first name middlename and last name
-            full_name = dependant["dependant_name"]
-            full_name = full_name.split(" ")
-            if len(full_name) == 1:
-                policy_details[f"Dependent{dependant['index']}FirstName"] = full_name[0]
-                policy_details[f"Dependent{dependant['index']}Initials"] = ""
-                policy_details[f"Dependent{dependant['index']}Surname"] = ""
-            elif len(full_name) == 2:
-                policy_details[f"Dependent{dependant['index']}FirstName"] = full_name[0]
-                policy_details[f"Dependent{dependant['index']}Initials"] = ""
-                policy_details[f"Dependent{dependant['index']}Surname"] = full_name[1]
-            elif len(full_name) == 3:
-                policy_details[f"Dependent{dependant['index']}FirstName"] = full_name[0]
-                policy_details[f"Dependent{dependant['index']}Initials"] = full_name[1]
-                policy_details[f"Dependent{dependant['index']}Surname"] = full_name[2]
-            else:
-                policy_details[f"Dependent{dependant['index']}FirstName"] = full_name[0]
-                policy_details[f"Dependent{dependant['index']}Initials"] = " ".join(
-                    full_name[1:-1]
-                )
-                policy_details[f"Dependent{dependant['index']}Surname"] = full_name[-1]
-
-            policy_details[f"Dependent{dependant['index']}ID"] = dependant[
-                "primary_id_number"
-            ]
-            policy_details[f"Dependent{dependant['index']}Gender"] = dependant[
-                "dependant_gender"
-            ]
-            policy_details[f"Dependent{dependant['index']}DateofBirth"] = dependant[
-                "dependant_dob"
-            ]
-            # policy_details[f"Dependent{dependant['index']}Type"] = dependant["type"]
-            # policy_details[f"Dependent{dependant['index']}CoverAmount"] = dependant[
-            #     "cover_amount"
-            # ]
-            # policy_details[f"Dependent{dependant['index']}CoverCommencementDate"] = (
-            #     dependant["cover_commencement_date"]
-            # )
-
-        result.append(policy_details)
+            result.append(details)
 
     return result

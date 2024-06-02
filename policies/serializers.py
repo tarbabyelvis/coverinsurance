@@ -1,7 +1,12 @@
-from decimal import Decimal
 import traceback
-from rest_framework import serializers
+from datetime import datetime
+from datetime import timedelta
+from decimal import Decimal
+
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError, transaction
+from rest_framework import serializers
+
 from clients.models import ClientDetails, ClientEmploymentDetails
 from clients.serializers import ClientDetailsSerializer
 from config.models import BusinessSector, InsuranceCompany, Relationships
@@ -16,11 +21,6 @@ from policies.models import (
     PremiumPayment,
     PremiumPaymentScheduleLink,
 )
-from datetime import datetime
-from django.core.exceptions import ObjectDoesNotExist
-from datetime import timedelta
-from django.core.exceptions import ValidationError as DjangoValidationError
-from rest_framework.validators import UniqueValidator
 
 
 class BeneficiarySerializer(serializers.ModelSerializer):
@@ -86,61 +86,11 @@ class PolicyPaymentScheduleSerializer(serializers.ModelSerializer):
 class PolicySerializer(serializers.ModelSerializer):
     beneficiaries = BeneficiarySerializer(required=False, many=True)
     dependants = DependantSerializer(required=False, many=True)
+    insurer = InsuranceCompanySerializer(read_only=True)
 
     def validate_policy_number(self, value):
         print("Validating policy number")
         return value
-
-    # def validate(self, data):
-    #     print("validating policy")
-    #     errors = {}
-
-    #     # Define fields that should not be None
-    #     non_nullable_fields = [
-    #         "policy_type",
-    #         "client",
-    #         "sum_insured",
-    #         "insurer",
-    #         "policy_status",
-    #     ]
-
-    #     # Remove the UniqueValidator for policy_number if it exists
-    #     unique_validators = [
-    #         validator
-    #         for validator in self.fields.get("policy_number").validators
-    #         if isinstance(validator, UniqueValidator)
-    #     ]
-    #     for validator in unique_validators:
-    #         self.fields["policy_number"].validators.remove(validator)
-
-    #     # Iterate over each field in the serializer
-    #     for field_name, value in data.items():
-    #         # Get the corresponding model field
-    #         model_field = self.fields[field_name]
-
-    #         # Check if the field is supposed to be non-nullable
-    #         if field_name in non_nullable_fields and value is None:
-    #             errors[field_name] = ["This field cannot be None."]
-    #             continue
-
-    #         # Validate the data type
-    #         try:
-    #             if value is not None:
-    #                 data[field_name] = model_field.to_internal_value(value)
-
-    #         except serializers.ValidationError as e:
-    #             print(f"Error with datatypes for {field_name} {value}")
-    #             errors[field_name] = e.detail
-    #         except DjangoValidationError as e:
-    #             errors[field_name] = f"Invalid email address {value}"
-    #         except Exception as e:
-    #             print("Error: ", e)
-
-    #     if errors:
-    #         print("Error validation")
-    #         raise serializers.ValidationError(errors)
-    #     print("Done validation policy data")
-    #     return data
 
     def to_internal_value(self, data):
         # Convert QueryDict to a mutable dictionary

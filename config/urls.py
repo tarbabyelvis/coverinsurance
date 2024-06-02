@@ -1,6 +1,6 @@
 from django.urls import path
-from config.views import AgentList, BusinessSectorList, ClaimFieldsAPIView, ClaimTypeList, DocumentTypeList, IdDocumentTypeList, InsuranceCompanyList, PolicyNameList, PolicyTypeFieldsAPIView, RelationshipsList
-
+from config.views import AgentList, BusinessSectorList, ClaimFieldsAPIView, ClaimTypeList, DocumentTypeList, \
+    IdDocumentTypeList, InsuranceCompanyList, PolicyNameList, PolicyTypeFieldsAPIView, RelationshipsList
 
 app_name = 'config'
 urlpatterns = [

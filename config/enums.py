@@ -2,7 +2,7 @@ from django.db import models
 
 
 class PolicyType(models.TextChoices):
-    FUNERAL_COVERAGE = (
+    FUNERAL_COVER = (
         "FUNERAL_COVER",
         "Funeral Cover",
     )
