@@ -3,8 +3,7 @@ from core.http_response import HTTPResponse
 from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from jobs.services import credit_life, funeral_cover, credit_life_daily, funeral_cover_daily, life_claims_daily, \
-    life_claims
+from jobs.services import credit_life
 from marshmallow import ValidationError
 
 

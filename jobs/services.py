@@ -4,7 +4,7 @@ from datetime import datetime
 from claims.models import Claim
 from claims.serializers import ClaimSerializer
 from config.enums import PolicyType
-from core.utils import first_day_of_previous_month, last_day_of_previous_month, get_current_schema
+from core.utils import first_day_of_previous_month, last_day_of_previous_month
 from integrations.enums import Integrations
 from integrations.guardrisk.guardrisk import GuardRisk
 from integrations.models import IntegrationConfigs
@@ -19,39 +19,55 @@ today_start_date = datetime.today()
 today_end_date = datetime.today()
 
 
+def daily_job_postings():
+    
+
 def credit_life_daily(start_date=today_start_date, end_date=today_end_date):
-    identifier = "CREDIT_LIFE_DAILY"
-    __credit_life(identifier, start_date, end_date)
+    __credit_life(start_date, end_date)
 
 
 def credit_life(start_date=first_day_of_previous_month, end_date=last_day_of_previous_month):
-    identifier = "CREDIT_LIFE"
-    __credit_life(identifier, start_date, end_date)
+    __credit_life(start_date, end_date, False)
 
 
 def __credit_life(
-        identifier, start_date, end_date
+        start_date, end_date, is_daily_submission=True
 ):
-    task = fetch_tasks(identifier)
-    integration = fetch_configs(identifier)
-    log = create_task_logs(task)
+    nifty_integration_configs = fetch_configs(identifier='Nifty Cover')
+    indlu_integration_configs = fetch_configs(identifier='Indlu')
     try:
         # fetch the data
-        policy = __fetch_policies(start_date, end_date, PolicyType.CREDIT_LIFE)
+        policies = __fetch_policies(start_date, end_date, PolicyType.CREDIT_LIFE)
 
-        if not policy.exists():
+        if not policies.exists():
             print("Empty")
             raise Exception("Policies are empty")
 
-        serializer = PolicyDetailSerializer(policy, many=True).data
-        guardrisk = GuardRisk(integration.access_key, integration.base_url)
-        is_daily_submission = identifier == "CREDIT_LIFE_DAILY"
-        daily_function_called = guardrisk.life_credit_daily(serializer, start_date, end_date,
-                                                            'Getsure')  # TODO Add the clientAdmin company pproperly
-        monthly_function_called = guardrisk.life_credit(serializer, start_date, end_date, 'Getsure')
+        policies_data = PolicyDetailSerializer(policies, many=True).data
+        nifty_policies_filter = filter(lambda p: p.entity == 'Nifty Cover', policies_data)
+        indlu_policies_filter = filter(lambda p: p.entity == 'Indlu', policies_data)
+        nifty_policies = list(nifty_policies_filter)
+        indlu_policies = list(indlu_policies_filter)
+
+        process_credit_life(nifty_policies, nifty_integration_configs, is_daily_submission)
+        process_credit_life(indlu_policies, indlu_integration_configs, is_daily_submission)
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        raise Exception(e)
+
+
+def process_credit_life(data, integration_configs, start_date, end_date, is_daily_submission=True):
+    task = fetch_tasks('Credit Life Daily' if is_daily_submission else 'Credit Life Monthly')
+    log = create_task_logs(task)
+    try:
+        guard_risk = GuardRisk(integration_configs.access_key, integration_configs.base_url)
+        client_identifier = integration_configs.client_identifier
+        daily_function_called = guard_risk.life_credit_daily(data, start_date, end_date, client_identifier)
+        monthly_function_called = guard_risk.life_credit(data, start_date, end_date, client_identifier)
         data, response_status = daily_function_called if is_daily_submission else monthly_function_called
-        log.data = data
         print(response_status)
+        log.data = data
         if str(response_status).startswith("2"):
             log.status = "completed"
             log.save()
@@ -65,40 +81,51 @@ def __credit_life(
         log.save()
         raise Exception(e)
 
-
-def funeral_cover_daily(start_date=today_start_date, end_date=today_end_date):
-    identifier = "LIFE_FUNERAL_DAILY"
-    __funeral_cover(identifier, start_date, end_date)
+    return data, response_status
 
 
-def funeral_cover(start_date=first_day_of_previous_month, end_date=last_day_of_previous_month):
-    identifier = "LIFE_FUNERAL"
-    __funeral_cover(identifier, start_date, end_date)
+def life_funeral_daily(start_date=today_start_date, end_date=today_end_date):
+    __life_funeral(start_date, end_date)
 
 
-def __funeral_cover(identifier, start_date, end_date):
-    task = fetch_tasks(identifier)
-    integration = fetch_configs(identifier)
-    log = create_task_logs(task)
+def life_funeral(start_date=first_day_of_previous_month, end_date=last_day_of_previous_month):
+    __life_funeral(start_date, end_date, False)
+
+
+def __life_funeral(
+        start_date, end_date, is_daily_submission=True
+):
+    nifty_integration_configs = fetch_configs(identifier='Nifty Cover')
     try:
         # fetch the data
-        policy = __fetch_policies(
-            start_date,
-            end_date,
-            PolicyType.FUNERAL_COVER,
-        )
-        if not policy.exists():
+        policies = __fetch_policies(start_date, end_date, PolicyType.FUNERAL_COVER)
+
+        if not policies.exists():
             print("Empty")
             raise Exception("Policies are empty")
 
-        serializer = PolicyDetailSerializer(policy, many=True).data
-        guardrisk = GuardRisk(integration.access_key, integration.base_url)
-        is_daily = identifier == "FUNERAL_COVER_DAILY"
-        daily_function_called = guardrisk.life_funeral_daily(serializer, start_date, end_date)
-        monthly_function_called = guardrisk.life_funeral(serializer, start_date, end_date)
-        data, response_status = daily_function_called if is_daily else monthly_function_called
-        log.data = data
+        policies_data = PolicyDetailSerializer(policies, many=True).data
+        nifty_policies_filter = filter(lambda p: p.entity == 'Nifty Cover', policies_data)
+        nifty_policies = list(nifty_policies_filter)
+
+        process_life_funeral(nifty_policies, nifty_integration_configs, is_daily_submission)
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        raise Exception(e)
+
+
+def process_life_funeral(data, integration_configs, start_date, end_date, is_daily_submission=True):
+    task = fetch_tasks('Life Funeral Daily' if is_daily_submission else 'Life Funeral Monthly')
+    log = create_task_logs(task)
+    try:
+        guard_risk = GuardRisk(integration_configs.access_key, integration_configs.base_url)
+        client_identifier = integration_configs.client_identifier
+        daily_function_called = guard_risk.life_funeral_daily(data, start_date, end_date, client_identifier)
+        monthly_function_called = guard_risk.life_funeral(data, start_date, end_date, client_identifier)
+        data, response_status = daily_function_called if is_daily_submission else monthly_function_called
         print(response_status)
+        log.data = data
         if str(response_status).startswith("2"):
             log.status = "completed"
             log.save()
@@ -107,42 +134,60 @@ def __funeral_cover(identifier, start_date, end_date):
             log.save()
     except Exception as e:
         print(e)
+        traceback.print_exc()
         log.status = "failed"
         log.save()
+        raise Exception(e)
+
+    return data, response_status
 
 
-def life_claims_daily(start_date=today_start_date, end_date=today_end_date):
-    identifier = "LIFE_CLAIMS_DAILY"
-    __life_claims(identifier, start_date, end_date)
+def claims_daily(start_date=today_start_date, end_date=today_end_date):
+    __claims(start_date, end_date)
 
 
-def life_claims(start_date=first_day_of_previous_month, end_date=last_day_of_previous_month):
-    identifier = "LIFE_CLAIMS"
-    __life_claims(identifier, start_date, end_date)
+def claims(start_date=first_day_of_previous_month, end_date=last_day_of_previous_month):
+    __claims(start_date, end_date, False)
 
 
-def __life_claims(
-        identifier, start_date, end_date
+def __claims(
+        start_date, end_date, is_daily_submission=True
 ):
-    task = fetch_tasks(identifier)
-    integration = fetch_configs(identifier)
-    log = create_task_logs(task)
-    schema = get_current_schema()
-    print(f'current_schema: {schema}')
+    nifty_integration_configs = fetch_configs(identifier='Nifty Cover')
+    indlu_integration_configs = fetch_configs(identifier='Indlu')
     try:
-        claims = __fetch_claims(start_date, end_date)
-        if not claims.exists():
+        # fetch the data
+        fetched_claims = __fetch_claims(start_date, end_date)
+
+        if not fetched_claims.exists():
             print("Empty")
             raise Exception("Claims are empty")
 
-        serializer = ClaimSerializer(claims, many=True).data
-        guardrisk = GuardRisk(integration.access_key, integration.base_url)
-        is_daily_submission = identifier == "LIFE_CLAIMS_DAILY"
-        daily_function_called = guardrisk.life_claims_global_daily(serializer, start_date, end_date)
-        monthly_function_called = guardrisk.life_claims_global(serializer, start_date, end_date)
+        claims_data = ClaimSerializer(fetched_claims, many=True).data
+        nifty_claims_filter = filter(lambda p: p.entity == 'Nifty Cover', claims_data)
+        indlu_claims_filter = filter(lambda p: p.entity == 'Indlu', claims_data)
+        nifty_claims = list(nifty_claims_filter)
+        indlu_claims = list(indlu_claims_filter)
+
+        process_claims(nifty_claims, nifty_integration_configs, is_daily_submission)
+        process_claims(indlu_claims, indlu_integration_configs, is_daily_submission)
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        raise Exception(e)
+
+
+def process_claims(data, integration_configs, start_date, end_date, is_daily_submission=True):
+    task = fetch_tasks('Claims Daily' if is_daily_submission else 'Claims Monthly')
+    log = create_task_logs(task)
+    try:
+        guard_risk = GuardRisk(integration_configs.access_key, integration_configs.base_url)
+        client_identifier = integration_configs.client_identifier
+        daily_function_called = guard_risk.life_claims_global_daily(data, start_date, end_date, client_identifier)
+        monthly_function_called = guard_risk.life_claims_global(data, start_date, end_date, client_identifier)
         data, response_status = daily_function_called if is_daily_submission else monthly_function_called
-        log.data = data
         print(response_status)
+        log.data = data
         if str(response_status).startswith("2"):
             log.status = "completed"
             log.save()
@@ -155,6 +200,8 @@ def __life_claims(
         log.status = "failed"
         log.save()
         raise Exception(e)
+
+    return data, response_status
 
 
 def fetch_tasks(identifier):
@@ -175,7 +222,7 @@ def __fetch_policies(start_date: datetime, end_date: datetime, policy_type: Poli
     return Policy.objects.filter(
         commencement_date__gte=start_date,
         commencement_date__lte=end_date,
-        policy_type__policy_type=policy_type.name,
+        policy_type__policy_type=policy_type.name
     )
 
 

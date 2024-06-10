@@ -6,7 +6,7 @@ from integrations.utils import get_frequency_number, populate_dependencies
 
 
 def prepare_life_credit_payload(
-        data: list, start_date: date, end_date: date, identifier: str
+        data: list, start_date: date, end_date: date, client_identifier
 ):
     original_date = datetime.now()
     timestamp = original_date.strftime("%Y/%m/%d")
@@ -38,8 +38,7 @@ def prepare_life_credit_payload(
             print(f"Invalid JSON data: {e}")
         else:
             # constants
-            client_identifier = 75
-            division_identifier = "0001"
+            division_identifier = "0001"  # TODO add accordingly
             product_option = "all"
             premium_type = "Regular"
             death_cover_structure = "L"
@@ -56,7 +55,7 @@ def prepare_life_credit_payload(
                 "TimeStamp": timestamp,
                 "ReportPeriodStart": start_date,
                 "ReportPeriodEnd": end_date,
-                "AdministratorIdentifier": identifier,
+                "AdministratorIdentifier": policy["entity"],  # TODO add identifier accordingly
                 "InsurerName": insurer.get("name", ""),
                 "ClientIdentifier": client_identifier,
                 "DivisionIdentifier": division_identifier,
@@ -176,7 +175,7 @@ def prepare_life_credit_payload(
                             details["SpouseFirstName"] = full_name[0]
                             details["SpouseMiddleName"] = ""
                             details["SpouseSurname"] = ""
-                            details["SpouseInitials"] = full_name[0]
+                            details["SpouseInitials"] = full_name[0][0]
                     elif len(full_name) == 2:
                         details["SpouseFirstName"] = full_name[0]
                         details["SpouseMiddleName"] = ""
@@ -201,7 +200,6 @@ def prepare_life_credit_payload(
                 details["SpouseCoverCommencementDate"] = spouse.get("cover_commencement_date", "0.00")
                 details["SpouseIndicator"] = 'Y'
             else:
-                # Set default values to "n/a"
                 details["SpouseFirstName"] = ""
                 details["SpouseMiddleName"] = ""
                 details["SpouseSurname"] = ""

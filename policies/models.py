@@ -65,6 +65,7 @@ class Policy(BaseModel):
     )
     admin_fee = models.DecimalField(default=0, max_digits=20, decimal_places=2)
     submitted_to_insurer = models.BooleanField(default=False)
+    entity = models.CharField(max_length=50, null=False, blank=False, default='Nifty Cover')
 
     def get_status_symbol(self):
         """
@@ -118,7 +119,7 @@ class PremiumPayment(BaseModel):
     payment_date = models.DateField(null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     payment_method = models.CharField(max_length=200, null=True, blank=True)
-    payment_reference = models.CharField(max_length=200, null=True, blank=True, unique=True)
+    payment_reference = models.CharField(max_length=200, null=True, blank=True)
     payment_details = models.JSONField(null=True, blank=True)
     payment_receipt = models.FileField(null=True, blank=True)
     is_reversed = models.BooleanField(default=False)
@@ -206,16 +207,3 @@ auditlog.register(PolicyPaymentSchedule)
 auditlog.register(PremiumPayment)
 auditlog.register(Dependant)
 auditlog.register(Beneficiary)
-
-
-# UPDATE clients_clientdetails
-# SET external_id  = external_id || id::TEXT;
-
-# UPDATE clients_clientdetails
-# SET primary_id_number = primary_id_number || id::TEXT;
-
-# UPDATE policies_policy
-# SET policy_number = policy_number || id::TEXT;
-
-# UPDATE policies_policy
-# SET external_reference  = external_reference || id::TEXT

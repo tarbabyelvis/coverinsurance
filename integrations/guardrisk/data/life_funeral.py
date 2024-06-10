@@ -5,7 +5,6 @@ from config.models import Relationships
 from core.utils import get_initial_letter
 from integrations.utils import get_frequency_number, populate_dependencies
 
-client_identifier = 75
 division_identifier = "0001"
 product_option = "all"
 premium_type = "Regular"
@@ -20,7 +19,7 @@ ptd_waiting_period = 3
 retrenchment_waiting_period = 6
 
 
-def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
+def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, client_identifier):
     original_date = datetime.now()
     timestamp = original_date.strftime("%Y/%m/%d")
     start_date = start_date.strftime("%Y/%m/%d")
@@ -62,9 +61,9 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
                 "TimeStamp": timestamp,
                 "ReportPeriodStart": start_date,
                 "ReportPeriodEnd": end_date,
-                "AdministratorIdentifier": "Getsure",
+                "AdministratorIdentifier": policy["entity"],
                 "InsurerName": insurer.get("name", ""),
-                "ClientIdentifier": "143",
+                "ClientIdentifier": client_identifier,
                 "DivisionIdentifier": division_identifier,
                 "SubSchemeName": "Getsure (Pty) Ltd",
                 "PolicyNumber": policy.get("policy_number", ""),
@@ -140,7 +139,7 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date):
                     details["SpouseFirstName"] = full_name[0]
                     details["SpouseMiddleName"] = ""
                     details["SpouseSurname"] = ""
-                    details["SpouseInitials"] = full_name[0]
+                    details["SpouseInitials"] = full_name[0][0]
                 elif len(full_name) == 2:
                     print('in name 2...')
                     details["SpouseFirstName"] = full_name[0]

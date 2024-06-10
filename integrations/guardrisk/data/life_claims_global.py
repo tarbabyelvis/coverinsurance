@@ -4,7 +4,6 @@ from datetime import date, datetime
 
 log = logging.getLogger(__name__)
 
-client_identifier = 75
 division_identifier = "0001"
 product_option = "all"
 premium_type = "Regular"
@@ -21,7 +20,7 @@ waiting_period = 3
 retrenchment_waiting_period = 6
 
 
-def prepare_life_claims_payload(data: list, start_date: date, end_date: date):
+def prepare_life_claims_payload(data: list, start_date: date, end_date: date, client_identifier):
     original_date = datetime.now()
     timestamp = original_date.strftime("%Y/%m/%d")
     start_date = start_date.strftime("%Y/%m/%d")
@@ -41,9 +40,9 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date):
                 "TimeStamp": timestamp,
                 "ReportPeriodStart": start_date,
                 "ReportPeriodEnd": end_date,
-                "AdministratorIdentifier": "Getsure",
+                "AdministratorIdentifier": policy["entity"],
                 "InsurerName": insurer.get("name", ""),
-                "ClientIdentifier": "143",
+                "ClientIdentifier": client_identifier,
                 "DivisionIdentifier": division_identifier,
                 "SubSchemeName": policy.get("sub_scheme", ""),
                 "PolicyNumber": policy["policy_number"],
