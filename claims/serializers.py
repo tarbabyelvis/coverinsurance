@@ -8,6 +8,7 @@ from config.models import ClaimType, DocumentType, IdDocumentType
 class ClaimTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClaimType
+        ref_name = "ClaimsClaimTypeSerializer"
         fields = ["id", "name"]  # Assuming you want to serialize only 'id' and 'name'
 
 
