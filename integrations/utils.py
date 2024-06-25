@@ -6,8 +6,10 @@ from integrations.models import IntegrationLogs
 
 def post_request_and_save(request_data, url, headers, service):
     try:
+        print(f'url {url} headers {headers}')
         response = requests.post(url, json=request_data, headers=headers)
-
+        # response = requests.post(url, timeout=(180, 300), json=request_data, headers=headers)
+        print(f'response :: {response}')
         response_data = response.json()
         print(f'response gotten:: {response_data}')
 
@@ -17,6 +19,7 @@ def post_request_and_save(request_data, url, headers, service):
         else:
             status = "Error"
     except requests.exceptions.RequestException as e:
+        print(f'Error on posting request: {e}')
         response_data = {"error": str(e)}
         response_status = None
         status = "Error"
@@ -64,6 +67,7 @@ def extract_nested_field(json_str, parent_field, nested_field):
 def populate_dependencies(other_dependants, details):
     for dependant in other_dependants:
         full_name = dependant["dependant_name"]
+        print('full_name', full_name)
         full_name = full_name.split(" ")
         if len(full_name) == 1:
             details[f"Dependent{dependant['index']}FirstName"] = full_name[0]

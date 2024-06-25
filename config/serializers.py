@@ -24,6 +24,7 @@ class InsuranceCompanySerializer(serializers.ModelSerializer):
 class ClaimTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClaimType
+        ref_name = "ConfigClaimTypeSerializer"
         fields = ["id", "name"]
 
 

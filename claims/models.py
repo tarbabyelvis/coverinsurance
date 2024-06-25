@@ -42,6 +42,9 @@ class Claim(BaseModel):
     claim_details = models.JSONField(null=True, blank=True)
     submitted_date = models.DateField(null=True, blank=True)
     claim_paid_date = models.DateField(null=True, blank=True)
+    claim_rejected = models.BooleanField(default=False)
+    rejected_date = models.DateField(null=True, blank=True)
+    rejected_reason = models.CharField(max_length=255, null=True, blank=True)
 
 
 class ClaimDocument(BaseModel):

@@ -1,0 +1,5 @@
+INFO 2024-06-10 05:24:00 autoreload Watching for file changes with StatReloader
+INFO 2024-06-10 05:28:15 autoreload /home/tarbabyelvis/FinProjects/cover-admin.fin-connect.net/jobs/views.py changed, reloading.
+INFO 2024-06-10 05:28:16 autoreload Watching for file changes with StatReloader
+INFO 2024-06-10 05:32:06 autoreload /home/tarbabyelvis/FinProjects/cover-admin.fin-connect.net/jobs/services.py changed, reloading.
+INFO 2024-06-10 05:32:07 autoreload Watching for file changes with StatReloader

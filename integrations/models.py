@@ -9,6 +9,7 @@ class IntegrationConfigs(models.Model):
     base_url = models.URLField()
     is_enabled = models.BooleanField(default=False)
     entity = models.CharField(max_length=20, null=True, blank=True)
+    client_identifier = models.CharField(max_length=100, null=False, blank=False, default='143')
 
     class Meta:
         verbose_name = "Integration Config"
