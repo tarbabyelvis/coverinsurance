@@ -23,6 +23,13 @@ from policies.serializers import ClientPolicyRequestSerializer, PremiumPaymentSe
 logger = logging.getLogger(__name__)
 
 
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super(DateTimeEncoder, self).default(obj)
+
+
 def extract_json_fields(dictionary):
     policy_details = {}
 
@@ -32,7 +39,7 @@ def extract_json_fields(dictionary):
             policy_details[new_key] = dictionary.pop(key)
 
     dictionary["policy_details"] = policy_details
-    return json.dumps(dictionary)
+    return json.dumps(dictionary, cls=DateTimeEncoder)
 
 
 @transaction.atomic

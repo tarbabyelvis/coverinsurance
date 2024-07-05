@@ -102,7 +102,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.APILoggingMiddleware",
     "auditlog.middleware.AuditlogMiddleware",
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 ROOT_URLCONF = "FinCover.urls"
