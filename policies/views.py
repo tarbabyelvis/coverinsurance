@@ -2,17 +2,17 @@ import logging
 from core.utils import CustomPagination
 from policies.constants import (
     CLIENT_COLUMNS,
-    CLIENT_COLUMNS_BORDREX,
     POLICY_COLUMNS,
-    POLICY_COLUMNS_BORDREX, REPAYMENT_COLUMNS,
+    POLICY_COLUMNS_BORDREX, REPAYMENT_COLUMNS, CLIENT_COLUMNS_BORDREX, REPAYMENT_COLUMNS_INDLU,
 )
 from policies.models import Beneficiary, Dependant, Policy, PremiumPayment
 from rest_framework.views import APIView
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
 from rest_framework import status
-from policies.services import upload_clients_and_policies, upload_funeral_clients_and_policies
-from policies.services import upload_clients_and_policies,upload_buk_repayments
+from policies.services import upload_clients_and_policies, upload_funeral_clients_and_policies, \
+    upload_indlu_clients_and_policies
+from policies.services import upload_clients_and_policies,upload_bulk_repayments
 from .serializers import (
     BeneficiarySerializer,
     ClientPolicyRequestSerializer,
@@ -279,6 +279,10 @@ class UploadClientAndPolicyExcelAPIView(APIView):
                 upload_funeral_clients_and_policies(
                     file_obj
                 )
+            elif source == "indlu":
+                upload_indlu_clients_and_policies(
+                    file_obj
+                )
             else:
                 return HTTPResponse.success(
                     message="Incorrect report type",
@@ -453,17 +457,16 @@ class UploadPaymentFileView(APIView):
                 return HTTPResponse.error(message="File is missing in the request.")
 
             if source == "compuloan":
-                pass
-                # upload_clients_and_policies(
-                #     file_obj, CLIENT_COLUMNS_BORDREX, POLICY_COLUMNS_BORDREX, source
-                # )
+                upload_bulk_repayments(
+                    file_obj, REPAYMENT_COLUMNS_INDLU
+                )
             elif source == "fincloud":
                 pass
                 # upload_clients_and_policies(
                 #     file_obj, CLIENT_COLUMNS, POLICY_COLUMNS, source
                 # )
             elif source == "africancash":
-                upload_buk_repayments(
+                upload_bulk_repayments(
                     file_obj, REPAYMENT_COLUMNS
                 )
             else:

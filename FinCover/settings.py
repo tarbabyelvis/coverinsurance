@@ -91,6 +91,7 @@ TENANT_DOMAIN_MODEL = "tenants.Domain"  # app.Model
 MIDDLEWARE = [
     "django_tenants.middleware.main.TenantMainMiddleware",
     "tenants.middleware.CustomTenantMiddleware.CustomTenantMiddleware",
+    "django.middleware.common.CommonMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -101,6 +102,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.APILoggingMiddleware",
     "auditlog.middleware.AuditlogMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 ROOT_URLCONF = "FinCover.urls"
@@ -190,8 +192,8 @@ DATABASES = {
 #         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
 #         "USER": os.getenv("DATABASE_USER", "xWniG2oMKu85"),
 #         "PASSWORD": os.getenv("DATABASE_PASSWORD", "BzjUftSC7JDSf%]["),
-#         "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
-#         "PORT": os.getenv("DATABASE_PORT", 5433),
+#         "HOST": os.getenv("DATABASE_HOST", "dev-core-pg.cluster-clzcsbthrzqz.eu-central-1.rds.amazonaws.com"),
+#         "PORT": os.getenv("DATABASE_PORT", 5432),
 #     },
 # }
 

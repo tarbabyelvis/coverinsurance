@@ -123,6 +123,11 @@ class PremiumPayment(BaseModel):
     payment_details = models.JSONField(null=True, blank=True)
     payment_receipt = models.FileField(null=True, blank=True)
     is_reversed = models.BooleanField(default=False)
+    branch_name = models.CharField(max_length=200, null=True, blank=True, unique=True)
+    policy_payment_method = models.CharField(max_length=200, null=True, blank=True)
+    transaction_type = models.CharField(max_length=200, null=True, blank=True)
+    client_transaction_id = models.CharField(max_length=200, null=True, blank=True)
+    teller_transaction_number = models.CharField(max_length=200, null=True, blank=True)
 
     class Meta:
         verbose_name = "Premium Payment"
@@ -202,8 +207,21 @@ class Beneficiary(BaseModel):
         return f"{self.id} - {self.policy}"
 
 
+class CliCharge(BaseModel):
+    ifk_client_number = models.CharField(max_length=200, null=True, blank=True)
+    transaction_date = models.DateField(null=True, blank=True)
+    ifk_transaction_type = models.CharField(max_length=200, null=True, blank=True)
+    transaction_type = models.CharField(max_length=200, null=True, blank=True)
+    minfo = models.CharField(max_length=200, null=True, blank=True)
+    debit = models.DecimalField(max_digits=20, decimal_places=2)
+    credit = models.DecimalField(max_digits=20, decimal_places=2)
+    net_amount = models.DecimalField(max_digits=20, decimal_places=2)
+    cfk_branch = models.CharField(max_length=200, null=True, blank=True)
+
+
 auditlog.register(Policy)
 auditlog.register(PolicyPaymentSchedule)
 auditlog.register(PremiumPayment)
 auditlog.register(Dependant)
 auditlog.register(Beneficiary)
+auditlog.register(CliCharge)

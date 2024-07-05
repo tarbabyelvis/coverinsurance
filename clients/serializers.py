@@ -212,7 +212,7 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         if errors:
             print("Error validation")
             raise serializers.ValidationError(errors)
-        print("Done validation")
+        print("Done client validation")
         return data
 
     @transaction.atomic

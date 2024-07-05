@@ -132,8 +132,16 @@ class PolicySerializer(serializers.ModelSerializer):
                 mutable_data["policy_status"] = STATUS_MAPPING.get(
                     str(policy_status), mutable_data["policy_status"]
                 )
-
-        ## Handle rounding and casting for decimal fields
+        if "commencement_date" in mutable_data:
+            if isinstance(mutable_data["commencement_date"], datetime):
+                mutable_data["commencement_date"] = mutable_data["commencement_date"].date()
+        # Handle rounding and casting for decimal fields
+        if "total_premium" not in mutable_data:
+            mutable_data["total_premium"] = 0
+        if "admin_fee" not in mutable_data:
+            mutable_data["admin_fee"] = 0
+        if "commission_amount" not in mutable_data:
+            mutable_data["commission_amount"] = 0
         for field_name in [
             "sum_insured",
             "total_premium",
@@ -259,33 +267,33 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
     def to_internal_value(self, data):
         # Deep copy the data to avoid modifying the original object
         mutable_data = data.copy()
-
+        # Debug: Initial data
+        print("Initial data:", mutable_data)
         # Convert datetime to date for specified fields if needed
         for field in ["commencement_date", "expiry_date"]:
-            if field in mutable_data.get("policy", {}) and isinstance(
-                    mutable_data["policy"][field], str
-            ):
+            if field in mutable_data.get("policy", {}) and isinstance(mutable_data["policy"][field], str):
                 date_time = convert_to_datetime(mutable_data["policy"][field])
                 if date_time is not None:
                     mutable_data["policy"][field] = date_time.date()
-            if field in mutable_data.get("policy", {}) and isinstance(
-                    mutable_data["policy"][field], datetime
-            ):
-                print("it is a date instance")
+            if field in mutable_data.get("policy", {}) and isinstance(mutable_data["policy"][field], datetime):
+                print(f"{field} is a date instance")
                 mutable_data["policy"][field] = mutable_data["policy"][field].date()
+
+        # Debug: After datetime conversion
+        print("After datetime conversion:", mutable_data)
 
         # Convert policy_status to a proper format if needed
         if "policy_status" in mutable_data.get("policy", {}):
             policy_status = mutable_data["policy"]["policy_status"]
             if isinstance(policy_status, int) or str(policy_status).isdigit():
                 status_mapping = {"1": "A"}
-                mutable_data["policy"]["policy_status"] = status_mapping.get(
-                    str(policy_status), "X"
-                )
+                mutable_data["policy"]["policy_status"] = status_mapping.get(str(policy_status), "X")
             else:
                 mutable_data["policy"]["policy_status"] = STATUS_MAPPING.get(
                     str(policy_status), mutable_data["policy"]["policy_status"]
                 )
+        # Debug: After policy_status conversion
+        print("After policy_status conversion:", mutable_data)
 
         # Convert datetime to date for the 'date_of_birth' field if needed
         client_data = mutable_data.get("client", {})
@@ -296,8 +304,10 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             elif isinstance(date_of_birth, str):
                 client_data["date_of_birth"] = convert_to_datetime(date_of_birth)
 
-        # Convert insurer to proper datatype
-        print("completed the policy check")
+        # Convert insurer to proper datatype (if needed)
+        # Note: The logic for insurer is not included in your code snippet
+
+        print("Completed preprocessing")
         return super().to_internal_value(mutable_data)
 
     @transaction.atomic
@@ -305,6 +315,7 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
         print("saving transaction")
         client_data = validated_data.pop("client")
         policy_data = validated_data.pop("policy")
+        print(f'policy data popped: {policy_data}')
         beneficiaries_data = (
             policy_data.pop("beneficiaries") if "beneficiaries" in policy_data else []
         )
@@ -324,7 +335,7 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             primary_id_number=client_data["primary_id_number"],
             defaults=client_data,
         )
-
+        print(f'policy data coming {policy_data}')
         insurer = policy_data["insurer"]
 
         if isinstance(insurer, int) or str(insurer).isdigit():
