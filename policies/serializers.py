@@ -86,7 +86,7 @@ class PolicyPaymentScheduleSerializer(serializers.ModelSerializer):
 class PolicySerializer(serializers.ModelSerializer):
     beneficiaries = BeneficiarySerializer(required=False, many=True)
     dependants = DependantSerializer(required=False, many=True)
-    insurer = InsuranceCompanySerializer(read_only=True)
+    insurer = serializers.PrimaryKeyRelatedField(queryset=InsuranceCompany.objects.all())
 
     def validate_policy_number(self, value):
         print("Validating policy number")
@@ -267,8 +267,6 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
     def to_internal_value(self, data):
         # Deep copy the data to avoid modifying the original object
         mutable_data = data.copy()
-        # Debug: Initial data
-        print("Initial data:", mutable_data)
         # Convert datetime to date for specified fields if needed
         for field in ["commencement_date", "expiry_date"]:
             if field in mutable_data.get("policy", {}) and isinstance(mutable_data["policy"][field], str):
@@ -278,9 +276,6 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             if field in mutable_data.get("policy", {}) and isinstance(mutable_data["policy"][field], datetime):
                 print(f"{field} is a date instance")
                 mutable_data["policy"][field] = mutable_data["policy"][field].date()
-
-        # Debug: After datetime conversion
-        print("After datetime conversion:", mutable_data)
 
         # Convert policy_status to a proper format if needed
         if "policy_status" in mutable_data.get("policy", {}):
@@ -292,8 +287,6 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
                 mutable_data["policy"]["policy_status"] = STATUS_MAPPING.get(
                     str(policy_status), mutable_data["policy"]["policy_status"]
                 )
-        # Debug: After policy_status conversion
-        print("After policy_status conversion:", mutable_data)
 
         # Convert datetime to date for the 'date_of_birth' field if needed
         client_data = mutable_data.get("client", {})
@@ -306,16 +299,12 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
         # Convert insurer to proper datatype (if needed)
         # Note: The logic for insurer is not included in your code snippet
-
-        print("Completed preprocessing")
         return super().to_internal_value(mutable_data)
 
     @transaction.atomic
     def create(self, validated_data):
-        print("saving transaction")
         client_data = validated_data.pop("client")
         policy_data = validated_data.pop("policy")
-        print(f'policy data popped: {policy_data}')
         beneficiaries_data = (
             policy_data.pop("beneficiaries") if "beneficiaries" in policy_data else []
         )
@@ -335,7 +324,6 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             primary_id_number=client_data["primary_id_number"],
             defaults=client_data,
         )
-        print(f'policy data coming {policy_data}')
         insurer = policy_data["insurer"]
 
         if isinstance(insurer, int) or str(insurer).isdigit():
@@ -357,8 +345,6 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
         # Check if the policy with the policy number and external reference already exists
         try:
-            print("trying to create a policy")
-            print(policy_data)
             if "policy_number" in policy_data and policy_data["policy_number"]:
                 policy_instance, created = Policy.objects.get_or_create(
                     policy_number=policy_data["policy_number"],
@@ -440,6 +426,14 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
     payment_receipt_date = serializers.DateField(required=False)
     payment_method = serializers.CharField(max_length=200, required=False)
     payment_reference = serializers.CharField(max_length=200, required=False)
+    # policy = serializers.PrimaryKeyRelatedField(queryset=Policy.objects.all())
+
+    def to_internal_value(self, data):
+        policy_id = data.get("policy_id")
+        internal_value = super(PremiumPaymentSerializer, self).to_internal_value(data)
+        internal_value.update(policy_id=policy_id)
+        # Convert datetime to date for specified fields if needed
+        return internal_value
 
     class Meta:
         model = PremiumPayment
@@ -458,16 +452,15 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        policy_id = validated_data.pop("policy")
-        try:
-            policy = Policy.objects.get(pk=policy_id)
-        except ObjectDoesNotExist:
+        policy_id = validated_data.pop("policy_id")
+        policy = Policy.objects.filter(policy_number=policy_id).first()
+        if not policy:
             raise serializers.ValidationError(
-                "Policy with the provided ID does not exist."
+                f"Policy with the provided ID does not exist {policy_id}."
             )
 
         payment_schedules = PolicyPaymentSchedule.objects.filter(
-            policy=policy
+            policy=policy.pk
         ).order_by("-id")
 
         amount_paid = validated_data.get("amount")
@@ -536,3 +529,4 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+

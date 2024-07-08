@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, date
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -17,17 +17,30 @@ from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, CLI
 from policies.constants import FUNERAL_POLICY_BENEFICIARY_COLUMNS, \
     FUNERAL_POLICY_CLIENT_COLUMNS, DEFAULT_BENEFICIARY_FIELDS, POLICY_CLIENT_COLUMNS_INDLU
 from policies.models import Policy
-from policies.serializers import BeneficiarySerializer, PolicySerializer
+from policies.serializers import BeneficiarySerializer
 from policies.serializers import ClientPolicyRequestSerializer, PremiumPaymentSerializer
 
 logger = logging.getLogger(__name__)
 
 
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return super(DateTimeEncoder, self).default(obj)
+def custom_serializer(obj):
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    elif obj == 'NULL':
+        return None
+    elif obj is None:
+        return None
+
+
+def serialize_for_jsonfield(data):
+    for key, value in data.items():
+        if isinstance(value, (datetime, date)):
+            data[key] = value.isoformat()  # Convert datetime to ISO 8601 string
+        elif value == 'NULL':
+            data[key] = None  # Convert 'NULL' string to null
+        elif value is None:
+            data[key] = None
+    return data
 
 
 def extract_json_fields(dictionary):
@@ -38,8 +51,9 @@ def extract_json_fields(dictionary):
             new_key = key.replace("json_", "")
             policy_details[new_key] = dictionary.pop(key)
 
+    policy_details = serialize_for_jsonfield(policy_details)
     dictionary["policy_details"] = policy_details
-    return json.dumps(dictionary, cls=DateTimeEncoder)
+    return json.dumps(dictionary, default=custom_serializer, indent=4)
 
 
 @transaction.atomic
@@ -228,6 +242,10 @@ def process_worksheet(
     headers = [cell.value.strip() for cell in worksheet[1] if cell.value]
     expected_headers = get_dict_values(columns)
     if not set(expected_headers).issubset(set(headers)):
+        unique_to_actual_headers = set(headers) - set(expected_headers)
+        unique_to_expected_headers = set(expected_headers) - set(headers)
+        print(f'unique to expected headers: {unique_to_expected_headers}')
+        print(f'unique actual headers: {unique_to_actual_headers}')
         raise ValidationError(f"{data_type.capitalize()} headers not matching the ones on the excel sheet")
 
     processed_data = []
@@ -250,12 +268,22 @@ def process_worksheet(
             elif data_type == "repayment":
                 default_columns = {}
             elif data_type == "policy_client_dump":
-                default_columns = {**DEFAULT_CLIENT_FIELDS, **DEFAULT_POLICY_FIELDS}
+                default_columns = {**DEFAULT_POLICY_FIELDS, **DEFAULT_CLIENT_FIELDS, "entity": "Indlu",
+                                   "product_name": "Indlu Credit Life",
+                                   "sub_scheme": "Credit Life", "policy_name_policy": "CREDIT_LIFE",
+                                   "commission_frequency": "Monthly",
+                                   "premium_frequency": "Monthly",
+                                   "postal_code": None,
+                                   "job_title": None,
+                                   "employer_name": None,
+                                   "employment_date": None,
+                                   "total_premium": 0,
+                                   # "json_risk_identifier": None,
+                                   }
             else:
                 default_columns = DEFAULT_BENEFICIARY_FIELDS
 
             data = merge_dict_into_another(data, default_columns)
-            # data = extract_funeral_json_fields(data)
             processed_data.append(process_data(data, data_type))
     return processed_data
 
@@ -364,8 +392,22 @@ def __calculate_and_set_expiry_date(policy_data: Dict[str, Any]):
 
 
 def process_indlu_repayment_data(payment_data: Dict[str, Any]) -> Dict[str, Any]:
-    # Further processing if needed
-    print('further processing indlu repayment data')
+    if 'payment_date' in payment_data:
+        payment_date = payment_data['payment_date']
+        if isinstance(payment_date, datetime):
+            # If payment_date is already a datetime object, format it as needed
+            payment_data['payment_date'] = payment_date.strftime('%Y-%m-%d')  # Reformat date if needed
+        elif isinstance(payment_date, str):
+            payment_date = datetime.strptime(payment_date, '%Y-%m-%d')
+            payment_data['payment_date'] = payment_date.strftime('%Y-%m-%d')
+    if 'is_reversed' in payment_data:
+        value = payment_data['is_reversed']
+        # Convert Excel-style boolean strings to Python booleans
+        if isinstance(value, str) and value.upper() == '=FALSE()':
+            payment_data['is_reversed'] = False
+        elif isinstance(value, str) and value.upper() == '=TRUE()':
+            payment_data['is_reversed'] = True
+
     return payment_data
 
 
@@ -512,17 +554,22 @@ def upload_bulk_repayments(
 @transaction.atomic
 def save_indlu_repayments_data(repayments: List[Dict[str, Any]]) -> None:
     print('saving now repayments...')
+    failed_repayments = []
     for repayment in repayments:
-        policy = Policy.objects.filter(policy_number=repayment['policy_id'])
-        # Raise an error so that it rows back the other transactions
-        if not policy.exists():
-            raise Exception(f"Policy {repayment['policy_id']} does not exist!")
-        repayment["policy_id"] = policy.id
-        serializer = PremiumPaymentSerializer(
-            data=repayment
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
+        try:
+            if not repayment["policy_id"]:
+                print(f"Policy ID missing from request! : {repayment}")
+                failed_repayments.append(repayment['client_transaction_id'])
+            else:
+                serializer = PremiumPaymentSerializer(
+                    data=repayment
+                )
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+        except Exception as e:
+            print(f"Error saving {repayment['client_transaction_id']}")
+            print(e)
+            failed_repayments.append(repayment['client_transaction_id'])
 
 
 @transaction.atomic
@@ -532,11 +579,44 @@ def upload_indlu_clients_and_policies(
     wb = openpyxl.load_workbook(file_obj.file)
     clients = process_worksheet(wb, "Members", CLIENT_COLUMNS_INDLU, "client")
     policies = process_worksheet(wb, "Loans", POLICY_COLUMNS_INDLU, "policy")
-
     policy_clients_dump = process_worksheet(wb, "Data Dumb", POLICY_CLIENT_COLUMNS_INDLU, "policy_client_dump")
-    updated_policies, updated_clients = match_policies_and_clients(policies, clients, policy_clients_dump)
+    policy_defaults = {"entity": "Indlu",
+                       "insurer": 1,
+                       "policy_details": "policy_details",
+                       "product_name": "Indlu Credit Life",
+                       "sub_scheme": "Credit Life",
+                       "policy_name_policy": "CREDIT_LIFE",
+                       "commission_frequency": "Monthly",
+                       "premium_frequency": "Monthly",
+                       "total_premium": 0}
+    policy_columns = {**POLICY_COLUMNS_INDLU, **policy_defaults}
+    client_columns = {**CLIENT_COLUMNS_INDLU, "postal_code": None,
+                      "primary_id_document_type": 1,
+                      "entity_type": "Individual",
+                      "job_title": None,
+                      "employer_name": None,
+                      "employment_date": None}
+    dump_policies, dump_clients = extract_from_dump(policy_clients_dump, policy_columns, client_columns)
+
+    updated_policies, updated_clients = match_policies_and_clients(policies, clients, dump_policies, dump_clients)
     save_client_policy_members_data(updated_policies, updated_clients)
-    print('we finished...')
+    print('we finished saving ...')
+
+
+def extract_from_dump(policy_clients_dump, received_policy_columns, received_client_columns):
+    policies = []
+    clients = []
+
+    for row in policy_clients_dump:
+        # Extract policy information
+        policy = {col: row[col] for col in received_policy_columns if col in row}
+        policies.append(policy)
+
+        # Extract client information
+        client = {col: row[col] for col in received_client_columns if col in row}
+        clients.append(client)
+
+    return policies, clients
 
 
 def match_clients_to_policies(policies, clients):
@@ -551,31 +631,50 @@ def match_clients_to_policies(policies, clients):
     return matched_policies
 
 
-def match_policies_and_clients(policies, clients, policy_clients_dump):
-    unmatched_policies_clients = []
-    # Create dictionaries for quick lookup
-    policy_dict = {policy["policy_id"]: policy for policy in policies}
+def match_policies_and_clients(policies, clients, dump_policies, dump_clients):
+    # Convert policies and clients list to dictionaries for quick lookup
+    policy_dict = {policy["policy_number"]: policy for policy in policies}
     client_dict = {client["client_id"]: client for client in clients}
 
-    # Iterate over the dump
-    for entry in policy_clients_dump:
-        policy_id = entry["policy_id"]
-        client_id = entry["client_id"]
+    updated_dump_policies = []
+    updated_dump_clients = []
 
-        # Check if the policy and client exist in the respective lists
-        if policy_id in policy_dict and client_id in client_dict:
-            # Update the existing policy and client with the dump data
-            policy_dict[policy_id].update(entry)
-            client_dict[client_id].update(entry)
+    # Helper function to merge dictionaries with preference for non-null values
+    # def merge_with_preference(primary, secondary):
+    #     return {key: primary.get(key) if primary.get(key) is not None else secondary.get(key) for key in
+    #             set(primary) | set(secondary)}
+
+    # Match and update dump_policies with extra fields from policies
+    for dump_policy in dump_policies:
+        policy_number = dump_policy["policy_number"]
+        if policy_number in policy_dict:
+            # Update dump_policy with extra fields from matching policy
+            matched_policy = {**dump_policy, **policy_dict[policy_number]}
+            updated_dump_policies.append(matched_policy)
+            # Remove the matched policy from the policies list
+            policies = [p for p in policies if p["policy_number"] != policy_number]
         else:
-            # If either policy or client does not exist, add the entry to unmatched list
-            unmatched_policies_clients.append(entry)
+            updated_dump_policies.append(dump_policy)
 
-    # Convert the dictionaries back to lists if needed
-    updated_policies = list(policy_dict.values())
-    updated_policies.append(unmatched_policies_clients)
-    updated_clients = list(client_dict.values())
-    return updated_policies, updated_clients
+    # Match and update dump_clients with extra fields from clients
+    for dump_client in dump_clients:
+        client_id = dump_client["client_id"]
+        if client_id in client_dict:
+            # Update dump_client with extra fields from matching client
+            matched_client = {**dump_client, **client_dict[client_id]}
+            updated_dump_clients.append(matched_client)
+            # Remove the matched client from the clients list
+            clients = [c for c in clients if c["client_id"] != client_id]
+        else:
+            updated_dump_clients.append(dump_client)
+
+    # Combine updated dump_policies with remaining unmatched policies
+    final_policies = updated_dump_policies + policies
+
+    # Combine updated dump_clients with remaining unmatched clients
+    final_clients = updated_dump_clients + clients
+
+    return final_policies, final_clients
 
 
 @transaction.atomic

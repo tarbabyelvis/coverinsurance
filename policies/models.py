@@ -37,6 +37,7 @@ class Policy(BaseModel):
         InsuranceCompany,
         on_delete=models.RESTRICT,
         related_name="policy_insurance_company",
+        default=1
     )
     agent = models.ForeignKey(
         Agent,
@@ -45,7 +46,7 @@ class Policy(BaseModel):
         null=True,
         blank=True,
     )
-    policy_details = models.JSONField(null=True, blank=True)
+    policy_details = models.JSONField(null=True, blank=True, default=dict)
     policy_status = models.CharField(max_length=20, choices=PolicyStatus.choices)
     premium_frequency = models.CharField(
         max_length=50,
@@ -123,7 +124,7 @@ class PremiumPayment(BaseModel):
     payment_details = models.JSONField(null=True, blank=True)
     payment_receipt = models.FileField(null=True, blank=True)
     is_reversed = models.BooleanField(default=False)
-    branch_name = models.CharField(max_length=200, null=True, blank=True, unique=True)
+    branch_name = models.CharField(max_length=200, null=True, blank=True)
     policy_payment_method = models.CharField(max_length=200, null=True, blank=True)
     transaction_type = models.CharField(max_length=200, null=True, blank=True)
     client_transaction_id = models.CharField(max_length=200, null=True, blank=True)
