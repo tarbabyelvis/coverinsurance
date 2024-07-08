@@ -149,8 +149,6 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
                 ).pk
 
         else:
-            print("We are validating the id number")
-            # If it's already a primary key, retrieve the IdDocumentType instance using the primary key
             try:
                 if "primary_id_document_type" in mutable_data:
                     mutable_data["primary_id_document_type"] = (
@@ -212,7 +210,7 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         if errors:
             print("Error validation")
             raise serializers.ValidationError(errors)
-        print("Done validation")
+        print("Done client validation")
         return data
 
     @transaction.atomic

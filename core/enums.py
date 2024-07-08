@@ -37,6 +37,7 @@ class PolicyStatus(models.TextChoices):
     REINSTATED = "R", "Reinstated"
     NOT_TAKEN_UP = "N", "Not Taken Up (Non payment of premium)"
     PAID_UP = "P", "Paid Up"
+    FULLY_PAID = "F", "Paid Up"
     SURRENDERED = "S", "Surrendered"
     SURRENDERED_REPLACE = "SR", "Surrendered due to replacement"
     TRANSFERRED_OUT = "T", "Transferred out"

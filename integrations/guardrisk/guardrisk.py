@@ -14,7 +14,6 @@ def create_url(base: str, path: str):
 class GuardRisk:
     def __init__(self, access_key, base_url):
         self.access_key = access_key
-        # self.access_key = "d5c7af48-2e41-41a8-ad61-ce5e5b49fb80"
         self.base_url = base_url
 
     # critical
