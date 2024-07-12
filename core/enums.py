@@ -41,3 +41,5 @@ class PolicyStatus(models.TextChoices):
     SURRENDERED = "S", "Surrendered"
     SURRENDERED_REPLACE = "SR", "Surrendered due to replacement"
     TRANSFERRED_OUT = "T", "Transferred out"
+
+

@@ -27,6 +27,7 @@ class ClaimCreateAPIView(APIView):
         },
     )
     def post(self, request):
+        print(f'request: {request.data}')
         serializer = ClaimSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -35,6 +36,7 @@ class ClaimCreateAPIView(APIView):
                 data=serializer.data,
                 status_code=status.HTTP_201_CREATED,
             )
+        print(f'errors on creating claim: {serializer.errors}')
         return HTTPResponse.error(message=serializer.errors)
 
     @swagger_auto_schema(
@@ -79,7 +81,7 @@ class ClaimCreateAPIView(APIView):
         claim_type = request.GET.get("claim_type", None)
         query = request.GET.get("query", None)
         claims = Claim.objects.all()
-
+        print(f'request {request}')
         if query:
             claims = claims.filter(
                 Q(claimant_name__icontains=query)
@@ -103,11 +105,41 @@ class ClaimCreateAPIView(APIView):
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(claims, request)
         serializer = ClaimSerializer(result_page, many=True)
+        print(f'results {serializer.data}')
+        claims_list = []
+        for claim in serializer.data:
+            claims_list.append({
+                "id": claim["id"],
+                "name": claim["name"],
+                "policy": claim["policy"]["id"],
+                "claim_type": claim["claim_type"]["id"],
+                "claim_document": claim["claim_document"],
+                "claim_status": claim['claim_status'],
+                "claim_assessed_by": claim['claim_assessed_by'],
+                "claim_assessment_date": claim['claim_assessment_date'],
+                "claim_amount": claim['claim_amount'],
+                "claims_details": "",
+                "submitted_date": claim['submitted_date'],
+                "claim_paid_date": claim['claim_paid_date'],
+                "claimant_name": claim['claimant_name'],
+                "claimant_surname": claim['claimant_surname'],
+                "claimant_id_number": claim['claimant_id_number'],
+                "claimant_email": claim['claimant_email'],
+                "claimant_phone": claim['claimant_phone'],
+                "claimant_bank_name": claim['claimant_bank_name'],
+                "claimant_bank_account_number": claim['claimant_bank_account_number'],
+                "claimant_branch": claim['claimant_branch'],
+                "claimant_branch_code": claim['claimant_branch_code'],
+                "claimant_id_type": claim['claimant_id_type'],
+                "claim_rejected": claim['claim_rejected'],
+                "rejected_date": claim['rejected_date'],
+                "rejected_reason": claim['rejected_reason']
+            })
         return HTTPResponse.success(
             message="Resource retrieved successfully",
             status_code=status.HTTP_200_OK,
             data={
-                "results": serializer.data,
+                "results": claims_list,
                 "count": paginator.page.paginator.count if paginator.page else 0,
                 "next": paginator.get_next_link(),
                 "previous": paginator.get_previous_link(),

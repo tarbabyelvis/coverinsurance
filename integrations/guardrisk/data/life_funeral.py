@@ -1,9 +1,9 @@
 import json
 from datetime import date, datetime
 
-from config.models import Relationships
+from config.models import Relationships, InsuranceCompany
 from core.utils import get_initial_letter
-from integrations.utils import get_frequency_number, populate_dependencies
+from integrations.utils import get_frequency_number, populate_dependencies, is_new_policy
 
 product_option = "all"
 premium_type = "Regular"
@@ -53,12 +53,13 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
         other_dependants = list(other_dependants)
         number_of_dependencies = len(other_dependants)
         insurer = policy["insurer"]
+        insurer = InsuranceCompany.objects.filter(pk=insurer).first()
         details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
             "ReportPeriodEnd": end_date,
             "AdministratorIdentifier": policy["entity"],
-            "InsurerName": insurer.get("name", ""),
+            "InsurerName": insurer.name,
             "ClientIdentifier": client_identifier,
             "DivisionIdentifier": policy_details.get("division_identifier", "2"),
             "SubSchemeName": policy["sub_scheme"],
@@ -69,19 +70,19 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
             "PolicyExpiryDate": policy.get("expiry_date", ""),
             "TermofPolicy": policy.get("policy_term", ""),
             "PolicyStatus": policy.get("policy_status", ""),
-            "PolicyStatusDate": policy_details.get("policy_status_date", ""),
-            "NewPolicyIndicator": policy_details.get("new_policy_indicator", "P"),
+            "PolicyStatusDate": timestamp,
+            "NewPolicyIndicator": is_new_policy(policy["created"]),
             "SalesChannel": policy_details.get("sales_channel", "Direct marketing via internet"),
-            "CancelledbyPolicyholderCoolingPeriodInsurer": "",
-            "DeathIndicator": policy_details.get("death_indicator", "Y"),
+            "CancelledbyPolicyholderCoolingPeriodInsurer": "N",
+            "DeathIndicator": "Y",
             "PTDIndicator": "Y",
             "IncomeContinuationIndicator": "N",
             "PremiumFrequency": get_frequency_number(policy.get("premium_frequency", "Monthly")),
             "PremiumType": premium_type,
-            "DeathOriginalSumAssured": policy.get("death_original_sum_assured", ""),
-            "PTDOriginalSumAssured": policy_details.get("ptd_original_sum_insured", ""),
+            "DeathOriginalSumAssured": policy.get("sum_insured"),
+            "PTDOriginalSumAssured": policy.get("sum_insured"),
             "DeathCoverStructure": policy_details.get("death_cover_structure", "Lump sum"),
-            "DeathCurrentSumAssured": policy_details.get("death_current_sum_insured", ""),
+            "DeathCurrentSumAssured": policy.get("sum_insured"),
             "PTDCoverStructure": "Combined",
             "ReinsurerName": "N/A",
             "DeathCurrentRISumAssured": "N/A",
@@ -112,7 +113,8 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
             "PrincipalID": client.get("primary_id_number", ""),
             "PrincipalGender": client.get("gender", "U"),
             "PrincipalDateofBirth": client.get("date_of_birth", ""),
-            "PrincipalMemberPhysicalAddress": f"{client.get('address_street', '')} {client.get('address_suburb', '')} {client.get('address_town', '')} {client.get('address_province', '')}",
+            "PrincipalMemberPhysicalAddress": f"{client.get('address_street', '')} {client.get('address_suburb', '')} "
+                                              f"{client.get('address_town', '')} {client.get('address_province', '')}",
             "PostalCode": client.get("postal_code", ""),
             "PrincipalTelephoneNumber": client.get("phone_number", ""),
             "PrincipalMemberEmailAddress": client.get("email", ""),
