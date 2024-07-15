@@ -23,7 +23,7 @@ jobs:
   build-and-push-to-ecr-dev:
     runs-on: ubuntu-latest
     environment: DEV
-    if: github.event.ref == 'refs/heads/development-trunk'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/development-trunk' || github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/development-trunk'
 
     steps:
       - name: Checkout
@@ -69,7 +69,7 @@ jobs:
   build-and-push-to-ecr-prod:
     runs-on: ubuntu-latest
     environment: PROD
-    if: github.event.ref == 'refs/heads/release/1.0.0'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/release/1.0.0' || github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/release/1.0.0'
 
     steps:
       - name: Checkout
