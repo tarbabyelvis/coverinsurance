@@ -23,7 +23,7 @@ jobs:
   build-and-push-to-ecr-dev:
     runs-on: ubuntu-latest
     environment: DEV
-    if: github.ref == 'refs/heads/development-trunk'
+    if: github.event.ref == 'refs/heads/development-trunk'
 
     steps:
       - name: Checkout
@@ -39,7 +39,6 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
           
       - name: Build and Push
         env:
@@ -57,72 +56,20 @@ jobs:
 
       - name: Deploy to Dev
         run: |
-          
-            yq e -i '.spec.template.spec.containers[0].image="${{ env.REGISTRY }}/${{ env.IMAGE }}:admin-cover_${{ env.VERSION }}_dev"' clusters/dev-eks-cluster/deploy/overlays/dev/admin-cover-be/version.yml
-            echo "dev manifest file............"
-            cat clusters/dev-eks-cluster/deploy/overlays/dev/admin-cover-be/version.yml
-          
-            git config --global --add safe.directory "*"
-            git config --global user.email "it@fin.africa"
-            git config --global user.name "FINIT01"
-            git add clusters/dev-eks-cluster/deploy/overlays/dev/admin-cover-be/version.yml
-            git commit -m "Updating loantracker-be image from ${{ env.VERSION }} in build ${{ github.run_number }}"
-            git push origin main    
+          yq e -i '.spec.template.spec.containers[0].image="${{ env.REGISTRY }}/${{ env.IMAGE }}:admin-cover_${{ env.VERSION }}_dev"' clusters/dev-eks-cluster/deploy/overlays/dev/admin-cover-be/version.yml
+          echo "dev manifest file............"
+          cat clusters/dev-eks-cluster/deploy/overlays/dev/admin-cover-be/version.yml
+          git config --global --add safe.directory "*"
+          git config --global user.email "it@fin.africa"
+          git config --global user.name "FINIT01"
+          git add clusters/dev-eks-cluster/deploy/overlays/dev/admin-cover-be/version.yml
+          git commit -m "Updating loantracker-be image from ${{ env.VERSION }} in build ${{ github.run_number }}"
+          git push origin main
 
-  # build-and-push-to-ecr-qa:
-  #   runs-on: ubuntu-latest
-  # #  needs: build-and-push-to-ecr-dev
-  #   environment: QA
-  #   if: github.ref == 'refs/heads/development-trunk'
-
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v3
-        
-  #     - name: Configure AWS credentials
-  #       uses: aws-actions/configure-aws-credentials@v1
-  #       with:
-  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #         aws-region: eu-central-1
-      
-  #     - name: Login to Amazon ECR
-  #       id: login-ecr
-  #       uses: aws-actions/amazon-ecr-login@v1
-
-  #     - name: Build and Push
-  #       env:
-  #         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-  #       run: |
-  #         docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:admin-cover_${{ env.VERSION }}_qa -f ${{ env.DOCKERFILE }} .
-  #         docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:admin-cover_${{ env.VERSION }}_qa 
-          
-  #     - name: Checkout Github
-  #       uses: actions/checkout@v3
-  #       with:
-  #         repository: FinAfrica/fin-app-config
-  #         ref: 'main'
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-
-  #     - name: Deploy to QA
-  #       run: |
-          
-  #           yq e -i '.spec.template.spec.containers[0].image="${{ env.REGISTRY }}/${{ env.IMAGE }}:admin-cover_${{ env.VERSION }}_qa"' clusters/dev-eks-cluster/deploy/overlays/qa/admin-cover-be/version.yml
-  #           echo "dev manifest file............"
-  #           cat clusters/dev-eks-cluster/deploy/overlays/qa/admin-cover-be/version.yml
-          
-  #           git config --global --add safe.directory "*"
-  #           git config --global user.email "it@fin.africa"
-  #           git config --global user.name "FINIT01"
-  #           git add clusters/dev-eks-cluster/deploy/overlays/qa/admin-cover-be/version.yml
-  #           git commit -m "Updating loantracker-be image from ${{ env.VERSION }} in build ${{ github.run_number }}"
-  #           git push origin main
-
-      
   build-and-push-to-ecr-prod:
     runs-on: ubuntu-latest
     environment: PROD
-    if: github.ref == 'refs/heads/release/1.0.0'
+    if: github.event.ref == 'refs/heads/release/1.0.0'
 
     steps:
       - name: Checkout
@@ -155,14 +102,12 @@ jobs:
 
       - name: Deploy to Prod
         run: |
-          
-            yq e -i '.spec.template.spec.containers[0].image="${{ env.REGISTRY }}/${{ env.IMAGE }}:admin-cover_${{ env.VERSION }}_prod"' clusters/dev-eks-cluster/deploy/overlays/prod/admin-cover-be/version.yml
-            echo "dev manifest file............"
-            cat clusters/dev-eks-cluster/deploy/overlays/prod/admin-cover-be/version.yml
-          
-            git config --global --add safe.directory "*"
-            git config --global user.email "it@fin.africa"
-            git config --global user.name "FINIT01"
-            git add clusters/dev-eks-cluster/deploy/overlays/prod/admin-cover-be/version.yml
-            git commit -m "Updating loantracker-be image from ${{ env.VERSION }} in build ${{ github.run_number }}"
-            git push origin main
+          yq e -i '.spec.template.spec.containers[0].image="${{ env.REGISTRY }}/${{ env.IMAGE }}:admin-cover_${{ env.VERSION }}_prod"' clusters/dev-eks-cluster/deploy/overlays/prod/admin-cover-be/version.yml
+          echo "dev manifest file............"
+          cat clusters/dev-eks-cluster/deploy/overlays/prod/admin-cover-be/version.yml
+          git config --global --add safe.directory "*"
+          git config --global user.email "it@fin.africa"
+          git config --global user.name "FINIT01"
+          git add clusters/dev-eks-cluster/deploy/overlays/prod/admin-cover-be/version.yml
+          git commit -m "Updating loantracker-be image from ${{ env.VERSION }} in build ${{ github.run_number }}"
+          git push origin main
