@@ -166,3 +166,4 @@ jobs:
             git add clusters/dev-eks-cluster/deploy/overlays/prod/admin-cover-be/version.yml
             git commit -m "Updating loantracker-be image from ${{ env.VERSION }} in build ${{ github.run_number }}"
             git push origin main
+
