@@ -36,15 +36,17 @@ class Claim(BaseModel):
     claimant_branch_code = models.CharField(max_length=50, null=True, blank=True)
     claim_assessed_by = models.CharField(max_length=200, null=True, blank=True)
     claim_assessment_date = models.DateField(null=True, blank=True)
+    comments = models.TextField(null=True, blank=True)
     claim_amount = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
     claim_details = models.JSONField(null=True, blank=True)
     submitted_date = models.DateField(null=True, blank=True)
     claim_paid_date = models.DateField(null=True, blank=True)
-    claim_rejected = models.BooleanField(default=False)
-    rejected_date = models.DateField(null=True, blank=True)
-    rejected_reason = models.CharField(max_length=255, null=True, blank=True)
+    claim_repudiated = models.BooleanField(default=False)
+    repudiated_date = models.DateField(null=True, blank=True)
+    repudiated_reason = models.CharField(max_length=255, null=True, blank=True)
+    submitted_to_insurer = models.BooleanField(default=False)
 
 
 class ClaimDocument(BaseModel):

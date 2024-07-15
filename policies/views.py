@@ -1,4 +1,7 @@
 import logging
+
+from rest_framework.permissions import IsAuthenticated
+
 from core.utils import CustomPagination
 from policies.constants import (
     CLIENT_COLUMNS,
@@ -155,6 +158,7 @@ class PolicyView(APIView):
 
 
 class PolicyDetailView(APIView):
+    # permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
         operation_description="Retrieve a specific policy by ID",
         responses={

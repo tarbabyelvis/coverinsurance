@@ -1,8 +1,11 @@
+from datetime import datetime
+
 from rest_framework import serializers
 
+from config.models import ClaimType, DocumentType, IdDocumentType
+from policies.models import Policy
 from policies.serializers import PolicySerializer
 from .models import Claim, ClaimDocument
-from config.models import ClaimType, DocumentType, IdDocumentType
 
 
 class ClaimTypeSerializer(serializers.ModelSerializer):
@@ -26,13 +29,24 @@ class ClaimDocumentSerializer(serializers.ModelSerializer):
 
 class ClaimSerializer(serializers.ModelSerializer):
     # claim_type = serializers.PrimaryKeyRelatedField(queryset=ClaimType.objects.all())
-    claim_type = ClaimTypeSerializer(read_only=True)
+    claim_type = ClaimTypeSerializer()
     claim_document = ClaimDocumentSerializer(many=True, required=False)
-    policy = PolicySerializer(read_only=True)
+    policy = PolicySerializer()
+
+    # policy = serializers.PrimaryKeyRelatedField(queryset=Policy.objects.all())
 
     class Meta:
         model = Claim
         fields = "__all__"
+
+    def validate_rejected_date(self, value):
+        if value:
+            try:
+                datetime.strptime(value, '%Y-%m-%d')
+            except ValueError:
+                raise serializers.ValidationError(
+                    "Date has wrong format. Use one of these formats instead: YYYY-MM-DD.")
+        return value
 
     def to_internal_value(self, data):
         if "claimant_id_type" in data:
@@ -54,6 +68,8 @@ class ClaimSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "claimant_id_type must be an integer or string"
                 )
+        if 'rejected_date' in data and not data['rejected_date']:
+            data['rejected_date'] = None
         return super().to_internal_value(data)
 
     def create(self, validated_data):

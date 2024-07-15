@@ -4,19 +4,22 @@ from datetime import datetime, date
 from claims.models import Claim
 from claims.serializers import ClaimSerializer
 from config.enums import PolicyType
+from config.models import ClaimantDetails
 from core.utils import first_day_of_previous_month, last_day_of_previous_month
 from integrations.enums import Integrations
 from integrations.guardrisk.guardrisk import GuardRisk
 from integrations.models import IntegrationConfigs
+from integrations.superbase import query_new_loans, query_repayments, query_closed_loans, query_written_off_loans
 from jobs.models import TaskLog
 from policies.models import Policy
-from policies.serializers import PolicyDetailSerializer
+from policies.serializers import PolicyDetailSerializer, PremiumPaymentSerializer, \
+    ClientPolicyRequestSerializer
 from .models import Task
 
-first_day_of_previous_month: date = first_day_of_previous_month()
-last_day_of_previous_month: date = last_day_of_previous_month()
-today_start_date: date = datetime.today()
-today_end_date: date = datetime.today()
+first_day_of_previous_month: date = first_day_of_previous_month().date()
+last_day_of_previous_month: date = last_day_of_previous_month().date()
+today_start_date: date = datetime.today().date()
+today_end_date: date = datetime.today().date()
 
 
 def daily_job_postings(start_date=today_start_date, end_date=today_end_date):
@@ -24,6 +27,7 @@ def daily_job_postings(start_date=today_start_date, end_date=today_end_date):
     nifty_configs = fetch_configs(identifier='Nifty Cover')
     indlu_configs = fetch_configs(identifier='Indlu')
     start_date_time, end_date_time = __get_start_and_end_dates_with_time(start_date, end_date)
+    print(f'start date: {start_date_time}, end date: {end_date_time}')
     credit_life_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.CREDIT_LIFE)
     funeral_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.FUNERAL_COVER)
     fetched_claims = __fetch_claims(start_date_time, end_date_time)
@@ -59,13 +63,14 @@ def monthly_job_postings(start_date=first_day_of_previous_month, end_date=last_d
     nifty_configs = fetch_configs(identifier='Nifty Cover')
     indlu_configs = fetch_configs(identifier='Indlu')
     start_date_time, end_date_time = __get_start_and_end_dates_with_time(start_date, end_date)
+    print(f'start date: {start_date_time}, end date: {end_date_time}')
     credit_life_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.CREDIT_LIFE)
     funeral_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.FUNERAL_COVER)
     fetched_claims = __fetch_claims(start_date_time, end_date_time)
     try:
         credit_life_monthly(credit_life_policies, nifty_configs, indlu_configs, start_date, end_date)
     except Exception as e:
-        print(f"Error on sending life cover: {e}")
+        print(f"Error on sending monthly job: {e}")
 
     try:
         life_funeral_monthly(funeral_policies, nifty_configs, start_date, end_date)
@@ -232,7 +237,7 @@ def process_claims(data, integration_configs, start_date, end_date, is_daily_sub
     try:
         guard_risk = GuardRisk(integration_configs.access_key, integration_configs.base_url)
         client_identifier = integration_configs.client_identifier
-        data, response_status = guard_risk.life_claims_daily(data, start_date, end_date, client_identifier)\
+        data, response_status = guard_risk.life_claims_daily(data, start_date, end_date, client_identifier) \
             if is_daily_submission else guard_risk.life_claims_monthly(data, start_date, end_date, client_identifier)
         print(response_status)
         log.data = data
@@ -280,3 +285,261 @@ def __fetch_claims(start_date: datetime, end_date: datetime):
         created__gte=start_date,
         created__lte=end_date,
     )
+
+
+def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
+    failed_loans = fetch_and_save_new_loans(start_date, end_date, fineract_org_id)
+    failed_repayments = fetch_and_save_repayments(start_date, end_date, fineract_org_id)
+    failed_closed_loans = fetch_and_update_closed_loans(start_date, end_date, fineract_org_id)
+    failed_claims = fetch_and_written_off_loans(start_date, end_date, fineract_org_id)
+    print(f'failed_loans:: {len(failed_loans)}')
+    print(f'failed_loans data:: {failed_loans}')
+    print(f'failed_repayments:: {len(failed_repayments)}')
+    print(f'failed_repayments data:: {failed_repayments}')
+    print(f'failed_closed_loans:: {len(failed_closed_loans)}')
+    print(f'failed_closed_loans:: {failed_closed_loans}')
+    print(f'failed_claims:: {len(failed_claims)}')
+    print(f'failed_claims:: {failed_claims}')
+
+
+def fetch_and_update_closed_loans(start_date: date, end_date: date, tenant):
+    closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, tenant)
+    unexisting = []
+    db_policies = []
+    for loan in closed_loans:
+        try:
+            if not loan["loanId"]:
+                print(f"Policy ID missing from request! : {loan}")
+                unexisting.append(loan['loanId'])
+            else:
+                policy = Policy.objects.filter(policy_number=loan["loanId"]).first()
+                if policy is not None:
+                    policy.policy_status = map_closure_reason(loan["closed_reason"])
+                    policy.expiry_date = loan["closed_date"]
+                    db_policies.append(policy)
+        except Exception as e:
+            print(f"Error saving {loan['loanId']}")
+            print(e)
+            unexisting.append(loan['loanId'])
+    Policy.objects.bulk_update(db_policies, fields=['policy_status', 'expiry_date'])
+    return unexisting
+
+
+def map_closure_reason(closed_reason: str) -> str:
+    if closed_reason == 'Withdrawn by client':
+        return "X"
+    elif closed_reason == 'Closed' or closed_reason == 'Overpaid':
+        return "P"
+    else:
+        return "P"
+
+
+def fetch_and_save_new_loans(start_date: date, end_date: date, tenant_id):
+    new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, tenant_id)
+    failed_loans = []
+    for loan in new_loans:
+        try:
+            if not loan["loanId"]:
+                print(f"Policy ID missing from request! : {loan}")
+                failed_loans.append(loan['loanId'])
+            else:
+                policy, client = extract_policy_and_client_info(loan)
+                serializer = ClientPolicyRequestSerializer(
+                    data={"client": client, "policy": policy},
+                )
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+        except Exception as e:
+            print(f"Error saving {loan['loanId']}")
+            print(e)
+            failed_loans.append(loan['loanId'])
+    return failed_loans
+
+
+def extract_policy_and_client_info(loan):
+    premium = float(loan["premium"])
+    policy = {
+        "policy_type": 1,
+        "insurer": 1,
+        "policy_number": loan["loanId"],
+        "external_id": loan["loan_external_id"],
+        "sum_insured": round(float(loan["loan_amount"]), 2),
+        "total_premium": round(float(loan["premium"]), 2),
+        "commencement_date": loan["disbursementDate"],
+        "policy_status": "A",
+        "expiry_date": loan["maturityDate"],
+        "product_name": loan["productName"],
+        "policy_term": loan["tenure"],
+        "admin_fee": calculate_guard_risk_admin_amount(premium),
+        "commission_amount": calculate_commission_amount(premium),
+        "commission_percentage": 7.50,
+        "sub_scheme": "Credit Life",
+        "entity": "Indlu",
+        "premium_frequency": "Monthly",
+        "commission_frequency": "Monthly",
+        "policy_details": {
+            "binder_fees": calculate_binder_fees_amount(premium),
+        }
+    }
+    client = {
+        "client_id": loan["client_primary_id_number"],
+        "first_name": loan["client_firstname"],
+        "middle_name": loan["client_middlename"],
+        "last_name": loan["client_surname"],
+        "date_of_birth": loan["dob"],
+        "primary_id_number": loan["client_primary_id_number"],
+        "primary_id_document_type": 1,
+        "gender": loan["client_gender"],
+        "marital_status": "Unknown",
+        "email": loan["email"],
+        "phone_number": loan["mobile_number"],
+        "entity_type": "Individual",
+    }
+    return policy, client
+
+
+def calculate_commission_amount(premium_amount) -> float:
+    return round(0.075 * premium_amount, 2)
+
+
+def calculate_guard_risk_admin_amount(premium_amount) -> float:
+    return round(0.05 * premium_amount, 2)
+
+
+def calculate_binder_fees_amount(premium_amount) -> float:
+    return round(0.09 * premium_amount, 2)
+
+
+def fetch_and_save_repayments(start_date: date, end_date: date, tenant_id):
+    repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, tenant_id)
+    failed_repayments = []
+    for repayment in repayments:
+        try:
+            if not repayment["loanId"]:
+                failed_repayments.append(repayment['loanId'])
+            else:
+                repayment_details = extract_repayment_details(repayment)
+                serializer = PremiumPaymentSerializer(
+                    data=repayment_details
+                )
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+        except Exception as e:
+            print(f"Error saving {repayment['loanId']}")
+            print(e)
+            failed_repayments.append(repayment['loanId'])
+    return failed_repayments
+
+
+def extract_repayment_details(repayment):
+    return {
+        "policy_id": repayment["loanId"],
+        "payment_date": repayment["transactionDate"],
+        "amount": round(float(repayment["paidAmount"]), 2),
+        "transaction_type": repayment["paymentType"],
+        "payment_method": repayment["paymentType"],
+    }
+
+
+def __fetch_new_policies_from_fin_connect(start_date: date, end_date: date, tenant_id):
+    print("Fetching new loans")
+    new_loans = []
+    try:
+        response_status, data = query_new_loans(tenant_id, start_date, end_date)
+        print(f'response_status: {response_status}:: data: {data}')
+        return data
+    except Exception as e:
+        print("Something went wrong fetching new loans")
+        print(e)
+        return new_loans
+
+
+def __fetch_loan_repayments_from_fin_connect(start_date: date, end_date: date, tenant_id):
+    print("Fetching loan repayments")
+    collections = []
+    try:
+        response_status, data = query_repayments(tenant_id, start_date, end_date)
+        print(f'response_status: {response_status}:: data: {data}')
+        return data
+    except Exception as e:
+        print("Something went wrong fetching loan repayments")
+        print(e)
+        return collections
+
+
+def __fetch_closed_loans_from_fin_connect(start_date: date, end_date: date, tenant_id):
+    print("Fetching closed loans")
+    collections = []
+    try:
+        response_status, data = query_closed_loans(tenant_id, start_date, end_date)
+        print(f'response_status: {response_status}:: data: {data}')
+        return data
+    except Exception as e:
+        print("Something went wrong fetching closed loans")
+        print(e)
+        return collections
+
+
+def fetch_and_written_off_loans(start_date: date, end_date: date, tenant):
+    written_off_loans = __fetch_written_off_policies_from_fin_connect(start_date, end_date, tenant)
+    fin_claimant_details = ClaimantDetails.objects.filter(name="Fin").first()
+    if fin_claimant_details is None:
+        raise Exception("No Fin claimant details found")
+    claims = []
+    for loan in written_off_loans:
+        try:
+            claim = create_claim(loan, fin_claimant_details)
+            claims.append(claim)
+        except Exception as e:
+            print(f"Error creating claim for {loan['loanId']}")
+            print(e)
+
+    try:
+        serializer = ClaimSerializer(
+            data=claims, many=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+    except Exception as e:
+        print(f"Error saving claims")
+    return claims
+
+
+def __fetch_written_off_policies_from_fin_connect(start_date: date, end_date: date, tenant_id):
+    print("Fetching written off loans")
+    written_off_loans = []
+    try:
+        response_status, data = query_written_off_loans(tenant_id, start_date, end_date)
+        print(f'response_status: {response_status}:: data: {data}')
+        return data
+    except Exception as e:
+        print("Something went wrong fetching written loans")
+        print(e)
+        return written_off_loans
+
+
+def create_claim(written_off_loan, fin_claimant_details):
+    policy = Policy.objects.filter(policy_number=written_off_loan["loanId"]).first()
+    if policy:
+        claim = {
+            "policy_id": policy.policy_id,
+            "claim_type_id": 1,
+            "claim_status": "Active",
+            "claimant_name": fin_claimant_details["name"],
+            "claimant_surname": fin_claimant_details["surname"],
+            "claimant_id_number": fin_claimant_details["id_number"],
+            "claimant_id_type": 1,
+            "claimant_email": fin_claimant_details["email"],
+            "claimant_phone": fin_claimant_details["phone_number"],
+            "claimant_bank_name": fin_claimant_details["bank"],
+            "claimant_bank_account_number": fin_claimant_details["bank_account_number"],
+            "claimant_branch": fin_claimant_details["branch"],
+            "claimant_branch_code": fin_claimant_details["branch_code"],
+            "claim_assessed_by": "",
+            "claim_assessment_date": "",
+            "claim_amount": written_off_loan["written_off_amount"],
+            "claim_details": {},
+            "submitted_date": written_off_loan["written_off_date"],
+            "claim_paid_date": "",
+        }
+        return claim

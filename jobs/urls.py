@@ -13,5 +13,11 @@ urlpatterns = [
         "monthly-job-submission/",
         MonthlyJobPostingsAPIView.as_view(),
         name="monthly-job-submission",
+    ),
+    path(
+        "finconnect-data_fetch-job/",
+        FetchFinConnectDataAPIView.as_view(),
+        name="finconnect-data_fetch-job",
     )
+
 ]

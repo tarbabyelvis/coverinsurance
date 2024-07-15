@@ -2,6 +2,9 @@ import json
 import logging
 from datetime import date, datetime
 
+from config.models import InsuranceCompany
+from integrations.utils import is_new_policy, generate_claim_reference
+
 log = logging.getLogger(__name__)
 
 product_option = "all"
@@ -26,8 +29,10 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
     end_date = end_date.strftime("%Y/%m/%d")
     result = []
     for claim in data:
+        print(f'claim {claim}')
         policy = claim["policy"]
         insurer = policy["insurer"]
+        insurer = InsuranceCompany.objects.filter(pk=insurer).first()
         try:
             if isinstance(policy["policy_details"], dict):
                 policy_details = policy["policy_details"]
@@ -41,7 +46,7 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
             "ReportPeriodStart": start_date,
             "ReportPeriodEnd": end_date,
             "AdministratorIdentifier": policy["entity"],
-            "InsurerName": insurer.get("name", ""),
+            "InsurerName": insurer.name,
             "ClientIdentifier": client_identifier,
             "DivisionIdentifier": policy_details.get("division_identifier", "2"),
             "SubSchemeName": policy["sub_scheme"],
@@ -51,14 +56,15 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
             "TermOfPolicy": policy["policy_term"],
             "PolicyStatus": policy["policy_status"],
             "PolicyStatusDate": timestamp,
-            "NewPolicyIndicator": policy_details.get("new_policy_indicator", "P"),
+            "NewPolicyIndicator": is_new_policy(policy["created"]),
             "ProductName": policy["product_name"],
             "ProductOption": product_option,
             "SalesChannel": policy_details.get("sales_channel", ""),
             "ClaimInPeriod": "Y",  # TODO check dynamically
             "ClaimStatus": claim["claim_status"],
             "ClaimStatusDate": timestamp,
-            "ClaimNumberID": claim["claimant_id_number"],
+            "ClaimNumberID": generate_claim_reference(claim["claimant_id_number"],
+                                                      policy_number=policy["policy_number"]),
             "ClaimantIDNumber": claim["claimant_id_number"],
             "ClaimEventDescription": "",
             "ClaimType": "L",  # TODO add the claim type in model either L(Lumpsum) or I(Installment)
@@ -83,17 +89,17 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
             "AccidentalInjuryCoverWaitingPeriod": waiting_period,
             "IdentityTheftCoverWaitingPeriod": waiting_period,
             "OtherAddOnRiderCoverWaitingPeriod": waiting_period,
-            "PotentialClaimAmountIfRepudiated": waiting_period,
-            "ReasonForRepudiation": claim.get("rejected_reason", ""),  # TODO add repudiation_reason to claim
-            "ClaimRepudiated": "Y" if claim.get("claim_rejected") else "N",
-            "DeathOriginalSumAssured": policy_details.get("death_original_sum_assured", ""),  # TODO add
-            "DeathCurrentSumAssured": policy_details.get("death_current_sum_insured", ""),
-            "DeathCurrentRISumAssured": policy_details.get("death_current_ri_sum_insured", ""),
-            "PTDOriginalSumAssured": policy_details.get("death_current_sum_insured", ""),
-            "PTDCurrentSumAssured": claim.get("ptd_current_sum_assured", ""),
-            "PTDCurrentRISumAssured": claim.get("ptd_current_sum_assured", ""),
-            "IncomeContinuationOriginalSumAssured": "",
-            "IncomeContinuationCurrentSumAssured": "",
+            "PotentialClaimAmountIfRepudiated": claim["claim_amount"],
+            "ReasonForRepudiation": claim.get("repudiated_reason", ""),
+            "ClaimRepudiated": "Y" if claim.get("claim_repudiated") else "N",
+            "DeathOriginalSumAssured": policy.get("sum_insured"),
+            "DeathCurrentSumAssured": policy_details.get("death_current_sum_insured", policy.get("sum_insured")),
+            "DeathCurrentRISumAssured": policy_details.get("death_current_ri_sum_insured", policy.get("sum_insured")),
+            "PTDOriginalSumAssured": policy_details.get("death_current_sum_insured", policy.get("sum_insured")),
+            "PTDCurrentSumAssured": claim.get("ptd_current_sum_assured", policy.get("sum_insured")),
+            "PTDCurrentRISumAssured": claim.get("ptd_current_sum_assured", policy.get("sum_insured")),
+            "IncomeContinuationOriginalSumAssured": policy.get("sum_insured"),
+            "IncomeContinuationCurrentSumAssured": policy.get("sum_insured"),
             "IncomeContinuationCurrentRISumAssured": "N/A",
             "DreadDiseaseOriginalSumAssured": "N/A",
             "DreadDiseaseCurrentSumAssured": "N/A",
@@ -200,7 +206,7 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
             "ReinsuranceRecoveries": "N/A",
             "RiskIdentifier": "N/A",
             "CancelledByPolicyholderCoolingPeriodInsurer": "N/A",
-            "RepudiatedClaimDate": claim.get("repudiated_claim_date", ""),
+            "RepudiatedClaimDate": claim.get("repudiated_date", ""),
             "FreeText1": claim.get("comments", ""),
             "FreeText2": "N/A",
             "FreeText3": "N/A",

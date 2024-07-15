@@ -1,8 +1,8 @@
 import json
 from datetime import date, datetime
 
-from config.models import Relationships
-from integrations.utils import get_frequency_number, populate_dependencies
+from config.models import Relationships, InsuranceCompany
+from integrations.utils import get_frequency_number, populate_dependencies, is_new_policy
 
 
 def prepare_life_credit_payload(
@@ -20,6 +20,7 @@ def prepare_life_credit_payload(
         client = policy["client"]
         policy_dependants = policy["policy_dependants"]
         insurer = policy["insurer"]
+        insurer = InsuranceCompany.objects.filter(pk=insurer).first()
         spouse = filter(
             lambda x: x if relationships[x["relationship"]].name.lower() == "spouse" else None,
             policy_dependants,
@@ -36,7 +37,6 @@ def prepare_life_credit_payload(
                 policy_details = policy["policy_details"]
             else:
                 policy_details = json.loads(policy["policy_details"])
-            # print(f'policy details successful:: {policy_details}')
         except json.JSONDecodeError as e:
             policy_details = policy["policy_details"]
             print(f"failed to parse json but read it now...")
@@ -45,7 +45,6 @@ def prepare_life_credit_payload(
         product_option = "all"
         premium_type = "Regular"
         death_cover_structure = "L"
-        ptd_cover_structure = "L"
         retrenchment_cover_structure = "L"
         death_cover_benefit_payment_period = 1
         ptd_cover_benefit_payment_period = 1
@@ -58,8 +57,8 @@ def prepare_life_credit_payload(
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
             "ReportPeriodEnd": end_date,
-            "AdministratorIdentifier": policy["entity"],  # TODO add identifier accordingly
-            "InsurerName": insurer.get("name", ""),
+            "AdministratorIdentifier": policy["entity"],
+            "InsurerName": insurer.name,
             "ClientIdentifier": client_identifier,
             "DivisionIdentifier": policy_details.get("division_identifier", "2"),
             "SubSchemeName": policy["sub_scheme"],
@@ -72,14 +71,14 @@ def prepare_life_credit_payload(
             "TermOfPolicy": policy["policy_term"],
             "PolicyStatus": policy["policy_status"],
             "PolicyStatusDate": timestamp,
-            "NewPolicyIndicator": policy_details.get("new_policy_indicator", "P"),
+            "NewPolicyIndicator": is_new_policy(policy["created"]),
             "SalesChannel": policy_details.get("sales_channel", ""),
             "CancelledbyPolicyholderCoolingPeriodInsurer": "",
-            "DeathIndicator": policy_details.get("death_indicator", ""),
-            "PTDIndicator": policy_details.get("ptd_indicator", ""),
+            "DeathIndicator": "Y",
+            "PTDIndicator": "Y",
             "IncomeContinuationIndicator": policy_details.get("ptd_indicator", "N"),
-            "DreadDiseaseIndicator": policy_details.get("dread_disease_indicator", ""),
-            "RetrenchmentIndicator": policy_details.get("retrenchment_indicator", ""),
+            "DreadDiseaseIndicator": "N",
+            "RetrenchmentIndicator": "Y",
             "DeathCoverTermIfDifferenttoPolicyTerm": None,
             "PTDCoverTermIfDifferenttoPolicyTerm": None,
             "IncomeContinuationCoverTermIfDifferenttoPolicyTerm": None,
@@ -92,11 +91,11 @@ def prepare_life_credit_payload(
             "RetrenchmentPremium": policy_details.get("retrenchment_premium", ""),
             "PremiumFrequency": get_frequency_number(policy.get("premium_frequency", "12")),
             "PremiumType": premium_type,
-            "DeathOriginalSumAssured": policy_details.get("death_original_sum_assured", ""),
-            "PTDOriginalSumAssured": policy_details.get("ptd_current_sum_assured", ""),
-            "IncomeContinuationOriginalSumAssured": 0,
-            "DreadDiseaseOriginalSumAssured": 0,
-            "RetrenchmentOriginalSumAssured": 0,
+            "DeathOriginalSumAssured": policy.get("sum_insured"),
+            "PTDOriginalSumAssured": policy.get("sum_insured"),
+            "IncomeContinuationOriginalSumAssured": policy.get("sum_insured"),
+            "DreadDiseaseOriginalSumAssured": policy.get("sum_insured"),
+            "RetrenchmentOriginalSumAssured": policy.get("sum_insured"),
             "DeathCoverStructure": death_cover_structure,
             "PTDCoverStructure": policy_details.get("death_cover_structure", "L"),
             "IncomeContinuationCoverStructure": None,
@@ -160,7 +159,8 @@ def prepare_life_credit_payload(
             "PrincipalID": client.get("primary_id_number", ""),
             "PrincipalGender": client.get("gender", ""),
             "PrincipalDateofBirth": client.get("date_of_birth", ""),
-            "PrincipalMemberPhysicalAddress": f"{client['address_street']} {client['address_suburb']} {client['address_town']} {client['address_province']}",
+            "PrincipalMemberPhysicalAddress": f"{client['address_street']} {client['address_suburb']} "
+                                              f"{client['address_town']} {client['address_province']}",
             "PostalCode": client["postal_code"],
             "PrincipalTelephoneNumber": client["phone_number"],
             "PrincipalMemberEmailAddress": client.get("email", ""),

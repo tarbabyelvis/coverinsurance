@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timedelta
 
 import requests
 from integrations.models import IntegrationLogs
@@ -8,10 +9,8 @@ def post_request_and_save(request_data, url, headers, service):
     try:
         print(f'url {url} headers {headers}')
         response = requests.post(url, json=request_data, headers=headers)
-        # response = requests.post(url, timeout=(180, 300), json=request_data, headers=headers)
         print(f'response :: {response}')
         response_data = response.json()
-        print(f'response gotten:: {response_data}')
 
         response_status = response.status_code
         if response_status == 200:
@@ -49,19 +48,16 @@ def get_frequency_number(frequency: str):
         return 0
 
 
-def extract_field(json_str, field):
-    pattern = fr'"{field}":\s*"(.*?)"'
-    match = re.search(pattern, json_str)
-    return match.group(1) if match else None
+def is_new_policy(created_date_time: str) -> str:  # TODO add the transferred T and R Replacement adjustments
+    created_date = datetime.strptime(created_date_time, '%Y-%m-%dT%H:%M:%S.%fZ').date()
+    yesterday = datetime.now() - timedelta(days=1)
+    created_yesterday = created_date == yesterday.date()
+    return 'P' if created_yesterday else 'N'
 
 
-def extract_nested_field(json_str, parent_field, nested_field):
-    parent_pattern = fr'"{parent_field}":\s*{{(.*?)}}'
-    parent_match = re.search(parent_pattern, json_str, re.DOTALL)
-    if parent_match:
-        parent_str = parent_match.group(1)
-        return extract_field(parent_str, nested_field)
-    return None
+def generate_claim_reference(claimant_id: str, policy_number: str) -> str:
+    current_date = datetime.now().strftime('%Y%m%d')
+    return f"{claimant_id}:{policy_number}-{current_date}"
 
 
 def populate_dependencies(other_dependants, details):

@@ -1,3 +1,5 @@
+from django.utils import timezone
+
 from django.db import models
 from clients.enums import EntityType
 from config.enums import DocumentCategories, PolicyType
@@ -168,6 +170,30 @@ class Agent(BaseModel):
         return self.agent_name
 
 
+class ClaimantDetails(models.Model):
+    name = models.CharField(max_length=60)
+    surname = models.CharField(max_length=60)
+    id_number = models.CharField(max_length=60)
+    id_type = models.CharField(max_length=60)
+    email = models.CharField(max_length=60)
+    phone_number = models.CharField(max_length=60)
+    bank = models.CharField(max_length=60)
+    branch = models.CharField(max_length=60)
+    branch_code = models.CharField(max_length=60)
+    account_name = models.CharField(max_length=60)
+    account_number = models.CharField(max_length=60)
+    account_type = models.CharField(max_length=60)
+    created = models.DateField(default=timezone.now)
+    objects = models.Manager()
+
+    def __str__(self):
+        return self.bank
+
+    class Meta:
+        verbose_name = "Claimant Details"
+        verbose_name_plural = "Claimant Details"
+
+
 # register the class for Audit
 auditlog.register(PolicyName)
 auditlog.register(InsuranceCompany)
@@ -179,3 +205,4 @@ auditlog.register(BusinessSector)
 auditlog.register(Agent)
 auditlog.register(OrganisationConfig)
 auditlog.register(PolicyTypeFields)
+auditlog.register(ClaimantDetails)

@@ -1,7 +1,7 @@
 import traceback
 from datetime import datetime
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError, transaction
@@ -173,7 +173,6 @@ class PolicySerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        print("create policy")
         beneficiaries_data = validated_data.pop("beneficiaries", [])
         dependants_data = validated_data.pop("dependants", [])
         terms = validated_data.get("policy_term", 1)  # Default to 1 if not provided
@@ -188,7 +187,6 @@ class PolicySerializer(serializers.ModelSerializer):
         policy = Policy.objects.create(**validated_data)
 
         # Create payment schedules for each term
-        print("before creating schedule")
         for term in range(1, terms + 1):
             print("creating the schedule")
             payment_schedule = PolicyPaymentSchedule.objects.create(
@@ -426,7 +424,6 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
     payment_receipt_date = serializers.DateField(required=False)
     payment_method = serializers.CharField(max_length=200, required=False)
     payment_reference = serializers.CharField(max_length=200, required=False)
-    # policy = serializers.PrimaryKeyRelatedField(queryset=Policy.objects.all())
 
     def to_internal_value(self, data):
         policy_id = data.get("policy_id")
@@ -434,6 +431,10 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
         internal_value.update(policy_id=policy_id)
         # Convert datetime to date for specified fields if needed
         return internal_value
+
+    def validate_amount(self, value):
+        # Ensure the amount has no more than 2 decimal places
+        return value.quantize(Decimal('0.01'), rounding=ROUND_DOWN)
 
     class Meta:
         model = PremiumPayment
@@ -529,4 +530,3 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
-
