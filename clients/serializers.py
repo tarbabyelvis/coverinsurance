@@ -15,7 +15,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 
 def in_memory_file_exists(in_memory_file):
     try:
-        # Attempt to read a small chunk from the file-like object
+        # Attempt to read a small chunk from the file-like object 
         # This will fail if the file-like object is closed or empty
         in_memory_file.read(0)
         return True
