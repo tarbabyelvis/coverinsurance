@@ -158,7 +158,7 @@ class PolicyView(APIView):
 
 
 class PolicyDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
         operation_description="Retrieve a specific policy by ID",
         responses={

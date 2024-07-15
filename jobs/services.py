@@ -12,7 +12,8 @@ from integrations.models import IntegrationConfigs
 from integrations.superbase import query_new_loans, query_repayments, query_closed_loans, query_written_off_loans
 from jobs.models import TaskLog
 from policies.models import Policy
-from policies.serializers import PolicyDetailSerializer, PolicySerializer, PremiumPaymentSerializer
+from policies.serializers import PolicyDetailSerializer, PremiumPaymentSerializer, \
+    ClientPolicyRequestSerializer
 from .models import Task
 
 first_day_of_previous_month: date = first_day_of_previous_month().date()
@@ -313,14 +314,14 @@ def fetch_and_update_closed_loans(start_date: date, end_date: date, tenant):
             else:
                 policy = Policy.objects.filter(policy_number=loan["loanId"]).first()
                 if policy is not None:
-                    policy.policy_status = map_closure_reason(loan["closure_reason"])
+                    policy.policy_status = map_closure_reason(loan["closed_reason"])
                     policy.expiry_date = loan["closed_date"]
                     db_policies.append(policy)
         except Exception as e:
             print(f"Error saving {loan['loanId']}")
             print(e)
             unexisting.append(loan['loanId'])
-    Policy.objects.bulk_update(db_policies, batch_size=100)
+    Policy.objects.bulk_update(db_policies, fields=['policy_status', 'expiry_date'])
     return unexisting
 
 
@@ -342,9 +343,9 @@ def fetch_and_save_new_loans(start_date: date, end_date: date, tenant_id):
                 print(f"Policy ID missing from request! : {loan}")
                 failed_loans.append(loan['loanId'])
             else:
-                loan, client = extract_policy_and_client_info(loan)
-                serializer = PolicySerializer(
-                    data={"client": client, "policy": loan},
+                policy, client = extract_policy_and_client_info(loan)
+                serializer = ClientPolicyRequestSerializer(
+                    data={"client": client, "policy": policy},
                 )
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
@@ -356,26 +357,28 @@ def fetch_and_save_new_loans(start_date: date, end_date: date, tenant_id):
 
 
 def extract_policy_and_client_info(loan):
+    premium = float(loan["premium"])
     policy = {
         "policy_type": 1,
         "insurer": 1,
         "policy_number": loan["loanId"],
         "external_id": loan["loan_external_id"],
-        "sum_insured": loan["loan_amount"],
-        "total_premium": loan["premium"],
+        "sum_insured": round(float(loan["loan_amount"]), 2),
+        "total_premium": round(float(loan["premium"]), 2),
         "commencement_date": loan["disbursementDate"],
         "policy_status": "A",
         "expiry_date": loan["maturityDate"],
         "product_name": loan["productName"],
         "policy_term": loan["tenure"],
-        # "admin_fee": loan["admin_fee"],  # TODO
-        "commission_amount": loan["commission_amount"],
-        "commission_percentage": loan["commission_percentage"],
+        "admin_fee": calculate_guard_risk_admin_amount(premium),
+        "commission_amount": calculate_commission_amount(premium),
+        "commission_percentage": 7.50,
         "sub_scheme": "Credit Life",
         "entity": "Indlu",
         "premium_frequency": "Monthly",
         "commission_frequency": "Monthly",
         "policy_details": {
+            "binder_fees": calculate_binder_fees_amount(premium),
         }
     }
     client = {
@@ -385,12 +388,26 @@ def extract_policy_and_client_info(loan):
         "last_name": loan["client_surname"],
         "date_of_birth": loan["dob"],
         "primary_id_number": loan["client_primary_id_number"],
+        "primary_id_document_type": 1,
         "gender": loan["client_gender"],
         "marital_status": "Unknown",
         "email": loan["email"],
         "phone_number": loan["mobile_number"],
+        "entity_type": "Individual",
     }
     return policy, client
+
+
+def calculate_commission_amount(premium_amount) -> float:
+    return round(0.075 * premium_amount, 2)
+
+
+def calculate_guard_risk_admin_amount(premium_amount) -> float:
+    return round(0.05 * premium_amount, 2)
+
+
+def calculate_binder_fees_amount(premium_amount) -> float:
+    return round(0.09 * premium_amount, 2)
 
 
 def fetch_and_save_repayments(start_date: date, end_date: date, tenant_id):
@@ -418,11 +435,8 @@ def extract_repayment_details(repayment):
     return {
         "policy_id": repayment["loanId"],
         "payment_date": repayment["transactionDate"],
-        "amount": repayment["paidAmount"],
-        "client_number": repayment["client_primary_id_number"],
+        "amount": round(float(repayment["paidAmount"]), 2),
         "transaction_type": repayment["paymentType"],
-        "client_transaction_id": repayment["client_transaction_reference"],
-        "branch_name": repayment["branch_name"],
         "payment_method": repayment["paymentType"],
     }
 

@@ -81,7 +81,6 @@ class ClaimCreateAPIView(APIView):
         claim_type = request.GET.get("claim_type", None)
         query = request.GET.get("query", None)
         claims = Claim.objects.all()
-        print(f'request {request}')
         if query:
             claims = claims.filter(
                 Q(claimant_name__icontains=query)
@@ -105,7 +104,6 @@ class ClaimCreateAPIView(APIView):
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(claims, request)
         serializer = ClaimSerializer(result_page, many=True)
-        print(f'results {serializer.data}')
         claims_list = []
         for claim in serializer.data:
             claims_list.append({
@@ -131,9 +129,9 @@ class ClaimCreateAPIView(APIView):
                 "claimant_branch": claim['claimant_branch'],
                 "claimant_branch_code": claim['claimant_branch_code'],
                 "claimant_id_type": claim['claimant_id_type'],
-                "claim_rejected": claim['claim_rejected'],
-                "rejected_date": claim['rejected_date'],
-                "rejected_reason": claim['rejected_reason']
+                "claim_repudiated": claim['claim_repudiated'],
+                "repudiated_date": claim['repudiated_date'],
+                "repudiated_reason": claim['repudiated_reason']
             })
         return HTTPResponse.success(
             message="Resource retrieved successfully",

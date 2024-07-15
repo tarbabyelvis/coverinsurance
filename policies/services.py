@@ -1,7 +1,7 @@
-from datetime import datetime, date
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, date
 from typing import Any, Dict, List
 
 import openpyxl
@@ -16,7 +16,6 @@ from core.utils import get_dict_values, merge_dict_into_another, replace_keys
 from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, CLIENT_COLUMNS_INDLU, POLICY_COLUMNS_INDLU
 from policies.constants import FUNERAL_POLICY_BENEFICIARY_COLUMNS, \
     FUNERAL_POLICY_CLIENT_COLUMNS, DEFAULT_BENEFICIARY_FIELDS, POLICY_CLIENT_COLUMNS_INDLU
-from policies.models import Policy
 from policies.serializers import BeneficiarySerializer
 from policies.serializers import ClientPolicyRequestSerializer, PremiumPaymentSerializer
 
@@ -309,18 +308,8 @@ def process_data(data: Dict[str, Any], data_type: str) -> Dict[str, Any]:
 
 def process_indlu_client_data(client_data: Dict[str, Any]) -> Dict[str, Any]:
     client = extract_employment_fields(client_data)
-    # for detail in client_data:
-    #     print(f'detail in for loop')
-    #     if detail == "client_details":
-    #         for client_detail in client_data[detail]:
-    #             if isinstance(client_data[detail][client_detail], datetime.datetime):
-    #                 client_data[detail][client_detail] = client_data[detail][client_detail].strftime('%Y-%m-%d')
-    #     if isinstance(client_data[detail], datetime.datetime):
-    #         client_data[detail] = client_data[detail].strftime('%Y-%m-%d')
     gender_mapping = {"U": "Unknown", "M": "Male", "F": "Female", "Male": "Male", "Female": "Female"}
     client["gender"] = gender_mapping.get(client.get("gender"), "Unknown")
-
-    # Further processing if needed
     return client
 
 
@@ -393,13 +382,13 @@ def __calculate_and_set_expiry_date(policy_data: Dict[str, Any]):
 
 def process_indlu_repayment_data(payment_data: Dict[str, Any]) -> Dict[str, Any]:
     if 'payment_date' in payment_data:
-        payment_date = payment_data['payment_date']
-        if isinstance(payment_date, datetime):
+        amount = payment_data['payment_date']
+        if isinstance(amount, datetime):
             # If payment_date is already a datetime object, format it as needed
-            payment_data['payment_date'] = payment_date.strftime('%Y-%m-%d')  # Reformat date if needed
-        elif isinstance(payment_date, str):
-            payment_date = datetime.strptime(payment_date, '%Y-%m-%d')
-            payment_data['payment_date'] = payment_date.strftime('%Y-%m-%d')
+            payment_data['payment_date'] = amount.strftime('%Y-%m-%d')  # Reformat date if needed
+        elif isinstance(amount, str):
+            amount = datetime.strptime(amount, '%Y-%m-%d')
+            payment_data['payment_date'] = amount.strftime('%Y-%m-%d')
     if 'is_reversed' in payment_data:
         value = payment_data['is_reversed']
         # Convert Excel-style boolean strings to Python booleans
@@ -407,7 +396,14 @@ def process_indlu_repayment_data(payment_data: Dict[str, Any]) -> Dict[str, Any]
             payment_data['is_reversed'] = False
         elif isinstance(value, str) and value.upper() == '=TRUE()':
             payment_data['is_reversed'] = True
-
+    if 'amount' in payment_data:
+        amount = payment_data['amount']
+        if isinstance(amount, str):
+            # If payment_date is already a datetime object, format it as needed
+            payment_data['amount'] = round(float(amount), 2)  # Reformat date if needed
+        elif isinstance(amount, float):
+            amount = round(amount, 2)
+            payment_data['amount'] = amount
     return payment_data
 
 
@@ -544,7 +540,6 @@ def save_policy_beneficiary_data(policy_beneficiary_data: List[Dict[str, Any]]) 
 def upload_bulk_repayments(
         file_obj: Any, repayment_columns
 ) -> None:
-    print("The columns loaded")
     # Load the Excel workbook
     wb = openpyxl.load_workbook(file_obj.file)
     repayments = process_worksheet(wb, "Receipts", repayment_columns, "repayment")
@@ -553,7 +548,6 @@ def upload_bulk_repayments(
 
 @transaction.atomic
 def save_indlu_repayments_data(repayments: List[Dict[str, Any]]) -> None:
-    print('saving now repayments...')
     failed_repayments = []
     for repayment in repayments:
         try:
@@ -600,7 +594,6 @@ def upload_indlu_clients_and_policies(
 
     updated_policies, updated_clients = match_policies_and_clients(policies, clients, dump_policies, dump_clients)
     save_client_policy_members_data(updated_policies, updated_clients)
-    print('we finished saving ...')
 
 
 def extract_from_dump(policy_clients_dump, received_policy_columns, received_client_columns):
