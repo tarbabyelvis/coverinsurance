@@ -125,6 +125,8 @@ def __credit_life(
             # fetch the data
             nifty_data = list(filter(lambda policy: policy.entity == 'Nifty Cover', credit_life_policies))
             indlu_data = list(filter(lambda policy: policy.entity == 'Indlu', credit_life_policies))
+            # indlu_data = [policy for policy in credit_life_policies if policy not in nifty_data]
+            print(f'indlu_data: {indlu_data}')
 
             nifty_policies = PolicyDetailSerializer(nifty_data, many=True).data
             indlu_policies = PolicyDetailSerializer(indlu_data, many=True).data
@@ -180,7 +182,7 @@ def __life_funeral(
         if funeral_policies.exists():
             nifty_data = list(filter(lambda p: p.entity == 'Nifty Cover', funeral_policies))
             nifty_policies = PolicyDetailSerializer(nifty_data, many=True).data
-            # process_life_funeral(nifty_policies, nifty_configs, start_date, end_date, is_daily_submission)
+            process_life_funeral(nifty_policies, nifty_configs, start_date, end_date, is_daily_submission)
         else:
             print('No funeral policies to process...')
     except Exception as e:
