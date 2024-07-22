@@ -11,7 +11,7 @@ from integrations.guardrisk.guardrisk import GuardRisk
 from integrations.models import IntegrationConfigs
 from integrations.superbase import query_new_loans, query_repayments, query_closed_loans, query_written_off_loans
 from jobs.models import TaskLog
-from policies.models import Policy
+from policies.models import Policy, PremiumPayment
 from policies.serializers import PolicyDetailSerializer, PremiumPaymentSerializer, \
     ClientPolicyRequestSerializer
 from .models import Task
@@ -31,6 +31,7 @@ def daily_job_postings(start_date=today_start_date, end_date=today_end_date):
     credit_life_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.CREDIT_LIFE)
     funeral_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.FUNERAL_COVER)
     fetched_claims = __fetch_claims(start_date_time, end_date_time)
+    fetched_premiums = __fetch_premiums(start_date_time, end_date_time)
     try:
         credit_life_daily(credit_life_policies, nifty_configs, indlu_configs, start_date, end_date)
     except Exception as e:
@@ -45,6 +46,11 @@ def daily_job_postings(start_date=today_start_date, end_date=today_end_date):
         claims_daily(fetched_claims, nifty_configs, indlu_configs, start_date, end_date)
     except Exception as e:
         print(f"Error on sending claims: {e}")
+
+    try:
+        premiums_daily(fetched_premiums, nifty_configs, indlu_configs, start_date, end_date)
+    except Exception as e:
+        print(f"Error on sending premiums: {e}")
 
     status = 200
     data = {
@@ -67,6 +73,7 @@ def monthly_job_postings(start_date=first_day_of_previous_month, end_date=last_d
     credit_life_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.CREDIT_LIFE)
     funeral_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.FUNERAL_COVER)
     fetched_claims = __fetch_claims(start_date_time, end_date_time)
+    fetched_premiums = __fetch_premiums(start_date_time, end_date_time)
     try:
         credit_life_monthly(credit_life_policies, nifty_configs, indlu_configs, start_date, end_date)
     except Exception as e:
@@ -81,6 +88,11 @@ def monthly_job_postings(start_date=first_day_of_previous_month, end_date=last_d
         claims_monthly(fetched_claims, nifty_configs, indlu_configs, start_date, end_date)
     except Exception as e:
         print(f"Error on sending monthly claims: {e}")
+
+    try:
+        premiums_monthly(fetched_premiums, nifty_configs, indlu_configs, start_date, end_date)
+    except Exception as e:
+        print(f"Error on sending monthly premiums: {e}")
 
     status = 200
     data = {
@@ -97,12 +109,12 @@ def __get_start_and_end_dates_with_time(start_date, end_date):
 
 def credit_life_daily(credit_life_policies, nifty_configs, indlu_configs, start_date=today_start_date,
                       end_date=today_end_date):
-    __credit_life(credit_life_policies, nifty_configs, indlu_configs, start_date, end_date)
+    return __credit_life(credit_life_policies, nifty_configs, indlu_configs, start_date, end_date)
 
 
 def credit_life_monthly(credit_life_policies, nifty_configs, indlu_configs,
                         start_date=first_day_of_previous_month, end_date=last_day_of_previous_month):
-    __credit_life(credit_life_policies, nifty_configs, indlu_configs, start_date, end_date, False)
+    return __credit_life(credit_life_policies, nifty_configs, indlu_configs, start_date, end_date, False)
 
 
 def __credit_life(
@@ -117,11 +129,12 @@ def __credit_life(
             nifty_policies = PolicyDetailSerializer(nifty_data, many=True).data
             indlu_policies = PolicyDetailSerializer(indlu_data, many=True).data
             print(f'now processing for nifty , {len(nifty_policies)} policies')
-            process_credit_life(nifty_policies, nifty_configs, start_date, end_date, is_daily_submission)
+            # _, status = process_credit_life(nifty_policies, nifty_configs, start_date, end_date, is_daily_submission)
             print(f'now processing for indlu , {len(indlu_policies)} policies')
-            process_credit_life(indlu_policies, indlu_configs, start_date, end_date, is_daily_submission)
+            _, status = process_credit_life(indlu_policies, indlu_configs, start_date, end_date, is_daily_submission)
             return
         print('No Life policies to process...')
+
     except Exception as e:
         print(e)
         raise Exception(e)
@@ -167,7 +180,7 @@ def __life_funeral(
         if funeral_policies.exists():
             nifty_data = list(filter(lambda p: p.entity == 'Nifty Cover', funeral_policies))
             nifty_policies = PolicyDetailSerializer(nifty_data, many=True).data
-            process_life_funeral(nifty_policies, nifty_configs, start_date, end_date, is_daily_submission)
+            # process_life_funeral(nifty_policies, nifty_configs, start_date, end_date, is_daily_submission)
         else:
             print('No funeral policies to process...')
     except Exception as e:
@@ -221,7 +234,7 @@ def __claims(
             nifty_claims = ClaimSerializer(nifty_data, many=True).data
             indlu_claims = ClaimSerializer(indlu_data, many=True).data
 
-            process_claims(nifty_claims, nifty_configs, start_date, end_date, is_daily_submission)
+            # process_claims(nifty_claims, nifty_configs, start_date, end_date, is_daily_submission)
             process_claims(indlu_claims, indlu_configs, start_date, end_date, is_daily_submission)
         else:
             print('No claims to process...')
@@ -239,6 +252,61 @@ def process_claims(data, integration_configs, start_date, end_date, is_daily_sub
         client_identifier = integration_configs.client_identifier
         data, response_status = guard_risk.life_claims_daily(data, start_date, end_date, client_identifier) \
             if is_daily_submission else guard_risk.life_claims_monthly(data, start_date, end_date, client_identifier)
+        print(response_status)
+        log.data = data
+        if str(response_status).startswith("2"):
+            log.status = "completed"
+            log.save()
+        else:
+            log.status = "failed"
+            log.save()
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        log.status = "failed"
+        log.save()
+        raise Exception(e)
+
+    return data, response_status
+
+
+def premiums_daily(claims_fetched, nifty_configs, indlu_configs, start_date=today_start_date, end_date=today_end_date):
+    return __premiums(claims_fetched, nifty_configs, indlu_configs, start_date, end_date)
+
+
+def premiums_monthly(claims_fetched, nifty_configs, indlu_configs, start_date=first_day_of_previous_month,
+                     end_date=last_day_of_previous_month):
+    return __premiums(claims_fetched, nifty_configs, indlu_configs, start_date, end_date, False)
+
+
+def __premiums(
+        fetched_premiums, nifty_configs, indlu_configs, start_date, end_date, is_daily_submission=True
+):
+    try:
+        if fetched_premiums.exists():
+            nifty_data = list(filter(lambda premium: premium.policy.entity == 'Nifty Cover', fetched_premiums))
+            indlu_data = list(filter(lambda premium: premium.policy.entity == 'Indlu', fetched_premiums))
+
+            nifty_claims = PremiumPaymentSerializer(nifty_data, many=True).data
+            indlu_claims = PremiumPaymentSerializer(indlu_data, many=True).data
+
+            # process_premiums(nifty_claims, nifty_configs, start_date, end_date, is_daily_submission)
+            process_premiums(indlu_claims, indlu_configs, start_date, end_date, is_daily_submission)
+        else:
+            print('No premiums to process...')
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        raise Exception(e)
+
+
+def process_premiums(data, integration_configs, start_date, end_date, is_daily_submission=True):
+    task = fetch_tasks('PREMIUM_DAILY' if is_daily_submission else 'PREMIUM_MONTHLY')
+    log = create_task_logs(task)
+    try:
+        guard_risk = GuardRisk(integration_configs.access_key, integration_configs.base_url)
+        data, response_status = guard_risk.life_premiums_daily(data, start_date, end_date) \
+            if is_daily_submission else guard_risk.life_premiums_monthly(data, start_date, end_date)
         print(response_status)
         log.data = data
         if str(response_status).startswith("2"):
@@ -282,6 +350,13 @@ def __fetch_policies(start_date: datetime, end_date: datetime, policy_type: Poli
 
 def __fetch_claims(start_date: datetime, end_date: datetime):
     return Claim.objects.filter(
+        created__gte=start_date,
+        created__lte=end_date,
+    )
+
+
+def __fetch_premiums(start_date: datetime, end_date: datetime):
+    return PremiumPayment.objects.filter(
         created__gte=start_date,
         created__lte=end_date,
     )
@@ -362,7 +437,7 @@ def extract_policy_and_client_info(loan):
         "policy_type": 1,
         "insurer": 1,
         "policy_number": loan["loanId"],
-        "external_id": loan["loan_external_id"],
+        "external_reference": loan["loan_external_id"],
         "sum_insured": round(float(loan["loan_amount"]), 2),
         "total_premium": round(float(loan["premium"]), 2),
         "commencement_date": loan["disbursementDate"],

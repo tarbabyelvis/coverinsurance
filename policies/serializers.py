@@ -457,7 +457,7 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
         policy = Policy.objects.filter(policy_number=policy_id).first()
         if not policy:
             raise serializers.ValidationError(
-                f"Policy with the provided ID does not exist {policy_id}."
+                f"Policy with the provided number does not exist {policy_id}."
             )
 
         payment_schedules = PolicyPaymentSchedule.objects.filter(

@@ -4,6 +4,7 @@ from integrations.guardrisk.data.life_credit import prepare_life_credit_payload
 from integrations.guardrisk.data.life_funeral import (
     prepare_life_funeral_payload,
 )
+from integrations.guardrisk.data.premiums import prepare_premium_payload
 from integrations.utils import post_request_and_save
 
 
@@ -98,17 +99,45 @@ class GuardRisk:
         if data_size == 0:
             print(f'Not calling the api anymore for {client_identifier}')
             response_data = {"Status": "Ok", "message": "No credit life data to send"}
-            # {'Status': 'Ok', 'ErrorMessage': None, }
-            response_status = 400
+            response_status = 200
             return response_data, response_status
 
         url = create_url(self.base_url, path)
         headers = {"CallerId": self.access_key,
                    "RowCount": str(data_size)}
-
         # Call the function to post the request and save it along with the response
         response_data, response_status, _ = post_request_and_save(
             request_data, url, headers, Integrations.GUARDRISK.name
         )
 
+        return response_data, response_status
+
+    def life_premiums_monthly(self, data, start_date, end_date):
+        path = "/DeltaV2/api/STPremiums"
+        print('calling premium api...')
+        return self.__premiums(data, start_date, end_date, path)
+
+    def life_premiums_daily(self, data, start_date, end_date):
+        path = "/DeltaV2/api/STPremiumsDaily"
+        return self.__premiums(data, start_date, end_date, path)
+
+    def __premiums(self, data, start_date, end_date, path):
+        request_data = prepare_premium_payload(
+            data, start_date, end_date
+        )
+        data_size = len(request_data)
+        print(f'submitting {data_size} premiums')
+        print(f'request sent:: {request_data}')
+        if data_size == 0:
+            response_data = {"Status": "Ok", "message": "No premiums to send"}
+            response_status = 200
+            return response_data, response_status
+
+        url = create_url(self.base_url, path)
+        headers = {"CallerId": self.access_key,
+                   "RowCount": str(data_size)}
+        # Call the function to post the request and save it along with the response
+        response_data, response_status, _ = post_request_and_save(
+            request_data, url, headers, Integrations.GUARDRISK.name
+        )
         return response_data, response_status
