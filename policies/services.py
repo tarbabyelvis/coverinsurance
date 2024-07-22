@@ -1,7 +1,9 @@
 import json
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, date
+from datetime import datetime, date, time
+from dateutil import parser
 from typing import Any, Dict, List
 
 import openpyxl
@@ -11,11 +13,14 @@ from django.db import transaction
 from django.forms import ValidationError
 
 from clients.enums import MaritalStatus
+from config.models import BusinessSector
 from core.enums import PremiumFrequency
-from core.utils import get_dict_values, merge_dict_into_another, replace_keys
-from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, CLIENT_COLUMNS_INDLU, POLICY_COLUMNS_INDLU
+from core.utils import get_dict_values, merge_dict_into_another, replace_keys, get_current_schema
+from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, CLIENT_COLUMNS_INDLU, POLICY_COLUMNS_INDLU, \
+    POLICY_CLIENTS_COLUMNS_CFSA
 from policies.constants import FUNERAL_POLICY_BENEFICIARY_COLUMNS, \
     FUNERAL_POLICY_CLIENT_COLUMNS, DEFAULT_BENEFICIARY_FIELDS, POLICY_CLIENT_COLUMNS_INDLU
+from policies.models import Policy
 from policies.serializers import BeneficiarySerializer
 from policies.serializers import ClientPolicyRequestSerializer, PremiumPaymentSerializer
 
@@ -266,18 +271,14 @@ def process_worksheet(
                 default_columns = {**DEFAULT_CLIENT_FIELDS}
             elif data_type == "repayment":
                 default_columns = {}
-            elif data_type == "policy_client_dump":
-                default_columns = {**DEFAULT_POLICY_FIELDS, **DEFAULT_CLIENT_FIELDS, "entity": "Indlu",
+            elif data_type == "policy_client_dump" or data_type == 'cfsa':
+                default_columns = {**DEFAULT_POLICY_FIELDS, **DEFAULT_CLIENT_FIELDS,
+                                   "entity": "Indlu",
                                    "product_name": "Indlu Credit Life",
                                    "sub_scheme": "Credit Life", "policy_name_policy": "CREDIT_LIFE",
                                    "commission_frequency": "Monthly",
                                    "premium_frequency": "Monthly",
-                                   "postal_code": None,
-                                   "job_title": None,
-                                   "employer_name": None,
-                                   "employment_date": None,
-                                   "total_premium": 0,
-                                   # "json_risk_identifier": None,
+                                   "commission_percentage": 7.50
                                    }
             else:
                 default_columns = DEFAULT_BENEFICIARY_FIELDS
@@ -295,7 +296,7 @@ def process_data(data: Dict[str, Any], data_type: str) -> Dict[str, Any]:
         processed_data = process_indlu_policy_data(data)
     elif data_type == "client":
         processed_data = process_indlu_client_data(data)
-    elif data_type == "policy_client_dump":
+    elif data_type == "policy_client_dump" or data_type == 'cfsa':
         processed_data = process_indlu_policy_client_dump_data(data)
     elif data_type == "beneficiary":
         processed_data = process_beneficiary_data(data)
@@ -320,7 +321,8 @@ def extract_employment_fields(client_details):
         'employer',
         'employment_date',
         'employer_name',
-        'gross_salary'
+        'gross_salary',
+        'basic_salary',
     }
     employment_data = {}
     for field in employment_fields:
@@ -342,18 +344,13 @@ def process_indlu_policy_data(policy_data: Dict[str, Any]):
     }
     policy_data["policy_term"] = 1 if policy_data["policy_term"] == 0 else policy_data[
         "policy_term"]
-
-    policy_data["premium_frequency"] = frequency_map.get(policy_data["premium_frequency"],
-                                                         PremiumFrequency.ONCE_OFF).value
-
-    policy_data["commission_frequency"] = frequency_map.get(policy_data["commission_frequency"],
-                                                            PremiumFrequency.ONCE_OFF).value
     __calculate_and_set_expiry_date(policy_data)
     extract_json_fields(policy_data)
     return policy_data
 
 
 def process_indlu_policy_client_dump_data(policy_data: Dict[str, Any]):
+    print(f'policy data {policy_data}')
     frequency_map = {
         1: PremiumFrequency.MONTHLY,
         3: PremiumFrequency.QUARTERLY,
@@ -364,31 +361,88 @@ def process_indlu_policy_client_dump_data(policy_data: Dict[str, Any]):
     }
     policy_data["policy_term"] = 1 if policy_data["policy_term"] == 0 else policy_data[
         "policy_term"]
+    if 'address_street' in policy_data:
+        address_street = policy_data['address_street']
+        if isinstance(address_street, datetime):
+            policy_data['address_street'] = address_street.strftime('%d/%m/%Y')
+    if 'date_of_birth' in policy_data:
+        id_number = policy_data['date_of_birth']
+        print(f'date_of_birth {id_number}')
+        if isinstance(id_number, str):
+            try:
+                policy_data['date_of_birth'] = parser.parse(id_number).date()
+            except ValueError:
+                policy_data['date_of_birth'] = date.today().strftime('%d/%m/%Y')
+        if id_number is None:
+            policy_data['date_of_birth'] = date.today().strftime('%d/%m/%Y')
+    if 'primary_id_number' in policy_data:
+        id_number = policy_data['primary_id_number']
+        if id_number is None:
+            policy_data['primary_id_number'] = (policy_data['first_name'] + ' ' + policy_data['last_name']
+                                                + str(policy_data['policy_number']))
+    if 'commencement_date' in policy_data:
+        commencement_date = policy_data['commencement_date']
+        if isinstance(commencement_date, str):
+            policy_data['commencement_date'] = parser.parse(commencement_date)
+    if 'expiry_date' in policy_data:
+        id_number = policy_data['expiry_date']
+        if isinstance(id_number, str):
+            policy_data['expiry_date'] = parser.parse(id_number)
+    if 'address_province' in policy_data:
+        address_street = policy_data['address_province']
+        if address_street == 'NULL':
+            policy_data['address_province'] = None
+    if 'json_employer_payment_calender' in policy_data:
+        calender = policy_data['json_employer_payment_calender']
+        policy_data['json_employer_payment_calender'] = calender.replace("\\", "")
+    if 'json_current_loan_balance' in policy_data:
+        json_current_loan_balance = policy_data['json_current_loan_balance']
+        if json_current_loan_balance == 'NULL' or json_current_loan_balance == '' or json_current_loan_balance is None:
+            policy_data['json_current_loan_balance'] = 0
+            policy_data['policy_status'] = "F"
+        else:
+            policy_data['policy_status'] = "A"
 
-    policy_data["premium_frequency"] = frequency_map.get(policy_data["premium_frequency"],
-                                                         PremiumFrequency.ONCE_OFF).value
-
-    policy_data["commission_frequency"] = frequency_map.get(policy_data["commission_frequency"],
-                                                            PremiumFrequency.ONCE_OFF).value
     __calculate_and_set_expiry_date(policy_data)
     extract_json_fields(policy_data)
+
+    total_premium = policy_data.get("total_premium", 0)
+    total_premium = 0 if total_premium == 'NULL' else total_premium
+    policy_data["commission_amount"] = calculate_commission_amount(total_premium)
+    policy_data["admin_fee"] = calculate_guard_risk_admin_amount(total_premium)
+    policy_data["policy_details"]["binder_fees"] = calculate_binder_fees_amount(total_premium)
     return policy_data
 
 
+def calculate_commission_amount(premium_amount) -> float:
+    return round(0.075 * premium_amount, 2)
+
+
+def calculate_guard_risk_admin_amount(premium_amount) -> float:
+    return round(0.05 * premium_amount, 2)
+
+
+def calculate_binder_fees_amount(premium_amount) -> float:
+    return round(0.09 * premium_amount, 2)
+
+
 def __calculate_and_set_expiry_date(policy_data: Dict[str, Any]):
-    policy_term = int(policy_data["policy_term"])
-    policy_data["expiry_date"] = policy_data["commencement_date"].date() + relativedelta(months=policy_term)
+    if policy_data["expiry_date"] == 'NULL' or policy_data["expiry_date"] == '':
+        policy_term = int(policy_data["policy_term"])
+        policy_data["expiry_date"] = policy_data["commencement_date"].date() + relativedelta(months=policy_term)
+    elif isinstance(policy_data["expiry_date"], datetime):
+        policy_data["expiry_date"] = policy_data["expiry_date"].date()
 
 
 def process_indlu_repayment_data(payment_data: Dict[str, Any]) -> Dict[str, Any]:
     if 'payment_date' in payment_data:
-        amount = payment_data['payment_date']
-        if isinstance(amount, datetime):
+        payment_date = payment_data['payment_date']
+        if isinstance(payment_date, datetime):
             # If payment_date is already a datetime object, format it as needed
-            payment_data['payment_date'] = amount.strftime('%Y-%m-%d')  # Reformat date if needed
-        elif isinstance(amount, str):
-            amount = datetime.strptime(amount, '%Y-%m-%d')
-            payment_data['payment_date'] = amount.strftime('%Y-%m-%d')
+            payment_data['payment_date'] = payment_date.strftime('%Y-%m-%d')  # Reformat date if needed
+        elif isinstance(payment_date, str):
+            payment_date = parser.parse(payment_date)
+            payment_data['payment_date'] = payment_date.date()
     if 'is_reversed' in payment_data:
         value = payment_data['is_reversed']
         # Convert Excel-style boolean strings to Python booleans
@@ -397,13 +451,13 @@ def process_indlu_repayment_data(payment_data: Dict[str, Any]) -> Dict[str, Any]
         elif isinstance(value, str) and value.upper() == '=TRUE()':
             payment_data['is_reversed'] = True
     if 'amount' in payment_data:
-        amount = payment_data['amount']
-        if isinstance(amount, str):
+        payment_date = payment_data['amount']
+        if isinstance(payment_date, str):
             # If payment_date is already a datetime object, format it as needed
-            payment_data['amount'] = round(float(amount), 2)  # Reformat date if needed
-        elif isinstance(amount, float):
-            amount = round(amount, 2)
-            payment_data['amount'] = amount
+            payment_data['amount'] = round(float(payment_date), 2)  # Reformat date if needed
+        elif isinstance(payment_date, float):
+            payment_date = round(payment_date, 2)
+            payment_data['amount'] = payment_date
     return payment_data
 
 
@@ -429,7 +483,7 @@ def process_beneficiary_data(beneficiary_data: Dict[str, Any]) -> Dict[str, Any]
     #     logger.error(f"Policy with policy number {policy_number} not found: {e}")
 
     for detail in beneficiary_data:
-        if isinstance(beneficiary_data[detail], datetime.datetime):
+        if isinstance(beneficiary_data[detail], datetime):
             beneficiary_data[detail] = beneficiary_data[detail].strftime('%Y-%m-%d')
 
     return beneficiary_data
@@ -479,10 +533,10 @@ def process_client_policy_data(client_policy_data: Dict[str, Any]) -> Dict[str, 
     for detail in client_policy_data:
         if detail == "policy_details":
             for policy_detail in client_policy_data[detail]:
-                if isinstance(client_policy_data[detail][policy_detail], datetime.datetime):
+                if isinstance(client_policy_data[detail][policy_detail], datetime):
                     client_policy_data[detail][policy_detail] = client_policy_data[detail][policy_detail].strftime(
                         '%Y-%m-%d')
-        if isinstance(client_policy_data[detail], datetime.datetime):
+        if isinstance(client_policy_data[detail], datetime):
             client_policy_data[detail] = client_policy_data[detail].strftime('%Y-%m-%d')
 
     return client_policy_data
@@ -498,7 +552,6 @@ def save_policy_beneficiary(policy_beneficiary_data: Dict[str, Any]):
 
     serializer = BeneficiarySerializer(data=policy_beneficiary_data)
     serializer.is_valid(raise_exception=True)
-    print("")
     serializer.save()
     logger.info(f"Saved Policy Beneficiary {policy_beneficiary_data}")
 
@@ -542,7 +595,7 @@ def upload_bulk_repayments(
 ) -> None:
     # Load the Excel workbook
     wb = openpyxl.load_workbook(file_obj.file)
-    repayments = process_worksheet(wb, "Receipts", repayment_columns, "repayment")
+    repayments = process_worksheet(wb, "June'24", repayment_columns, "repayment")
     save_indlu_repayments_data(repayments)
 
 
@@ -553,7 +606,7 @@ def save_indlu_repayments_data(repayments: List[Dict[str, Any]]) -> None:
         try:
             if not repayment["policy_id"]:
                 print(f"Policy ID missing from request! : {repayment}")
-                failed_repayments.append(repayment['client_transaction_id'])
+                failed_repayments.append(repayment['policy_id'])
             else:
                 serializer = PremiumPaymentSerializer(
                     data=repayment
@@ -561,53 +614,63 @@ def save_indlu_repayments_data(repayments: List[Dict[str, Any]]) -> None:
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
         except Exception as e:
-            print(f"Error saving {repayment['client_transaction_id']}")
+            print(f"Error saving {repayment['policy_id']}")
             print(e)
-            failed_repayments.append(repayment['client_transaction_id'])
+            failed_repayments.append(repayment['policy_id'])
 
 
 @transaction.atomic
 def upload_indlu_clients_and_policies(
-        file_obj: Any
+        file_obj: Any, source
 ) -> None:
+    schema = get_current_schema()
+    print(f'schema: {schema}')
     wb = openpyxl.load_workbook(file_obj.file)
-    clients = process_worksheet(wb, "Members", CLIENT_COLUMNS_INDLU, "client")
-    policies = process_worksheet(wb, "Loans", POLICY_COLUMNS_INDLU, "policy")
-    policy_clients_dump = process_worksheet(wb, "Data Dumb", POLICY_CLIENT_COLUMNS_INDLU, "policy_client_dump")
-    policy_defaults = {"entity": "Indlu",
-                       "insurer": 1,
-                       "policy_details": "policy_details",
-                       "product_name": "Indlu Credit Life",
-                       "sub_scheme": "Credit Life",
-                       "policy_name_policy": "CREDIT_LIFE",
-                       "commission_frequency": "Monthly",
-                       "premium_frequency": "Monthly",
-                       "total_premium": 0}
-    policy_columns = {**POLICY_COLUMNS_INDLU, **policy_defaults}
-    client_columns = {**CLIENT_COLUMNS_INDLU, "postal_code": None,
-                      "primary_id_document_type": 1,
-                      "entity_type": "Individual",
-                      "job_title": None,
-                      "employer_name": None,
-                      "employment_date": None}
-    dump_policies, dump_clients = extract_from_dump(policy_clients_dump, policy_columns, client_columns)
-
-    updated_policies, updated_clients = match_policies_and_clients(policies, clients, dump_policies, dump_clients)
-    save_client_policy_members_data(updated_policies, updated_clients)
+    # clients = process_worksheet(wb, "Members", CLIENT_COLUMNS_INDLU, "client")
+    data_type = source
+    if data_type == 'cfsa':
+        policy_clients_dump = process_worksheet(wb, "Data", POLICY_CLIENTS_COLUMNS_CFSA, "cfsa")
+    else:
+        policy_clients_dump = process_worksheet(wb, "DataDump", POLICY_CLIENT_COLUMNS_INDLU, "policy_client_dump")
+    client_columns = {
+        **CLIENT_COLUMNS_INDLU,
+        "primary_id_document_type": 1,
+        "entity_type": "Individual"}
+    dump_policies, dump_clients = extract_from_dump(policy_clients_dump, client_columns)
+    updated_clients = extract_employment_info_from_client(dump_clients)
+    extract_and_save_sectors(dump_clients)
+    save_client_policy_members_data(dump_policies, updated_clients)
+    print('Done saving policies and clients from dump')
 
 
-def extract_from_dump(policy_clients_dump, received_policy_columns, received_client_columns):
+def extract_and_save_sectors(dump_clients):
+    for client in dump_clients:
+        if 'employment_details' in client:
+            sector = client["employment_details"]["sector"]
+            db_sector = BusinessSector.objects.filter(sector=sector).first()
+            if db_sector is None:
+                BusinessSector.objects.create(sector=sector)
+
+
+def extract_employment_info_from_client(clients):
+    updated_clients = []
+    for client in clients:
+        updated_client = process_indlu_client_data(client)
+        updated_clients.append(updated_client)
+    return updated_clients
+
+
+def extract_from_dump(policy_clients_dump, received_client_columns):
     policies = []
     clients = []
 
     for row in policy_clients_dump:
-        # Extract policy information
-        policy = {col: row[col] for col in received_policy_columns if col in row}
-        policies.append(policy)
-
         # Extract client information
         client = {col: row[col] for col in received_client_columns if col in row}
         clients.append(client)
+        # Extract policy information
+        policy = {col: row[col] for col in row if col not in received_client_columns or col == 'client_id'}
+        policies.append(policy)
 
     return policies, clients
 
@@ -673,16 +736,15 @@ def match_policies_and_clients(policies, clients, dump_policies, dump_clients):
 @transaction.atomic
 def save_client_policy_members_data(policies, clients):
     for policy in policies:
-        client_id = policy['client_id']
-        for client in clients:
-            if policy['client_id'] == client_id:
-                serializer = ClientPolicyRequestSerializer(
-                    data={"client": client, "policy": policy},
-                )
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
-                logger.info(f"Saved Client and Policy ")
-                break
+        policy_exists = Policy.objects.filter(policy_number=policy["policy_number"]).exists()
+        if not policy_exists:
+            for client in clients:
+                if client['client_id'] == policy['client_id']:
+                    serializer = ClientPolicyRequestSerializer(data={"client": client, "policy": policy})
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+                    print(f"Saved Client and Policy")
+                    break
 
 
 @transaction.atomic
@@ -708,7 +770,7 @@ def save_client_policy(client_policy_data):
                                                            "entity_type"]}
     policy_details = client_policy_data["policy_details"]
     for key, value in policy_details.items():
-        if isinstance(value, datetime.time):
+        if isinstance(value, time):
             policy_details[key] = value.strftime("%H:%M:%S")
     # Serialize to JSON
     client_policy_data["policy_details"] = json.dumps(policy_details)

@@ -89,7 +89,7 @@ def prepare_life_credit_payload(
             "IncomeContinuationPremium": 0,
             "DreadDiseasePremium": 0,
             "RetrenchmentPremium": policy_details.get("retrenchment_premium", ""),
-            "PremiumFrequency": get_frequency_number(policy.get("premium_frequency", "12")),
+            "PremiumFrequency": get_frequency_number(policy.get("premium_frequency")),
             "PremiumType": premium_type,
             "DeathOriginalSumAssured": policy.get("sum_insured"),
             "PTDOriginalSumAssured": policy.get("sum_insured"),
@@ -132,10 +132,8 @@ def prepare_life_credit_payload(
             "IncomeContinuationRIPercentage": None,
             "DreadDiseaseRIPercentage": None,
             "RetrenchmentRIPercentage": None,
-            "TotalPolicyPremiumCollected": policy.get(
-                "total_premium", "0.00"
-            ),
-            "TotalPolicyPremiumPayable": policy["total_premium"],
+            "TotalPolicyPremiumCollected": policy_details.get("total_policy_premium_collected", "0.00"),
+            "TotalPolicyPremiumPayable": policy_details.get("total_loan_schedule", "0.00"),
             "TotalPolicyPremiumSubsidy": None,
             "TotalReinsurancePremium": None,
             "TotalReinsurancePremiumPayable": None,

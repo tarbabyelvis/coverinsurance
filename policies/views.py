@@ -2,11 +2,12 @@ import logging
 
 from rest_framework.permissions import IsAuthenticated
 
-from core.utils import CustomPagination
+from core.utils import CustomPagination, get_current_schema
 from policies.constants import (
     CLIENT_COLUMNS,
     POLICY_COLUMNS,
     POLICY_COLUMNS_BORDREX, REPAYMENT_COLUMNS, CLIENT_COLUMNS_BORDREX, REPAYMENT_COLUMNS_INDLU,
+    REPAYMENT_COLUMNS_MEDIFIN,
 )
 from policies.models import Beneficiary, Dependant, Policy, PremiumPayment
 from rest_framework.views import APIView
@@ -15,7 +16,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 from policies.services import upload_clients_and_policies, upload_funeral_clients_and_policies, \
     upload_indlu_clients_and_policies
-from policies.services import upload_clients_and_policies,upload_bulk_repayments
+from policies.services import upload_clients_and_policies, upload_bulk_repayments
 from .serializers import (
     BeneficiarySerializer,
     ClientPolicyRequestSerializer,
@@ -111,6 +112,8 @@ class PolicyView(APIView):
         ],
     )
     def get(self, request):
+        schema = get_current_schema()
+        print(f'schema: {schema}')
         policy_type = request.GET.get("policy_type", None)
         query = request.GET.get("query", None)
         from_date = request.GET.get("from", None)
@@ -285,7 +288,11 @@ class UploadClientAndPolicyExcelAPIView(APIView):
                 )
             elif source == "indlu":
                 upload_indlu_clients_and_policies(
-                    file_obj
+                    file_obj, source
+                )
+            elif source == "cfsa":
+                upload_indlu_clients_and_policies(
+                    file_obj, source
                 )
             else:
                 return HTTPResponse.success(
@@ -462,7 +469,7 @@ class UploadPaymentFileView(APIView):
 
             if source == "compuloan":
                 upload_bulk_repayments(
-                    file_obj, REPAYMENT_COLUMNS_INDLU
+                    file_obj, REPAYMENT_COLUMNS
                 )
             elif source == "fincloud":
                 pass
@@ -471,7 +478,11 @@ class UploadPaymentFileView(APIView):
                 # )
             elif source == "africancash":
                 upload_bulk_repayments(
-                    file_obj, REPAYMENT_COLUMNS
+                    file_obj, REPAYMENT_COLUMNS_INDLU
+                )
+            elif source == "medifin":
+                upload_bulk_repayments(
+                    file_obj, REPAYMENT_COLUMNS_MEDIFIN
                 )
             else:
                 return HTTPResponse.success(

@@ -88,8 +88,8 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
             "DeathCurrentRISumAssured": "N/A",
             "DeathRIPremium": "N/A",
             "DeathRIPercentage": "N/A",
-            "TotalPolicyPremiumCollected": policy["total_premium"],
-            "TotalPolicyPremiumPayable": policy["total_premium"],  # TODO subtract total premium from sum_insured
+            "TotalPolicyPremiumCollected": policy_details.get("total_policy_premium_collected", "0.00"),
+            "TotalPolicyPremiumPayable": policy_details.get("total_loan_schedule", "0.00"),
             "TotalPolicyPremium": policy["total_premium"],
             "TotalPolicyPremiumSubsidy": policy["total_premium"],
             "TotalReinsurancePremium": policy["total_premium"],

@@ -24,7 +24,7 @@ def post_request_and_save(request_data, url, headers, service):
         status = "Error"
 
     # Save request and response data to the database
-    life_payments_request = IntegrationLogs.objects.create(
+    request_and_response = IntegrationLogs.objects.create(
         request_data=request_data,
         response_data=response_data,
         response_status=response_status,
@@ -32,7 +32,7 @@ def post_request_and_save(request_data, url, headers, service):
         service=service,
     )
 
-    return response_data, response_status, life_payments_request
+    return response_data, response_status, request_and_response
 
 
 def get_frequency_number(frequency: str):
@@ -58,6 +58,11 @@ def is_new_policy(created_date_time: str) -> str:  # TODO add the transferred T 
 def generate_claim_reference(claimant_id: str, policy_number: str) -> str:
     current_date = datetime.now().strftime('%Y%m%d')
     return f"{claimant_id}:{policy_number}-{current_date}"
+
+
+def generate_payment_reference(policy_number: str, payment_date) -> str:
+    date = payment_date.now().strftime('%Y%m%d')
+    return f"{policy_number}-{date}"
 
 
 def populate_dependencies(other_dependants, details):

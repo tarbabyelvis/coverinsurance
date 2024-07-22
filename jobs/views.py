@@ -118,7 +118,7 @@ class FetchFinConnectDataAPIView(APIView):
             request_data = request.data
             serializer = JobsSerializer(data=request_data)
             if serializer.is_valid(raise_exception=True):
-                fin_organization_id = request.GET.get('fin_organization_id')
+                fin_organization_id = str(request.GET.get('fin_organization_id')).replace("-", "_")
                 fetch_and_process_fin_connect_data(**serializer.validated_data, fineract_org_id=fin_organization_id)
                 return HTTPResponse.success(
                     message="Request Successful",
