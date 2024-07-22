@@ -14,17 +14,18 @@ def prepare_premium_payload(
     result = []
     print("Preparing payment data")
     for payment in data:
+        print(f'payment {payment}')
         policy = payment["policy"]
         client = policy["client"]
         insurer = policy["insurer"]
-        insurer = InsuranceCompany.objects.filter(pk=insurer).first()
+        # insurer = InsuranceCompany.objects.filter(pk=insurer).first()
         premium_amount = payment["amount"]
         vat_amount = calculate_vat_amount(payment["amount"])
         premium_less_vat = calculate_amount_excluding_vat(payment["amount"], vat_amount)
         guardrisk_amount = calculate_guard_risk_amount(premium_amount)
         commission = calculate_insurer_commission_amount(premium_amount)
         binder_fee = calculate_binder_fee_amount(premium_amount)
-        nett_amount = calculate_nett_amount(premium_amount,guardrisk_amount,commission,binder_fee)
+        nett_amount = calculate_nett_amount(premium_amount, guardrisk_amount, commission, binder_fee)
         details = {
             "DateReportRun": timestamp,
             "ReportPeriodFrom": start_date,
@@ -95,7 +96,7 @@ def prepare_premium_payload(
             "LegalEntityAddress": "",
             "LegalEntityCompanyRegistrationNumber": "",
             "LegalEntityVatNo": "",
-            "Insurer": insurer.name,
+            "Insurer": insurer["name"],
             "FSPName": "",
             "FSPNumber": "",
             "IGFNameofPartyIssuedTo": "",

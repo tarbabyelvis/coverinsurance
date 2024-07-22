@@ -32,7 +32,6 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
         print(f'claim {claim}')
         policy = claim["policy"]
         insurer = policy["insurer"]
-        insurer = InsuranceCompany.objects.filter(pk=insurer).first()
         try:
             if isinstance(policy["policy_details"], dict):
                 policy_details = policy["policy_details"]
@@ -46,7 +45,7 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
             "ReportPeriodStart": start_date,
             "ReportPeriodEnd": end_date,
             "AdministratorIdentifier": policy["entity"],
-            "InsurerName": insurer.name,
+            "InsurerName": insurer["name"],
             "ClientIdentifier": client_identifier,
             "DivisionIdentifier": policy_details.get("division_identifier", "2"),
             "SubSchemeName": policy["sub_scheme"],

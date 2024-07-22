@@ -20,7 +20,6 @@ def prepare_life_credit_payload(
         client = policy["client"]
         policy_dependants = policy["policy_dependants"]
         insurer = policy["insurer"]
-        insurer = InsuranceCompany.objects.filter(pk=insurer).first()
         spouse = filter(
             lambda x: x if relationships[x["relationship"]].name.lower() == "spouse" else None,
             policy_dependants,
@@ -58,7 +57,7 @@ def prepare_life_credit_payload(
             "ReportPeriodStart": start_date,
             "ReportPeriodEnd": end_date,
             "AdministratorIdentifier": policy["entity"],
-            "InsurerName": insurer.name,
+            "InsurerName": insurer["name"],
             "ClientIdentifier": client_identifier,
             "DivisionIdentifier": policy_details.get("division_identifier", "2"),
             "SubSchemeName": policy["sub_scheme"],

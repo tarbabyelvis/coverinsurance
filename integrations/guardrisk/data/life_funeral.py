@@ -53,13 +53,12 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
         other_dependants = list(other_dependants)
         number_of_dependencies = len(other_dependants)
         insurer = policy["insurer"]
-        insurer = InsuranceCompany.objects.filter(pk=insurer).first()
         details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
             "ReportPeriodEnd": end_date,
             "AdministratorIdentifier": policy["entity"],
-            "InsurerName": insurer.name,
+            "InsurerName": insurer["name"],
             "ClientIdentifier": client_identifier,
             "DivisionIdentifier": policy_details.get("division_identifier", "2"),
             "SubSchemeName": policy["sub_scheme"],
