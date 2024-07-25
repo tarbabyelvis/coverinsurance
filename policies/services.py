@@ -17,7 +17,7 @@ from config.models import BusinessSector
 from core.enums import PremiumFrequency
 from core.utils import get_dict_values, merge_dict_into_another, replace_keys, get_current_schema
 from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, CLIENT_COLUMNS_INDLU, POLICY_COLUMNS_INDLU, \
-    POLICY_CLIENTS_COLUMNS_CFSA
+    POLICY_CLIENTS_COLUMNS_CFSA, POLICY_CLIENTS_COLUMNS_CFSA_CORRECT
 from policies.constants import FUNERAL_POLICY_BENEFICIARY_COLUMNS, \
     FUNERAL_POLICY_CLIENT_COLUMNS, DEFAULT_BENEFICIARY_FIELDS, POLICY_CLIENT_COLUMNS_INDLU
 from policies.models import Policy
@@ -271,7 +271,7 @@ def process_worksheet(
                 default_columns = {**DEFAULT_CLIENT_FIELDS}
             elif data_type == "repayment":
                 default_columns = {}
-            elif data_type == "policy_client_dump" or data_type == 'cfsa':
+            elif data_type == "policy_client_dump" or data_type == 'cfsa' or data_type == 'cfsacorrect':
                 default_columns = {**DEFAULT_POLICY_FIELDS, **DEFAULT_CLIENT_FIELDS,
                                    "entity": "Indlu",
                                    "product_name": "Indlu Credit Life",
@@ -296,7 +296,7 @@ def process_data(data: Dict[str, Any], data_type: str) -> Dict[str, Any]:
         processed_data = process_indlu_policy_data(data)
     elif data_type == "client":
         processed_data = process_indlu_client_data(data)
-    elif data_type == "policy_client_dump" or data_type == 'cfsa':
+    elif data_type == "policy_client_dump" or data_type == 'cfsa' or data_type == 'cfsacorrect':
         processed_data = process_indlu_policy_client_dump_data(data)
     elif data_type == "beneficiary":
         processed_data = process_beneficiary_data(data)
@@ -351,43 +351,52 @@ def process_indlu_policy_data(policy_data: Dict[str, Any]):
 
 def process_indlu_policy_client_dump_data(policy_data: Dict[str, Any]):
     print(f'policy data {policy_data}')
-    frequency_map = {
-        1: PremiumFrequency.MONTHLY,
-        3: PremiumFrequency.QUARTERLY,
-        12: PremiumFrequency.ANNUAL,
-        6: PremiumFrequency.SEMI_ANNUAL,
-        2: PremiumFrequency.BI_ANNUAL,
-        0: PremiumFrequency.ONCE_OFF
-    }
-    policy_data["policy_term"] = 1 if policy_data["policy_term"] == 0 else policy_data[
-        "policy_term"]
+    # frequency_map = {
+    #     1: PremiumFrequency.MONTHLY,
+    #     3: PremiumFrequency.QUARTERLY,
+    #     12: PremiumFrequency.ANNUAL,
+    #     6: PremiumFrequency.SEMI_ANNUAL,
+    #     2: PremiumFrequency.BI_ANNUAL,
+    #     0: PremiumFrequency.ONCE_OFF
+    # }
+    # policy_data["policy_term"] = 1 if policy_data["policy_term"] == 0 else policy_data[
+    #     "policy_term"]
     if 'address_street' in policy_data:
         address_street = policy_data['address_street']
         if isinstance(address_street, datetime):
             policy_data['address_street'] = address_street.strftime('%d/%m/%Y')
     if 'date_of_birth' in policy_data:
-        id_number = policy_data['date_of_birth']
-        print(f'date_of_birth {id_number}')
-        if isinstance(id_number, str):
-            try:
-                policy_data['date_of_birth'] = parser.parse(id_number).date()
-            except ValueError:
-                policy_data['date_of_birth'] = date.today().strftime('%d/%m/%Y')
-        if id_number is None:
+        date_of_birth = policy_data['date_of_birth']
+        print(f'date_of_birth {date_of_birth}')
+        if isinstance(date_of_birth, str):
+            if date_of_birth == 'NULL':
+                policy_data['expiry_date'] = None
+            else:
+                try:
+                    policy_data['date_of_birth'] = parser.parse(date_of_birth).date()
+                except ValueError:
+                    policy_data['date_of_birth'] = date.today().strftime('%d/%m/%Y')
+        if date_of_birth is None:
             policy_data['date_of_birth'] = date.today().strftime('%d/%m/%Y')
     if 'primary_id_number' in policy_data:
-        id_number = policy_data['primary_id_number']
-        if id_number is None:
+        primary_id_number = policy_data['primary_id_number']
+        if primary_id_number is None:
             policy_data['primary_id_number'] = (policy_data['first_name'] + ' ' + policy_data['last_name']
                                                 + str(policy_data['policy_number']))
     if 'commencement_date' in policy_data:
         commencement_date = policy_data['commencement_date']
         if isinstance(commencement_date, str):
-            policy_data['commencement_date'] = parser.parse(commencement_date)
+            if commencement_date == 'NULL':
+                policy_data['commencement_date'] = None
+            else:
+                policy_data['commencement_date'] = parser.parse(commencement_date)
     if 'expiry_date' in policy_data:
-        id_number = policy_data['expiry_date']
-        if isinstance(id_number, str):
-            policy_data['expiry_date'] = parser.parse(id_number)
+        date_of_birth = policy_data['expiry_date']
+        if isinstance(date_of_birth, str):
+            if date_of_birth == 'NULL':
+                policy_data['expiry_date'] = None
+            else:
+                policy_data['expiry_date'] = parser.parse(date_of_birth)
     if 'address_province' in policy_data:
         address_street = policy_data['address_province']
         if address_street == 'NULL':
@@ -411,6 +420,9 @@ def process_indlu_policy_client_dump_data(policy_data: Dict[str, Any]):
     policy_data["commission_amount"] = calculate_commission_amount(total_premium)
     policy_data["admin_fee"] = calculate_guard_risk_admin_amount(total_premium)
     policy_data["policy_details"]["binder_fees"] = calculate_binder_fees_amount(total_premium)
+    # if 'sum_insured' in policy_data:
+    #     sum_insured = policy_data['sum_insured']
+    #     policy_data['sum_insured'] = round(float(sum_insured.replace(',', '')), 2)
     return policy_data
 
 
@@ -595,7 +607,7 @@ def upload_bulk_repayments(
 ) -> None:
     # Load the Excel workbook
     wb = openpyxl.load_workbook(file_obj.file)
-    repayments = process_worksheet(wb, "June'24", repayment_columns, "repayment")
+    repayments = process_worksheet(wb, "Receipts", repayment_columns, "repayment")
     save_indlu_repayments_data(repayments)
 
 
@@ -647,9 +659,7 @@ def extract_and_save_sectors(dump_clients):
     for client in dump_clients:
         if 'employment_details' in client:
             sector = client["employment_details"]["sector"]
-            db_sector = BusinessSector.objects.filter(sector=sector).first()
-            if db_sector is None:
-                BusinessSector.objects.create(sector=sector)
+            db_sector, created = BusinessSector.objects.get_or_create(sector=sector)
 
 
 def extract_employment_info_from_client(clients):
