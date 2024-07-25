@@ -61,8 +61,7 @@ def generate_claim_reference(claimant_id: str, policy_number: str) -> str:
 
 
 def generate_payment_reference(policy_number: str, payment_date) -> str:
-    date = payment_date.now().strftime('%Y%m%d')
-    return f"{policy_number}-{date}"
+    return f"{policy_number}-{payment_date}"
 
 
 def populate_dependencies(other_dependants, details):

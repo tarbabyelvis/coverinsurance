@@ -67,6 +67,7 @@ class Policy(BaseModel):
     admin_fee = models.DecimalField(default=0, max_digits=20, decimal_places=2)
     submitted_to_insurer = models.BooleanField(default=False)
     entity = models.CharField(max_length=50, null=False, blank=False, default='Nifty Cover')
+    policy_provider_type = models.CharField(max_length=25, null=True, blank=True, default='Internal Credit Life')
 
     def get_status_symbol(self):
         """

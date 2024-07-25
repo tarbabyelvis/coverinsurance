@@ -35,7 +35,7 @@ class GuardRisk:
         if data_size == 0:
             print(f'Not calling the claims api anymore for {client_identifier}')
             response_data = {"Status": "Ok", "message": "No claims data to send"}
-            response_status = 400
+            response_status = 200
             return response_data, response_status
 
         headers = {"CallerId": self.access_key,
@@ -66,7 +66,7 @@ class GuardRisk:
         if data_size == 0:
             print(f'Not calling the api anymore for {client_identifier}')
             response_data = {"Status": "Ok", "message": "No funeral data to send"}
-            response_status = 400
+            response_status = 200
             return response_data, response_status
 
         headers = {"CallerId": self.access_key,
@@ -97,7 +97,7 @@ class GuardRisk:
         print(f'submitting {data_size} credit life policies')
         print(f'request sent:: {request_data}')
         if data_size == 0:
-            print(f'Not calling the api anymore for {client_identifier}')
+            print(f'Not calling the credit life api anymore for {client_identifier}')
             response_data = {"Status": "Ok", "message": "No credit life data to send"}
             response_status = 200
             return response_data, response_status

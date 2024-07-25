@@ -424,6 +424,7 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
     payment_receipt_date = serializers.DateField(required=False)
     payment_method = serializers.CharField(max_length=200, required=False)
     payment_reference = serializers.CharField(max_length=200, required=False)
+    policy = PolicySerializer(required=False)
 
     def to_internal_value(self, data):
         policy_id = data.get("policy_id")
@@ -438,7 +439,8 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PremiumPayment
-        exclude = ["policy"]
+        fields = '__all__'
+        # exclude = ["policy"]
 
     def get_fields(self):
         fields = super().get_fields()

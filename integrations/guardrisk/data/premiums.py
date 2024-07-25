@@ -1,5 +1,6 @@
 from datetime import date, datetime
 
+from clients.models import ClientDetails
 from config.models import InsuranceCompany
 from integrations.utils import generate_payment_reference
 
@@ -17,11 +18,12 @@ def prepare_premium_payload(
         print(f'payment {payment}')
         policy = payment["policy"]
         client = policy["client"]
+        client = ClientDetails.objects.filter(pk=client).first()
         insurer = policy["insurer"]
-        # insurer = InsuranceCompany.objects.filter(pk=insurer).first()
-        premium_amount = payment["amount"]
-        vat_amount = calculate_vat_amount(payment["amount"])
-        premium_less_vat = calculate_amount_excluding_vat(payment["amount"], vat_amount)
+        insurer = InsuranceCompany.objects.filter(pk=insurer).first()
+        premium_amount = float(payment["amount"])
+        vat_amount = calculate_vat_amount(premium_amount)
+        premium_less_vat = calculate_amount_excluding_vat(premium_amount, vat_amount)
         guardrisk_amount = calculate_guard_risk_amount(premium_amount)
         commission = calculate_insurer_commission_amount(premium_amount)
         binder_fee = calculate_binder_fee_amount(premium_amount)
@@ -65,24 +67,24 @@ def prepare_premium_payload(
             "EndDateProductCover": payment["payment_date"],
             "StatusoftheProduct": policy["policy_status"],
             "DateofStatus": timestamp,
-            "InsuredEntity": client.get("first_name") + " " + client.get('last_name'),
-            "InsuredIDRegistrationNumber": client.get("primary_id_number"),
-            "Surname": client.get("last_name"),
-            "GivenName": client.get("first_name") + " " + client.get("middle_name", ""),
-            "EmailAddress": client.get("email", ""),
-            "ContactNumber": client.get("phone_number", ""),
-            "RiskAddressLine1": client.get("address_street", ""),
-            "RiskAddressLine2": client.get("address_street", ""),
-            "RiskAddressLine3": client.get("address_suburb", ""),
-            "RiskAddressLine4": client.get("address_town", ""),
+            "InsuredEntity": "",
+            "InsuredIDRegistrationNumber": client.primary_id_number,
+            "Surname": client.last_name,
+            "GivenName": client.first_name or "" + " " + client.middle_name or "",
+            "EmailAddress": client.email,
+            "ContactNumber": client.phone_number,
+            "RiskAddressLine1": client.address_street,
+            "RiskAddressLine2": client.address_street,
+            "RiskAddressLine3": client.address_suburb,
+            "RiskAddressLine4": client.address_town,
             "RiskAddressLine5": "South Africa",
-            "RiskAddressPostalCode": client.get("postal_code", ""),
-            "ResidenceType": client.get("residence_type", ""),
+            "RiskAddressPostalCode": client.postal_code or "",
+            "ResidenceType": "",
             "GPSCoordinatesLongitude": "",
             "GPSCoordinatesLatitude": "",
-            "DriverGender": client.get("gender", ""),
+            "DriverGender": client.gender,
             "Language": "English",
-            "DriverDateofBirth": client.get("date_of_birth", ""),
+            "DriverDateofBirth": "",
             "DriversLicenseCode": "",
             "DriversLicenseDate": "",
             "VehicleVINNumber": "",
@@ -96,7 +98,7 @@ def prepare_premium_payload(
             "LegalEntityAddress": "",
             "LegalEntityCompanyRegistrationNumber": "",
             "LegalEntityVatNo": "",
-            "Insurer": insurer["name"],
+            "Insurer": insurer.name,
             "FSPName": "",
             "FSPNumber": "",
             "IGFNameofPartyIssuedTo": "",

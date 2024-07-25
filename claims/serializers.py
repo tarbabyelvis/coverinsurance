@@ -28,12 +28,9 @@ class ClaimDocumentSerializer(serializers.ModelSerializer):
 
 
 class ClaimSerializer(serializers.ModelSerializer):
-    # claim_type = serializers.PrimaryKeyRelatedField(queryset=ClaimType.objects.all())
     claim_type = ClaimTypeSerializer()
     claim_document = ClaimDocumentSerializer(many=True, required=False)
-    policy = PolicySerializer()
-
-    # policy = serializers.PrimaryKeyRelatedField(queryset=Policy.objects.all())
+    policy = PolicySerializer(required=False)
 
     class Meta:
         model = Claim

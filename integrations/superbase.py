@@ -33,7 +33,7 @@ def query_repayments(tenant_id, start_date, end_date):
 
 def query_closed_loans(tenant_id, start_date, end_date):
     json_payload = {
-        "reportName": "Loan Closure",
+        "reportName": "Loan Closure - Creation Details",
         "payload": {
             "R_startDate": __serialize_dates(start_date),
             "R_endDate": __serialize_dates(end_date),

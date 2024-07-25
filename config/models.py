@@ -146,7 +146,7 @@ class IdDocumentType(models.Model):
 
 
 class BusinessSector(BaseModel):
-    sector = models.CharField(max_length=200)
+    sector = models.CharField(max_length=200, unique=True)
 
     class Meta:
         verbose_name = "Business Sector"

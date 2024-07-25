@@ -465,6 +465,10 @@ POLICY_CLIENTS_COLUMNS_CFSA = {
     "postal_code": "Postal Code",
     "phone_number": "Life 1 Telephone",
 }
+POLICY_CLIENTS_COLUMNS_CFSA_CORRECT = {
+    "policy_number": "Policy Number",
+    "sum_insured": "Original loan balance",
+}
 POLICY_CLIENT_COLUMNS_INDLU = {
     "policy_number": "LoanRefId",
     "client_id": "ClientRefId",  # Not there

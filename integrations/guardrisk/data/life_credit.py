@@ -1,7 +1,7 @@
 import json
 from datetime import date, datetime
 
-from config.models import Relationships, InsuranceCompany
+from config.models import Relationships
 from integrations.utils import get_frequency_number, populate_dependencies, is_new_policy
 
 
@@ -75,7 +75,7 @@ def prepare_life_credit_payload(
             "CancelledbyPolicyholderCoolingPeriodInsurer": "",
             "DeathIndicator": "Y",
             "PTDIndicator": "Y",
-            "IncomeContinuationIndicator": policy_details.get("ptd_indicator", "N"),
+            "IncomeContinuationIndicator": "N",
             "DreadDiseaseIndicator": "N",
             "RetrenchmentIndicator": "Y",
             "DeathCoverTermIfDifferenttoPolicyTerm": None,
@@ -83,7 +83,7 @@ def prepare_life_credit_payload(
             "IncomeContinuationCoverTermIfDifferenttoPolicyTerm": None,
             "DreadDiseaseCoverTermIfDifferenttoPolicyTerm": None,
             "RetrenchmentCoverTermIfDifferenttoPolicyTerm": None,
-            "DeathPremium": policy_details.get("death_premium", ""),
+            "DeathPremium": policy.get("premium", ""),
             "PTDPremium": policy_details.get("PTD_premium", ""),
             "IncomeContinuationPremium": 0,
             "DreadDiseasePremium": 0,

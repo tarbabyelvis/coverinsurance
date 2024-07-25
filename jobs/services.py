@@ -180,9 +180,10 @@ def __life_funeral(
 ):
     try:
         if funeral_policies.exists():
-            nifty_data = list(filter(lambda p: p.entity == 'Nifty Cover', funeral_policies))
-            nifty_policies = PolicyDetailSerializer(nifty_data, many=True).data
-            process_life_funeral(nifty_policies, nifty_configs, start_date, end_date, is_daily_submission)
+            pass
+            # nifty_data = list(filter(lambda p: p.entity == 'Nifty Cover', funeral_policies))
+            # nifty_policies = PolicyDetailSerializer(nifty_data, many=True).data
+            # process_life_funeral(nifty_policies, nifty_configs, start_date, end_date, is_daily_submission)
         else:
             print('No funeral policies to process...')
     except Exception as e:
@@ -272,13 +273,14 @@ def process_claims(data, integration_configs, start_date, end_date, is_daily_sub
     return data, response_status
 
 
-def premiums_daily(claims_fetched, nifty_configs, indlu_configs, start_date=today_start_date, end_date=today_end_date):
-    return __premiums(claims_fetched, nifty_configs, indlu_configs, start_date, end_date)
+def premiums_daily(premiums_fetched, nifty_configs, indlu_configs, start_date=today_start_date,
+                   end_date=today_end_date):
+    return __premiums(premiums_fetched, nifty_configs, indlu_configs, start_date, end_date)
 
 
-def premiums_monthly(claims_fetched, nifty_configs, indlu_configs, start_date=first_day_of_previous_month,
+def premiums_monthly(premiums_fetched, nifty_configs, indlu_configs, start_date=first_day_of_previous_month,
                      end_date=last_day_of_previous_month):
-    return __premiums(claims_fetched, nifty_configs, indlu_configs, start_date, end_date, False)
+    return __premiums(premiums_fetched, nifty_configs, indlu_configs, start_date, end_date, False)
 
 
 def __premiums(
@@ -365,41 +367,48 @@ def __fetch_premiums(start_date: datetime, end_date: datetime):
 
 
 def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
-    failed_loans = fetch_and_save_new_loans(start_date, end_date, fineract_org_id)
-    failed_repayments = fetch_and_save_repayments(start_date, end_date, fineract_org_id)
-    failed_closed_loans = fetch_and_update_closed_loans(start_date, end_date, fineract_org_id)
-    failed_claims = fetch_and_written_off_loans(start_date, end_date, fineract_org_id)
-    print(f'failed_loans:: {len(failed_loans)}')
-    print(f'failed_loans data:: {failed_loans}')
-    print(f'failed_repayments:: {len(failed_repayments)}')
-    print(f'failed_repayments data:: {failed_repayments}')
-    print(f'failed_closed_loans:: {len(failed_closed_loans)}')
-    print(f'failed_closed_loans:: {failed_closed_loans}')
-    print(f'failed_claims:: {len(failed_claims)}')
-    print(f'failed_claims:: {failed_claims}')
+    process_new_loans(start_date, end_date, fineract_org_id)
+    process_repayments(start_date, end_date, fineract_org_id)
+    process_closed_loans(start_date, end_date, fineract_org_id)
+    process_claims_from_fineract(start_date, end_date, fineract_org_id)
 
 
-def fetch_and_update_closed_loans(start_date: date, end_date: date, tenant):
-    closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, tenant)
-    unexisting = []
+def process_new_loans(start_date: date, end_date: date, fineract_org_id):
+    new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    save_new_loans(new_loans)
+
+
+def process_repayments(start_date: date, end_date: date, fineract_org_id):
+    repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
+    save_repayments(repayments)
+
+
+def process_closed_loans(start_date: date, end_date: date, fineract_org_id):
+    closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    update_closed_loans(closed_loans)
+
+
+def process_claims_from_fineract(start_date: date, end_date: date, fineract_org_id):
+    written_off_polices = __fetch_written_off_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    create_claims_for_written_off_loans(written_off_polices)
+
+
+def update_closed_loans(closed_loans):
     db_policies = []
     for loan in closed_loans:
         try:
-            if not loan["loanId"]:
-                print(f"Policy ID missing from request! : {loan}")
-                unexisting.append(loan['loanId'])
+            policy = Policy.objects.filter(policy_number=loan["loanId"]).first()
+            if policy is None:
+                create_policy(loan)
             else:
-                policy = Policy.objects.filter(policy_number=loan["loanId"]).first()
-                if policy is not None:
-                    policy.policy_status = map_closure_reason(loan["closed_reason"])
-                    policy.expiry_date = loan["closed_date"]
-                    db_policies.append(policy)
+                create_policy(loan, is_update=True, old_policy=policy)
+            policy.policy_status = map_closure_reason(loan["closed_reason"])
+            policy.expiry_date = loan["closed_date"]
+            db_policies.append(policy)
         except Exception as e:
             print(f"Error saving {loan['loanId']}")
             print(e)
-            unexisting.append(loan['loanId'])
     Policy.objects.bulk_update(db_policies, fields=['policy_status', 'expiry_date'])
-    return unexisting
 
 
 def map_closure_reason(closed_reason: str) -> str:
@@ -411,40 +420,34 @@ def map_closure_reason(closed_reason: str) -> str:
         return "P"
 
 
-def fetch_and_save_new_loans(start_date: date, end_date: date, tenant_id):
-    new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, tenant_id)
+def save_new_loans(new_loans):
     failed_loans = []
     for loan in new_loans:
         try:
-            if not loan["loanId"]:
-                print(f"Policy ID missing from request! : {loan}")
-                failed_loans.append(loan['loanId'])
+            policy = Policy.objects.filter(policy_number=loan["loanId"]).first()
+            if policy is None:
+                create_policy(loan)
             else:
-                policy, client = extract_policy_and_client_info(loan)
-                serializer = ClientPolicyRequestSerializer(
-                    data={"client": client, "policy": policy},
-                )
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
+                create_policy(loan, is_update=True, old_policy=policy)
         except Exception as e:
-            print(f"Error saving {loan['loanId']}")
+            print(f"Error saving new loan{loan['loanId']}")
             print(e)
             failed_loans.append(loan['loanId'])
     return failed_loans
 
 
 def extract_policy_and_client_info(loan):
-    premium = float(loan["premium"])
+    premium = round(float(loan.get("premium") or 0), 2)
     policy = {
         "policy_type": 1,
         "insurer": 1,
         "policy_number": loan["loanId"],
-        "external_reference": loan["loan_external_id"],
-        "sum_insured": round(float(loan["loan_amount"]), 2),
-        "total_premium": round(float(loan["premium"]), 2),
-        "commencement_date": loan["disbursementDate"],
+        "external_reference": loan.get("loan_external_id", ""),
+        "sum_insured": round(float(loan.get("loan_amount") or 0), 2),
+        "total_premium": premium,
+        "commencement_date": loan.get("disbursementDate") or date.today().strftime("%Y-%m-%d"),
         "policy_status": "A",
-        "expiry_date": loan["maturityDate"],
+        "expiry_date": loan.get("maturityDate") or date.today().strftime("%Y-%m-%d"),
         "product_name": loan["productName"],
         "policy_term": loan["tenure"],
         "admin_fee": calculate_guard_risk_admin_amount(premium),
@@ -454,22 +457,27 @@ def extract_policy_and_client_info(loan):
         "entity": "Indlu",
         "premium_frequency": "Monthly",
         "commission_frequency": "Monthly",
+        "policy_provider_type": loan["policy_type"],
         "policy_details": {
             "binder_fees": calculate_binder_fees_amount(premium),
+            "total_loan_schedule": loan.get("total_loan_schedule") or "0",
+            # "total_policy_premium_collected": "",
+            "current_outstanding_balance": loan.get("current_outstanding_balance") or 0,
+            "instalment_amount": loan.get("instalment_amount") or 0,
         }
     }
     client = {
         "client_id": loan["client_primary_id_number"],
-        "first_name": loan["client_firstname"],
-        "middle_name": loan["client_middlename"],
-        "last_name": loan["client_surname"],
-        "date_of_birth": loan["dob"],
+        "first_name": loan.get("client_firstname", ""),
+        "middle_name": loan.get("client_middlename", ""),
+        "last_name": loan.get("client_surname", ""),
+        "date_of_birth": loan.get("dob", ""),
         "primary_id_number": loan["client_primary_id_number"],
         "primary_id_document_type": 1,
-        "gender": loan["client_gender"],
+        "gender": loan.get("client_gender") or "Unknown",
         "marital_status": "Unknown",
-        "email": loan["email"],
-        "phone_number": loan["mobile_number"],
+        "email": loan.get("email", ""),
+        "phone_number": loan.get("mobile_number", ""),
         "entity_type": "Individual",
     }
     return policy, client
@@ -487,32 +495,51 @@ def calculate_binder_fees_amount(premium_amount) -> float:
     return round(0.09 * premium_amount, 2)
 
 
-def fetch_and_save_repayments(start_date: date, end_date: date, tenant_id):
-    repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, tenant_id)
-    failed_repayments = []
+def create_policy(loan, is_update: bool = False, old_policy=None):
+    if is_update:
+        premium = round(float(loan.get("premium") or 0), 2)
+        policy_details = {
+            "binder_fees": calculate_binder_fees_amount(premium),
+            "total_loan_schedule": loan.get("total_loan_schedule", ""),
+            "total_policy_premium_collected": "",
+            "current_outstanding_balance": loan.get("current_outstanding_balance") or 0,
+            "instalment_amount": loan.get("instalment_amount") or 0,
+        }
+        old_policy.policy_details = policy_details
+        old_policy.save()
+        return
+    policy, client = extract_policy_and_client_info(loan)
+    serializer = ClientPolicyRequestSerializer(
+        data={"client": client, "policy": policy},
+    )
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+
+
+def save_repayments(repayments):
     for repayment in repayments:
         try:
-            if not repayment["loanId"]:
-                failed_repayments.append(repayment['loanId'])
+            policy = Policy.objects.filter(policy_number=repayment["loanId"]).first()
+            if policy is None:
+                create_policy(repayment)
             else:
-                repayment_details = extract_repayment_details(repayment)
-                serializer = PremiumPaymentSerializer(
-                    data=repayment_details
-                )
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
+                create_policy(repayment, is_update=True)
+            repayment_details = extract_repayment_details(repayment)
+            serializer = PremiumPaymentSerializer(
+                data=repayment_details
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
         except Exception as e:
             print(f"Error saving {repayment['loanId']}")
             print(e)
-            failed_repayments.append(repayment['loanId'])
-    return failed_repayments
 
 
 def extract_repayment_details(repayment):
     return {
         "policy_id": repayment["loanId"],
         "payment_date": repayment["transactionDate"],
-        "amount": round(float(repayment["paidAmount"]), 2),
+        "amount": round(float(repayment.get("paidAmount", "0")), 2),
         "transaction_type": repayment["paymentType"],
         "payment_method": repayment["paymentType"],
     }
@@ -533,7 +560,7 @@ def __fetch_new_policies_from_fin_connect(start_date: date, end_date: date, tena
 
 def __fetch_loan_repayments_from_fin_connect(start_date: date, end_date: date, tenant_id):
     print("Fetching loan repayments")
-    collections = []
+    repayments = []
     try:
         response_status, data = query_repayments(tenant_id, start_date, end_date)
         print(f'response_status: {response_status}:: data: {data}')
@@ -541,7 +568,7 @@ def __fetch_loan_repayments_from_fin_connect(start_date: date, end_date: date, t
     except Exception as e:
         print("Something went wrong fetching loan repayments")
         print(e)
-        return collections
+        return repayments
 
 
 def __fetch_closed_loans_from_fin_connect(start_date: date, end_date: date, tenant_id):
@@ -557,15 +584,19 @@ def __fetch_closed_loans_from_fin_connect(start_date: date, end_date: date, tena
         return collections
 
 
-def fetch_and_written_off_loans(start_date: date, end_date: date, tenant):
-    written_off_loans = __fetch_written_off_policies_from_fin_connect(start_date, end_date, tenant)
+def create_claims_for_written_off_loans(written_off_loans):
     fin_claimant_details = ClaimantDetails.objects.filter(name="Fin").first()
     if fin_claimant_details is None:
         raise Exception("No Fin claimant details found")
     claims = []
     for loan in written_off_loans:
         try:
-            claim = create_claim(loan, fin_claimant_details)
+            policy = Policy.objects.filter(policy_number=loan["loanId"]).first()
+            if policy is None:
+                create_policy(loan)
+            else:
+                create_policy(loan, is_update=True, old_policy=policy)
+            claim = build_claim(loan, fin_claimant_details)
             claims.append(claim)
         except Exception as e:
             print(f"Error creating claim for {loan['loanId']}")
@@ -595,28 +626,27 @@ def __fetch_written_off_policies_from_fin_connect(start_date: date, end_date: da
         return written_off_loans
 
 
-def create_claim(written_off_loan, fin_claimant_details):
-    policy = Policy.objects.filter(policy_number=written_off_loan["loanId"]).first()
+def build_claim(written_off_loan, fin_claimant_details):
+    loan_id = written_off_loan["loanId"]
+    policy = Policy.objects.filter(policy_number=loan_id).first()
     if policy:
         claim = {
-            "policy_id": policy.policy_id,
+            "policy_id": loan_id,
             "claim_type_id": 1,
             "claim_status": "Active",
-            "claimant_name": fin_claimant_details["name"],
-            "claimant_surname": fin_claimant_details["surname"],
-            "claimant_id_number": fin_claimant_details["id_number"],
+            "claimant_name": fin_claimant_details.name,
+            "claimant_surname": fin_claimant_details.surname,
+            "claimant_id_number": fin_claimant_details.id_number,
             "claimant_id_type": 1,
-            "claimant_email": fin_claimant_details["email"],
-            "claimant_phone": fin_claimant_details["phone_number"],
-            "claimant_bank_name": fin_claimant_details["bank"],
-            "claimant_bank_account_number": fin_claimant_details["bank_account_number"],
-            "claimant_branch": fin_claimant_details["branch"],
-            "claimant_branch_code": fin_claimant_details["branch_code"],
+            "claimant_email": fin_claimant_details.email,
+            "claimant_phone": fin_claimant_details.phone_number,
+            "claimant_bank_name": fin_claimant_details.bank,
+            "claimant_bank_account_number": fin_claimant_details.account_number,
+            "claimant_branch": fin_claimant_details.branch,
+            "claimant_branch_code": fin_claimant_details.branch_code,
             "claim_assessed_by": "",
-            "claim_assessment_date": "",
             "claim_amount": written_off_loan["written_off_amount"],
             "claim_details": {},
             "submitted_date": written_off_loan["written_off_date"],
-            "claim_paid_date": "",
         }
         return claim
