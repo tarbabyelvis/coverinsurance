@@ -1,16 +1,16 @@
+from datetime import datetime
+
 from django.http import HttpResponse
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
+from rest_framework.views import APIView
+
 from core.http_response import HTTPResponse
 from core.utils import CustomPagination
 from policies.models import Policy
 from policies.serializers import PolicyDetailSerializer
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-from rest_framework.views import APIView
-from datetime import datetime
-import pandas as pd
-from io import BytesIO
-from reports.utils import bordrex_report_util
+from reports.utils import bordrex_report_util, generate_excel_report_util
 
 
 class BordrexReportView(APIView):
@@ -44,6 +44,7 @@ class BordrexReportView(APIView):
     def get(self, request):
         from_date = request.GET.get("from", None)
         to_date = request.GET.get("to", None)
+        entity = request.GET.get("entity")
 
         # validate dates to make sure they are not null
         if not from_date or not to_date:
@@ -55,13 +56,13 @@ class BordrexReportView(APIView):
             from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
             to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
             policies = Policy.objects.filter(
-                commencement_date__gte=from_date, commencement_date__lte=to_date
+                created__gte=from_date, created__lte=to_date, entity=entity
             )
             paginator = self.pagination_class()
             result_page = paginator.paginate_queryset(policies, request)
 
             serializer = PolicyDetailSerializer(result_page, many=True).data
-            report = bordrex_report_util(serializer)
+            report = bordrex_report_util(serializer, from_date, to_date, entity=entity)
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
@@ -74,6 +75,7 @@ class BordrexReportView(APIView):
             )
 
         except Exception as e:
+            print(e)
             return HTTPResponse.error(
                 message=str(e), status_code=status.HTTP_409_CONFLICT
             )
@@ -111,10 +113,11 @@ class BordrexExcelExportView(APIView):
         # Get data from the database
         from_date = request.GET.get("from", None)
         to_date = request.GET.get("to", None)
+        entity = request.GET.get("entity", None)
 
-        if not from_date or not to_date:
+        if not from_date or not to_date or not entity:
             return HTTPResponse.error(
-                message="Both 'from' and 'to' dates are required.",
+                message="'from', 'to' and 'entity are required .",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -122,23 +125,16 @@ class BordrexExcelExportView(APIView):
             from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
             to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
             policies = Policy.objects.filter(
-                commencement_date__gte=from_date, commencement_date__lte=to_date
+                created__gte=from_date, created__lte=to_date, entity=entity
             )
 
             # Serialize data
             serializer = PolicyDetailSerializer(policies, many=True)
-            data = bordrex_report_util(serializer.data)
-
-            # Convert data to DataFrame
-            df = pd.DataFrame(data)
-
-            # Write DataFrame to in-memory Excel file
-            excel_buffer = BytesIO()
-            df.to_excel(excel_buffer, index=False)
+            report = generate_excel_report_util(serializer.data, from_date, to_date, entity=entity)
 
             # Serve the Excel file as a response
             response = HttpResponse(
-                excel_buffer.getvalue(),
+                report,
                 content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
             response["Content-Disposition"] = (
@@ -147,6 +143,7 @@ class BordrexExcelExportView(APIView):
             return response
 
         except Exception as e:
+            print(e)
             return HTTPResponse.error(
                 message=f"An error occurred: {str(e)}",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

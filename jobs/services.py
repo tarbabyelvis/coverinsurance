@@ -10,6 +10,8 @@ from integrations.enums import Integrations
 from integrations.guardrisk.guardrisk import GuardRisk
 from integrations.models import IntegrationConfigs
 from integrations.superbase import query_new_loans, query_repayments, query_closed_loans, query_written_off_loans
+from integrations.utils import calculate_binder_fees_amount, calculate_commission_amount, \
+    calculate_guard_risk_admin_amount
 from jobs.models import TaskLog
 from policies.models import Policy, PremiumPayment
 from policies.serializers import PolicyDetailSerializer, PremiumPaymentSerializer, \
@@ -481,18 +483,6 @@ def extract_policy_and_client_info(loan):
         "entity_type": "Individual",
     }
     return policy, client
-
-
-def calculate_commission_amount(premium_amount) -> float:
-    return round(0.075 * premium_amount, 2)
-
-
-def calculate_guard_risk_admin_amount(premium_amount) -> float:
-    return round(0.05 * premium_amount, 2)
-
-
-def calculate_binder_fees_amount(premium_amount) -> float:
-    return round(0.09 * premium_amount, 2)
 
 
 def create_policy(loan, is_update: bool = False, old_policy=None):

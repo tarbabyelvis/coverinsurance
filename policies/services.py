@@ -16,6 +16,8 @@ from clients.enums import MaritalStatus
 from config.models import BusinessSector
 from core.enums import PremiumFrequency
 from core.utils import get_dict_values, merge_dict_into_another, replace_keys, get_current_schema
+from integrations.utils import calculate_binder_fees_amount, calculate_commission_amount, \
+    calculate_guard_risk_admin_amount
 from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, CLIENT_COLUMNS_INDLU, POLICY_COLUMNS_INDLU, \
     POLICY_CLIENTS_COLUMNS_CFSA, POLICY_CLIENTS_COLUMNS_CFSA_CORRECT
 from policies.constants import FUNERAL_POLICY_BENEFICIARY_COLUMNS, \
@@ -424,18 +426,6 @@ def process_indlu_policy_client_dump_data(policy_data: Dict[str, Any]):
     #     sum_insured = policy_data['sum_insured']
     #     policy_data['sum_insured'] = round(float(sum_insured.replace(',', '')), 2)
     return policy_data
-
-
-def calculate_commission_amount(premium_amount) -> float:
-    return round(0.075 * premium_amount, 2)
-
-
-def calculate_guard_risk_admin_amount(premium_amount) -> float:
-    return round(0.05 * premium_amount, 2)
-
-
-def calculate_binder_fees_amount(premium_amount) -> float:
-    return round(0.09 * premium_amount, 2)
 
 
 def __calculate_and_set_expiry_date(policy_data: Dict[str, Any]):
