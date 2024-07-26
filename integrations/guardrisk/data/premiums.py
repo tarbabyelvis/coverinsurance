@@ -2,7 +2,8 @@ from datetime import date, datetime
 
 from clients.models import ClientDetails
 from config.models import InsuranceCompany
-from integrations.utils import generate_payment_reference
+from integrations.utils import generate_payment_reference, calculate_vat_amount, calculate_amount_excluding_vat, \
+    calculate_guard_risk_admin_amount
 
 
 def prepare_premium_payload(
@@ -24,7 +25,7 @@ def prepare_premium_payload(
         premium_amount = float(payment["amount"])
         vat_amount = calculate_vat_amount(premium_amount)
         premium_less_vat = calculate_amount_excluding_vat(premium_amount, vat_amount)
-        guardrisk_amount = calculate_guard_risk_amount(premium_amount)
+        guardrisk_amount = calculate_guard_risk_admin_amount(premium_amount)
         commission = calculate_insurer_commission_amount(premium_amount)
         binder_fee = calculate_binder_fee_amount(premium_amount)
         nett_amount = calculate_nett_amount(premium_amount, guardrisk_amount, commission, binder_fee)
@@ -112,18 +113,6 @@ def prepare_premium_payload(
         }
         result.append(details)
     return result
-
-
-def calculate_vat_amount(premium_amount: float) -> float:
-    return round(0.15 * premium_amount, 2)
-
-
-def calculate_guard_risk_amount(premium_amount: float) -> float:
-    return round(0.05 * premium_amount, 2)
-
-
-def calculate_amount_excluding_vat(premium_amount: float, vat_amount) -> float:
-    return round((premium_amount - vat_amount), 2)
 
 
 def calculate_insurer_commission_amount(premium_amount: float) -> float:

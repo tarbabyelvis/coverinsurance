@@ -64,6 +64,33 @@ def generate_payment_reference(policy_number: str, payment_date) -> str:
     return f"{policy_number}-{payment_date}"
 
 
+def calculate_commission_amount(premium_amount) -> float:
+    return round(0.075 * premium_amount, 2)
+
+
+def calculate_guard_risk_admin_amount(premium_amount) -> float:
+    return round(0.05 * premium_amount, 2)
+
+
+def calculate_binder_fees_amount(premium_amount) -> float:
+    return round(0.09 * premium_amount, 2)
+
+
+def calculate_nett_amount(premium_amount: float,
+                          guardrisk_amount: float,
+                          commission: float,
+                          binder_fee: float) -> float:
+    return round((premium_amount - guardrisk_amount - commission - binder_fee), 2)
+
+
+def calculate_vat_amount(premium_amount: float) -> float:
+    return round(0.15 * premium_amount, 2)
+
+
+def calculate_amount_excluding_vat(premium_amount: float, vat_amount) -> float:
+    return round((premium_amount - vat_amount), 2)
+
+
 def populate_dependencies(other_dependants, details):
     for dependant in other_dependants:
         full_name = dependant["dependant_name"]
