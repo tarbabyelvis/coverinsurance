@@ -194,6 +194,24 @@ class ClaimantDetails(models.Model):
         verbose_name_plural = "Claimant Details"
 
 
+class LoanProduct(models.Model):
+    product_name = models.CharField(max_length=60, blank=False, null=False)
+    product_id = models.IntegerField()
+    policy_type_id = models.IntegerField(default=1)
+    business_unit = models.CharField(max_length=40, default='THF')
+    sub_scheme = models.CharField(max_length=40, default='Credit Life')
+    entity = models.CharField(max_length=60, default='Indlu')
+    is_legacy = models.BooleanField(default=False)
+    objects = models.Manager()
+
+    def __str__(self):
+        return self.product_name + " - " + self.business_unit + " - " + self.entity
+
+    class Meta:
+        verbose_name = "Loan Product Config"
+        verbose_name_plural = "Loan Product Configs"
+
+
 # register the class for Audit
 auditlog.register(PolicyName)
 auditlog.register(InsuranceCompany)
@@ -206,3 +224,4 @@ auditlog.register(Agent)
 auditlog.register(OrganisationConfig)
 auditlog.register(PolicyTypeFields)
 auditlog.register(ClaimantDetails)
+auditlog.register(LoanProduct)
