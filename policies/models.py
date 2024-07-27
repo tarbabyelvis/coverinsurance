@@ -68,6 +68,7 @@ class Policy(BaseModel):
     submitted_to_insurer = models.BooleanField(default=False)
     entity = models.CharField(max_length=50, null=False, blank=False, default='Nifty Cover')
     policy_provider_type = models.CharField(max_length=25, null=True, blank=True, default='Internal Credit Life')
+    is_legacy = models.BooleanField(default=True)
 
     def get_status_symbol(self):
         """

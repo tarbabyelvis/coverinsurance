@@ -4,7 +4,7 @@ from datetime import datetime, date
 from claims.models import Claim
 from claims.serializers import ClaimSerializer
 from config.enums import PolicyType
-from config.models import ClaimantDetails
+from config.models import ClaimantDetails, LoanProduct
 from core.utils import first_day_of_previous_month, last_day_of_previous_month
 from integrations.enums import Integrations
 from integrations.guardrisk.guardrisk import GuardRisk
@@ -455,12 +455,16 @@ def extract_policy_and_client_info(loan):
         "admin_fee": calculate_guard_risk_admin_amount(premium),
         "commission_amount": calculate_commission_amount(premium),
         "commission_percentage": 7.50,
-        "sub_scheme": "Credit Life",
-        "entity": "Indlu",
         "premium_frequency": "Monthly",
         "commission_frequency": "Monthly",
         "policy_provider_type": loan["policy_type"],
+        "business_unit": loan.get("business_unit", ""),
+        "entity": loan.get("entity") or "",
+        "is_legacy": loan.get("is_legacy") or False,
+        "sub_scheme": loan.get("sub_scheme") or "",
+        "policy_type_id": loan.get("policy_type_id", ""),
         "policy_details": {
+            "division": loan.get("business_unit", ""),
             "binder_fees": calculate_binder_fees_amount(premium),
             "total_loan_schedule": loan.get("total_loan_schedule") or "0",
             # "total_policy_premium_collected": "",
@@ -486,15 +490,37 @@ def extract_policy_and_client_info(loan):
 
 
 def create_policy(loan, is_update: bool = False, old_policy=None):
+    product_id = loan.get("product_id")
+    loan_product = LoanProduct.objects.filter(product_id=product_id).first()
+    if loan_product:
+        product_id = loan.get("product_id")
+        loan_product = LoanProduct.objects.filter(product_id=product_id).first()
+        if loan_product:
+            business_unit = loan_product.business_unit
+            product_name = loan_product.product_name
+            entity = loan_product.entity
+            loan["business_unit"] = business_unit
+            loan["product_name"] = product_name
+            loan["entity"] = entity
+            loan["sub_scheme"] = loan_product.sub_scheme
+            loan["is_legacy"] = loan_product.is_legacy
+            loan["policy_type_id"] = loan_product.policy_type_id
     if is_update:
         premium = round(float(loan.get("premium") or 0), 2)
         policy_details = {
+            "division": loan.get("business_unit"),
             "binder_fees": calculate_binder_fees_amount(premium),
             "total_loan_schedule": loan.get("total_loan_schedule", ""),
             "total_policy_premium_collected": "",
             "current_outstanding_balance": loan.get("current_outstanding_balance") or 0,
             "instalment_amount": loan.get("instalment_amount") or 0,
         }
+        old_policy.business_unit = loan.get("business_unit") or ""
+        old_policy.entity = loan.get("entity") or ""
+        old_policy.product_name = loan.get("product_name") or ""
+        old_policy.is_legacy = loan.get("is_legacy") or False
+        old_policy.sub_scheme = loan.get("sub_scheme") or ""
+        old_policy.policy_type_id = loan.get("policy_type_id") or ""
         old_policy.policy_details = policy_details
         old_policy.save()
         return

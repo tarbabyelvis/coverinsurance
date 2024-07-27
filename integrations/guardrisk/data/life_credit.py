@@ -31,7 +31,6 @@ def prepare_life_credit_payload(
         )
         other_dependants = list(other_dependants_filter)
         try:
-            # print(f'policy id being loaded {policy["id"]}')
             if isinstance(policy["policy_details"], dict):
                 policy_details = policy["policy_details"]
             else:
@@ -51,7 +50,10 @@ def prepare_life_credit_payload(
         death_waiting_period = 3
         ptd_waiting_period = 3
         retrenchment_waiting_period = 6
-
+        if policy["is_legacy"]:
+            division = policy_details.get("division_identifier")
+        else:
+            division = policy.get("business_unit") or ""
         details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
@@ -59,7 +61,7 @@ def prepare_life_credit_payload(
             "AdministratorIdentifier": policy["entity"],
             "InsurerName": insurer["name"],
             "ClientIdentifier": client_identifier,
-            "DivisionIdentifier": policy_details.get("division_identifier", "2"),
+            "DivisionIdentifier": division,
             "SubSchemeName": policy["sub_scheme"],
             "PolicyNumber": policy["policy_number"],
             "PricingModelVersion": "",
