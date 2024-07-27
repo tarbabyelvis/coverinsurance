@@ -20,7 +20,7 @@ def post_request_and_save(request_data, url, headers, service):
     except requests.exceptions.RequestException as e:
         print(f'Error on posting request: {e}')
         response_data = {"error": str(e)}
-        response_status = None
+        response_status = 400
         status = "Error"
 
     # Save request and response data to the database

@@ -39,7 +39,10 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
                 policy_details = json.loads(policy["policy_details"])
         except json.JSONDecodeError as e:
             policy_details = policy["policy_details"]
-
+        if policy["is_legacy"]:
+            division = policy_details.get("division_identifier")
+        else:
+            division = policy.get("business_unit") or ""
         claim_details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
@@ -47,7 +50,7 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
             "AdministratorIdentifier": policy["entity"],
             "InsurerName": insurer["name"],
             "ClientIdentifier": client_identifier,
-            "DivisionIdentifier": policy_details.get("division_identifier", "2"),
+            "DivisionIdentifier": division,
             "SubSchemeName": policy["sub_scheme"],
             "PolicyNumber": policy["policy_number"],
             "PolicyCommencementDate": policy["commencement_date"],

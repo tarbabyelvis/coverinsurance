@@ -53,6 +53,10 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
         other_dependants = list(other_dependants)
         number_of_dependencies = len(other_dependants)
         insurer = policy["insurer"]
+        if policy["is_legacy"]:
+            division = policy_details.get("division_identifier")
+        else:
+            division = policy.get("business_unit") or ""
         details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
@@ -60,7 +64,7 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
             "AdministratorIdentifier": policy["entity"],
             "InsurerName": insurer["name"],
             "ClientIdentifier": client_identifier,
-            "DivisionIdentifier": policy_details.get("division_identifier", "2"),
+            "DivisionIdentifier": division,
             "SubSchemeName": policy["sub_scheme"],
             "PolicyNumber": policy.get("policy_number", ""),
             "ProductName": policy.get("product_name", ""),
