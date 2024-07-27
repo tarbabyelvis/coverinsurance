@@ -133,3 +133,10 @@ def get_initial_letter(word: str):
     if word:
         return word[0]
     return ""
+
+
+def get_loan_id_from_legacy_loan(loan_external_id: str):
+    if "_" in loan_external_id:
+        legacy_loan_id = loan_external_id.split('_')[1]
+        return legacy_loan_id
+    return loan_external_id

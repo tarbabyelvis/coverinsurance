@@ -3,6 +3,7 @@ import logging
 from datetime import date, datetime
 
 from config.models import InsuranceCompany
+from core.utils import get_loan_id_from_legacy_loan
 from integrations.utils import is_new_policy, generate_claim_reference
 
 log = logging.getLogger(__name__)
@@ -41,8 +42,13 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
             policy_details = policy["policy_details"]
         if policy["is_legacy"]:
             division = policy_details.get("division_identifier")
+            if policy["external_reference"]:
+                policy_number = get_loan_id_from_legacy_loan(policy["external_reference"])
+            else:
+                policy_number = policy["policy_number"]
         else:
             division = policy.get("business_unit") or ""
+            policy_number = policy["policy_number"]
         claim_details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
@@ -52,7 +58,7 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
             "ClientIdentifier": client_identifier,
             "DivisionIdentifier": division,
             "SubSchemeName": policy["sub_scheme"],
-            "PolicyNumber": policy["policy_number"],
+            "PolicyNumber": policy_number,
             "PolicyCommencementDate": policy["commencement_date"],
             "PolicyExpiryDate": policy["expiry_date"],
             "TermOfPolicy": policy["policy_term"],
