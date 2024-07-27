@@ -2,6 +2,7 @@ import json
 from datetime import date, datetime
 
 from config.models import Relationships
+from core.utils import get_loan_id_from_legacy_loan
 from integrations.utils import get_frequency_number, populate_dependencies, is_new_policy
 
 
@@ -52,8 +53,13 @@ def prepare_life_credit_payload(
         retrenchment_waiting_period = 6
         if policy["is_legacy"]:
             division = policy_details.get("division_identifier")
+            if policy["external_reference"]:
+                policy_number = get_loan_id_from_legacy_loan(policy["external_reference"])
+            else:
+                policy_number = policy["policy_number"]
         else:
             division = policy.get("business_unit") or ""
+            policy_number = policy["policy_number"]
         details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
@@ -63,7 +69,7 @@ def prepare_life_credit_payload(
             "ClientIdentifier": client_identifier,
             "DivisionIdentifier": division,
             "SubSchemeName": policy["sub_scheme"],
-            "PolicyNumber": policy["policy_number"],
+            "PolicyNumber": policy_number,
             "PricingModelVersion": "",
             "ProductName": policy["product_name"],
             "ProductOption": product_option,
