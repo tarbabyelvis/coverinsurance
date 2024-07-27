@@ -265,7 +265,7 @@ def process_worksheet(
                 default_columns = {**DEFAULT_CLIENT_FIELDS, **DEFAULT_POLICY_FIELDS}
             elif data_type == "policy":
                 default_columns = {**DEFAULT_POLICY_FIELDS, "entity": "Indlu", "product_name": "Indlu Credit Life",
-                                   "sub_scheme": "Credit Life", "policy_name_policy": "CREDIT_LIFE",
+                                   "sub_scheme": "Credit Life",
                                    "commission_frequency": "Monthly",
                                    "premium_frequency": "Monthly",
                                    }
@@ -276,8 +276,9 @@ def process_worksheet(
             elif data_type == "policy_client_dump" or data_type == 'cfsa' or data_type == 'cfsacorrect':
                 default_columns = {**DEFAULT_POLICY_FIELDS, **DEFAULT_CLIENT_FIELDS,
                                    "entity": "Indlu",
+                                   "policy_type_id": 1,
                                    "product_name": "Indlu Credit Life",
-                                   "sub_scheme": "Credit Life", "policy_name_policy": "CREDIT_LIFE",
+                                   "sub_scheme": "Credit Life",
                                    "commission_frequency": "Monthly",
                                    "premium_frequency": "Monthly",
                                    "commission_percentage": 7.50
@@ -336,14 +337,6 @@ def extract_employment_fields(client_details):
 
 def process_indlu_policy_data(policy_data: Dict[str, Any]):
     # Further processing if needed
-    frequency_map = {
-        1: PremiumFrequency.MONTHLY,
-        3: PremiumFrequency.QUARTERLY,
-        12: PremiumFrequency.ANNUAL,
-        6: PremiumFrequency.SEMI_ANNUAL,
-        2: PremiumFrequency.BI_ANNUAL,
-        0: PremiumFrequency.ONCE_OFF
-    }
     policy_data["policy_term"] = 1 if policy_data["policy_term"] == 0 else policy_data[
         "policy_term"]
     __calculate_and_set_expiry_date(policy_data)
@@ -353,23 +346,18 @@ def process_indlu_policy_data(policy_data: Dict[str, Any]):
 
 def process_indlu_policy_client_dump_data(policy_data: Dict[str, Any]):
     print(f'policy data {policy_data}')
-    # frequency_map = {
-    #     1: PremiumFrequency.MONTHLY,
-    #     3: PremiumFrequency.QUARTERLY,
-    #     12: PremiumFrequency.ANNUAL,
-    #     6: PremiumFrequency.SEMI_ANNUAL,
-    #     2: PremiumFrequency.BI_ANNUAL,
-    #     0: PremiumFrequency.ONCE_OFF
-    # }
-    # policy_data["policy_term"] = 1 if policy_data["policy_term"] == 0 else policy_data[
-    #     "policy_term"]
+    if 'business_unit' not in policy_data:
+        policy_data['business_unit'] = 'THF'
+    if 'policy_status' in policy_data:
+        status = policy_data['policy_status']
+        if status == 'F':
+            policy_data['policy_status'] = 'P'
     if 'address_street' in policy_data:
         address_street = policy_data['address_street']
         if isinstance(address_street, datetime):
             policy_data['address_street'] = address_street.strftime('%d/%m/%Y')
     if 'date_of_birth' in policy_data:
         date_of_birth = policy_data['date_of_birth']
-        print(f'date_of_birth {date_of_birth}')
         if isinstance(date_of_birth, str):
             if date_of_birth == 'NULL':
                 policy_data['expiry_date'] = None
@@ -413,6 +401,10 @@ def process_indlu_policy_client_dump_data(policy_data: Dict[str, Any]):
             policy_data['policy_status'] = "F"
         else:
             policy_data['policy_status'] = "A"
+    if 'sum_insured' in policy_data:
+        sum_insured = policy_data['sum_insured']
+        if isinstance(sum_insured, str):
+            policy_data['sum_insured'] = round(float(sum_insured.replace(',', '')), 2)
 
     __calculate_and_set_expiry_date(policy_data)
     extract_json_fields(policy_data)
@@ -422,9 +414,6 @@ def process_indlu_policy_client_dump_data(policy_data: Dict[str, Any]):
     policy_data["commission_amount"] = calculate_commission_amount(total_premium)
     policy_data["admin_fee"] = calculate_guard_risk_admin_amount(total_premium)
     policy_data["policy_details"]["binder_fees"] = calculate_binder_fees_amount(total_premium)
-    # if 'sum_insured' in policy_data:
-    #     sum_insured = policy_data['sum_insured']
-    #     policy_data['sum_insured'] = round(float(sum_insured.replace(',', '')), 2)
     return policy_data
 
 
