@@ -1,5 +1,6 @@
 from django.db import models
 from config.models import ClaimType, DocumentType, IdDocumentType
+from core.enums import ClaimStatus
 from core.models import BaseModel
 from auditlog.registry import auditlog
 from policies.models import Policy
@@ -17,7 +18,7 @@ class Claim(BaseModel):
         on_delete=models.RESTRICT,
         related_name="claim_type",
     )
-    claim_status = models.CharField(max_length=200, null=True, blank=True)
+    claim_status = models.CharField(max_length=30, choices=ClaimStatus.choices, default=ClaimStatus.CREATED)
     claimant_name = models.CharField(max_length=200, null=True, blank=True)
     claimant_surname = models.CharField(max_length=200, null=True, blank=True)
     claimant_id_number = models.CharField(max_length=200, null=True, blank=True)

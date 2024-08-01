@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 import requests
 from integrations.models import IntegrationLogs
@@ -48,11 +48,17 @@ def get_frequency_number(frequency: str):
         return 0
 
 
-def is_new_policy(created_date_time: str) -> str:  # TODO add the transferred T and R Replacement adjustments
-    created_date = datetime.strptime(created_date_time, '%Y-%m-%dT%H:%M:%S.%fZ').date()
-    yesterday = datetime.now() - timedelta(days=1)
-    created_yesterday = created_date == yesterday.date()
-    return 'P' if created_yesterday else 'N'
+def is_new_policy(commencement_date, reporting_period_start,
+                  reporting_period_end) -> str:  # TODO add the transferred T and R Replacement adjustments
+    commencement_date = datetime.strptime(commencement_date, '%Y-%m-%d').date()
+    if isinstance(reporting_period_start, str):
+        reporting_period_start = datetime.strptime(reporting_period_start, '%Y-%m-%d').date()
+    if isinstance(reporting_period_start, str):
+        reporting_period_end = datetime.strptime(reporting_period_end, '%Y-%m-%d').date()
+    if reporting_period_start <= commencement_date <= reporting_period_end:
+        return 'Y'
+    else:
+        return 'N'
 
 
 def generate_claim_reference(claimant_id: str, policy_number: str) -> str:

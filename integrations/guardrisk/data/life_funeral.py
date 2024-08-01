@@ -53,15 +53,9 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
         other_dependants = list(other_dependants)
         number_of_dependencies = len(other_dependants)
         insurer = policy["insurer"]
-        if policy["is_legacy"]:
-            division = policy_details.get("division_identifier")
-            if policy["external_reference"]:
-                policy_number = get_loan_id_from_legacy_loan(policy["external_reference"])
-            else:
-                policy_number = policy["policy_number"]
-        else:
-            division = policy.get("business_unit") or ""
-            policy_number = policy["policy_number"]
+        current_loan_balance = policy["policy_details"]["current_outstanding_balance"]
+        policy_number = policy["policy_number"]
+        division = policy.get("business_unit")
         details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
@@ -79,7 +73,7 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
             "TermofPolicy": policy.get("policy_term", ""),
             "PolicyStatus": policy.get("policy_status", ""),
             "PolicyStatusDate": timestamp,
-            "NewPolicyIndicator": is_new_policy(policy["created"]),
+            "NewPolicyIndicator": is_new_policy(policy["commencement_date"], start_date, end_date),
             "SalesChannel": policy_details.get("sales_channel", "Direct marketing via internet"),
             "CancelledbyPolicyholderCoolingPeriodInsurer": "N",
             "DeathIndicator": "Y",
@@ -90,7 +84,7 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
             "DeathOriginalSumAssured": policy.get("sum_insured"),
             "PTDOriginalSumAssured": policy.get("sum_insured"),
             "DeathCoverStructure": policy_details.get("death_cover_structure", "Lump sum"),
-            "DeathCurrentSumAssured": policy.get("sum_insured"),
+            "DeathCurrentSumAssured": current_loan_balance,
             "PTDCoverStructure": "Combined",
             "ReinsurerName": "N/A",
             "DeathCurrentRISumAssured": "N/A",
@@ -106,7 +100,7 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
             "TotalFinancialReinsurancePayable": policy["total_premium"],
             "CommissionFrequency": get_frequency_number(policy.get("commission_frequency", "Monthly")),
             "Commission": policy["commission_amount"],
-            "AdminBinderFees": policy["admin_fee"],
+            "AdminBinderFees": policy["policy_details"].get("binder_fees", ""),
             "OutsourcingFees": None,
             "MarketingAdvertisingFees": None,
             "ManagementFees": policy_details.get("management_fee", ""),

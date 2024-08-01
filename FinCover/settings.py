@@ -337,27 +337,27 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 # DEV
-SUPABASE_TOKEN = os.getenv(
-    "SUPABASE_TOKEN",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHlsc3hla211Ymh6bnFuYWttIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NTkzNTIyMTEsImV4cCI6MTk3NDkyODIxMX0.LDLbwoiUEs9x0pRF1bdFtxzlzTzv9qWu_j8rzro-mtk",
-)
-SUPABASE_URL = os.getenv(
-    "SUPABASE_URL", "https://judylsxekmubhznqnakm.functions.supabase.co"
-)
-SUPABASE_PROJECTID = os.getenv("SUPABASE_PROJECTID", "judylsxekmubhznqnakm")
-SUPABASE_REST_URL = os.getenv(
-    "SUPABASE_REST_URL", "https://judylsxekmubhznqnakm.supabase.co"
-)
-
-# PROD
 # SUPABASE_TOKEN = os.getenv(
 #     "SUPABASE_TOKEN",
-#     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhtc3BsaWJjZW11ZmhkeWV5dWdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NjIxMTA1MTYsImV4cCI6MTk3NzY4NjUxNn0.zWTZ9FUUmXglACrYicbkRfhJXgvkvvPTZSQdC4MEWdo",
+#     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHlsc3hla211Ymh6bnFuYWttIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NTkzNTIyMTEsImV4cCI6MTk3NDkyODIxMX0.LDLbwoiUEs9x0pRF1bdFtxzlzTzv9qWu_j8rzro-mtk",
 # )
 # SUPABASE_URL = os.getenv(
-#     "SUPABASE_URL", "https://xmsplibcemufhdyeyugm.functions.supabase.co"
+#     "SUPABASE_URL", "https://judylsxekmubhznqnakm.functions.supabase.co"
 # )
-# SUPABASE_PROJECTID = os.getenv("SUPABASE_PROJECTID", "xmsplibcemufhdyeyugm")
+# SUPABASE_PROJECTID = os.getenv("SUPABASE_PROJECTID", "judylsxekmubhznqnakm")
 # SUPABASE_REST_URL = os.getenv(
-#     "SUPABASE_REST_URL", "https://xmsplibcemufhdyeyugm.supabase.co"
+#     "SUPABASE_REST_URL", "https://judylsxekmubhznqnakm.supabase.co"
 # )
+
+# PROD
+SUPABASE_TOKEN = os.getenv(
+    "SUPABASE_TOKEN",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhtc3BsaWJjZW11ZmhkeWV5dWdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NjIxMTA1MTYsImV4cCI6MTk3NzY4NjUxNn0.zWTZ9FUUmXglACrYicbkRfhJXgvkvvPTZSQdC4MEWdo",
+)
+SUPABASE_URL = os.getenv(
+    "SUPABASE_URL", "https://xmsplibcemufhdyeyugm.functions.supabase.co"
+)
+SUPABASE_PROJECTID = os.getenv("SUPABASE_PROJECTID", "xmsplibcemufhdyeyugm")
+SUPABASE_REST_URL = os.getenv(
+    "SUPABASE_REST_URL", "https://xmsplibcemufhdyeyugm.supabase.co"
+)

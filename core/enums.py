@@ -19,15 +19,6 @@ class PremiumFrequency(models.TextChoices):
     ONCE_OFF = "Once Off", "Once Off"
 
 
-# class PolicyStatus(models.TextChoices):
-#     PENDING = "PENDING", "Pending"
-#     APPROVED = "APPROVED", "Approved"
-#     REJECTED = "REJECTED", "Rejected"
-#     CANCELLED = "CANCELLED", "Cancelled"
-#     EXPIRED = "EXPIRED", "Expired"
-#     QUOTATION = "QUOTATION", "Quotation"
-
-
 class PolicyStatus(models.TextChoices):
     ACTIVE = "A", "Active"
     LAPSED = "L", "Lapsed"
@@ -43,3 +34,9 @@ class PolicyStatus(models.TextChoices):
     TRANSFERRED_OUT = "T", "Transferred out"
 
 
+class ClaimStatus(models.TextChoices):
+    CREATED = "CREATED", "Created"
+    ON_ASSESSMENT = "ON_ASSESSMENT", "On Assessment"
+    SUBMITTED = "SUBMITTED", "Submitted"
+    APPROVED = "APPROVED", "Approved"
+    REPUDIATED = "REPUDIATED", "Repudiated"

@@ -419,7 +419,9 @@ POLICY_COLUMNS_INDLU = {
     # these are for control in policy_client_indlu
     "total_policy_premium_collected": "total_policy_premium_collected"
 }
-
+POLICY_CLIENTS_COLUMNS_CFSA_UPDATE = {
+    "policy_number": "LoanRefId",
+}
 POLICY_CLIENTS_COLUMNS_CFSA = {
     "policy_number": "Policy Number",
     "client_id": "Client Identifier",  # Not there

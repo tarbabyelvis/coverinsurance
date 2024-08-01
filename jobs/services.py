@@ -1,11 +1,13 @@
 import traceback
 from datetime import datetime, date
 
+from django.db.models import Q
+
 from claims.models import Claim
 from claims.serializers import ClaimSerializer
 from config.enums import PolicyType
 from config.models import ClaimantDetails, LoanProduct
-from core.utils import first_day_of_previous_month, last_day_of_previous_month
+from core.utils import first_day_of_previous_month, last_day_of_previous_month, get_loan_id_from_legacy_loan
 from integrations.enums import Integrations
 from integrations.guardrisk.guardrisk import GuardRisk
 from integrations.models import IntegrationConfigs
@@ -128,7 +130,6 @@ def __credit_life(
             nifty_data = list(filter(lambda policy: policy.entity == 'Nifty Cover', credit_life_policies))
             indlu_data = list(filter(lambda policy: policy.entity == 'Indlu', credit_life_policies))
             # indlu_data = [policy for policy in credit_life_policies if policy not in nifty_data]
-            print(f'indlu_data: {indlu_data}')
 
             nifty_policies = PolicyDetailSerializer(nifty_data, many=True).data
             indlu_policies = PolicyDetailSerializer(indlu_data, many=True).data
@@ -347,24 +348,27 @@ def create_task_logs(task: Task):
 
 def __fetch_policies(start_date: datetime, end_date: datetime, policy_type: PolicyType):
     return Policy.objects.filter(
-        created__gte=start_date,
-        created__lte=end_date,
-        policy_type__policy_type=policy_type.name,
-        policy_type__isnull=False
+        Q(policy_status='A', policy_type__policy_type=policy_type.name, policy_provider_type='Internal Credit Life',
+          commencement_date__range=(start_date, end_date)) |
+        Q(policy_status__in=('P', 'C'), policy_type__policy_type=policy_type.name,
+          policy_provider_type='Internal Credit Life',
+          closed_date__range=(start_date, end_date))
     )
 
 
 def __fetch_claims(start_date: datetime, end_date: datetime):
     return Claim.objects.filter(
-        created__gte=start_date,
-        created__lte=end_date,
+        submitted_date__gte=start_date,
+        submitted_date__lte=end_date,
+        policy__policy_provider_type='Internal Credit Life'
     )
 
 
 def __fetch_premiums(start_date: datetime, end_date: datetime):
     return PremiumPayment.objects.filter(
-        created__gte=start_date,
-        created__lte=end_date,
+        payment_date__gte=start_date,
+        payment_date__lte=end_date,
+        policy__policy_provider_type='Internal Credit Life'
     )
 
 
@@ -373,6 +377,7 @@ def fetch_and_process_fin_connect_data(start_date: date, end_date: date, finerac
     process_repayments(start_date, end_date, fineract_org_id)
     process_closed_loans(start_date, end_date, fineract_org_id)
     process_claims_from_fineract(start_date, end_date, fineract_org_id)
+    print(f'Done processing fineract data fetch for {start_date} to {end_date} and tenant {fineract_org_id}')
 
 
 def process_new_loans(start_date: date, end_date: date, fineract_org_id):
@@ -383,6 +388,7 @@ def process_new_loans(start_date: date, end_date: date, fineract_org_id):
 def process_repayments(start_date: date, end_date: date, fineract_org_id):
     repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
     save_repayments(repayments)
+    print(f'Done saving repayments for {start_date} to {end_date}')
 
 
 def process_closed_loans(start_date: date, end_date: date, fineract_org_id):
@@ -398,19 +404,28 @@ def process_claims_from_fineract(start_date: date, end_date: date, fineract_org_
 def update_closed_loans(closed_loans):
     db_policies = []
     for loan in closed_loans:
+        product_id = loan.get("product_id")
+        if is_legacy_policy(product_id):
+            policy_number = get_loan_id_from_legacy_loan(loan.get("loan_external_id"))
+        else:
+            policy_number = loan["loanId"]
         try:
-            policy = Policy.objects.filter(policy_number=loan["loanId"]).first()
+            policy = Policy.objects.filter(policy_number=policy_number).first()
             if policy is None:
                 create_policy(loan)
             else:
-                create_policy(loan, is_update=True, old_policy=policy)
+                create_policy(loan=loan, is_update=True, old_policy=policy)
             policy.policy_status = map_closure_reason(loan["closed_reason"])
-            policy.expiry_date = loan["closed_date"]
+            policy.closed_date = loan["closed_date"]
+            policy_details = policy.policy_details or {}
+            policy_details['current_outstanding_balance'] = float(loan["current_outstanding_balance"])
+            policy_details['total_policy_premium_collected'] = float(loan["total_policy_premium_collected"])
+            policy.policy_details = policy_details
             db_policies.append(policy)
         except Exception as e:
-            print(f"Error saving {loan['loanId']}")
+            print(f"Error updating closed loan  {loan}")
             print(e)
-    Policy.objects.bulk_update(db_policies, fields=['policy_status', 'expiry_date'])
+    Policy.objects.bulk_update(db_policies, fields=['policy_status', 'expiry_date', 'policy_details'])
 
 
 def map_closure_reason(closed_reason: str) -> str:
@@ -426,11 +441,7 @@ def save_new_loans(new_loans):
     failed_loans = []
     for loan in new_loans:
         try:
-            policy = Policy.objects.filter(policy_number=loan["loanId"]).first()
-            if policy is None:
-                create_policy(loan)
-            else:
-                create_policy(loan, is_update=True, old_policy=policy)
+            create_policy(loan)
         except Exception as e:
             print(f"Error saving new loan{loan['loanId']}")
             print(e)
@@ -439,12 +450,19 @@ def save_new_loans(new_loans):
 
 
 def extract_policy_and_client_info(loan):
+    product_id = loan.get("product_id")
+    if is_legacy_policy(product_id):
+        policy_number = get_loan_id_from_legacy_loan(loan.get("loan_external_id"))
+        external_reference = None
+    else:
+        policy_number = loan["loanId"]
+        external_reference = loan.get("loan_external_id", "")
     premium = round(float(loan.get("premium") or 0), 2)
     policy = {
         "policy_type": 1,
         "insurer": 1,
-        "policy_number": loan["loanId"],
-        "external_reference": loan.get("loan_external_id", ""),
+        "policy_number": policy_number,
+        "external_reference": external_reference,
         "sum_insured": round(float(loan.get("loan_amount") or 0), 2),
         "total_premium": premium,
         "commencement_date": loan.get("disbursementDate") or date.today().strftime("%Y-%m-%d"),
@@ -464,12 +482,11 @@ def extract_policy_and_client_info(loan):
         "sub_scheme": loan.get("sub_scheme") or "",
         "policy_type_id": loan.get("policy_type_id", ""),
         "policy_details": {
-            "division": loan.get("business_unit", ""),
             "binder_fees": calculate_binder_fees_amount(premium),
             "total_loan_schedule": loan.get("total_loan_schedule") or "0",
-            # "total_policy_premium_collected": "",
+            "total_policy_premium_collected": loan.get("total_policy_premium_collected"),
             "current_outstanding_balance": loan.get("current_outstanding_balance") or 0,
-            "instalment_amount": loan.get("instalment_amount") or 0,
+            "installment_amount": loan.get("instalment_amount") or 0,
         }
     }
     client = {
@@ -490,37 +507,27 @@ def extract_policy_and_client_info(loan):
 
 
 def create_policy(loan, is_update: bool = False, old_policy=None):
-    product_id = loan.get("product_id")
+    product_id = int(loan.get("product_id"))
     loan_product = LoanProduct.objects.filter(product_id=product_id).first()
-    if loan_product:
-        product_id = loan.get("product_id")
-        loan_product = LoanProduct.objects.filter(product_id=product_id).first()
-        if loan_product:
-            business_unit = loan_product.business_unit
-            product_name = loan_product.product_name
-            entity = loan_product.entity
-            loan["business_unit"] = business_unit
-            loan["product_name"] = product_name
-            loan["entity"] = entity
-            loan["sub_scheme"] = loan_product.sub_scheme
-            loan["is_legacy"] = loan_product.is_legacy
-            loan["policy_type_id"] = loan_product.policy_type_id
+    if loan_product is not None:
+        business_unit = loan_product.business_unit or ""
+        product_name = loan_product.product_name
+        entity = loan_product.entity
+        loan["business_unit"] = business_unit
+        loan["product_name"] = product_name
+        loan["entity"] = entity
+        loan["sub_scheme"] = loan_product.sub_scheme
+        loan["is_legacy"] = loan_product.is_legacy
+        loan["policy_type_id"] = loan_product.policy_type_id
     if is_update:
         premium = round(float(loan.get("premium") or 0), 2)
         policy_details = {
-            "division": loan.get("business_unit"),
             "binder_fees": calculate_binder_fees_amount(premium),
             "total_loan_schedule": loan.get("total_loan_schedule", ""),
-            "total_policy_premium_collected": "",
+            "total_policy_premium_collected": loan.get("total_policy_premium_collected"),
             "current_outstanding_balance": loan.get("current_outstanding_balance") or 0,
-            "instalment_amount": loan.get("instalment_amount") or 0,
+            "installment_amount": loan.get("instalment_amount") or 0,
         }
-        old_policy.business_unit = loan.get("business_unit") or ""
-        old_policy.entity = loan.get("entity") or ""
-        old_policy.product_name = loan.get("product_name") or ""
-        old_policy.is_legacy = loan.get("is_legacy") or False
-        old_policy.sub_scheme = loan.get("sub_scheme") or ""
-        old_policy.policy_type_id = loan.get("policy_type_id") or ""
         old_policy.policy_details = policy_details
         old_policy.save()
         return
@@ -534,26 +541,42 @@ def create_policy(loan, is_update: bool = False, old_policy=None):
 
 def save_repayments(repayments):
     for repayment in repayments:
+        product_id = repayment.get("product_id")
+        if is_legacy_policy(product_id):
+            policy_number = get_loan_id_from_legacy_loan(repayment.get("loan_external_id"))
+        else:
+            policy_number = repayment["loanId"]
         try:
-            policy = Policy.objects.filter(policy_number=repayment["loanId"]).first()
+            policy = Policy.objects.filter(policy_number=policy_number).first()
             if policy is None:
                 create_policy(repayment)
             else:
-                create_policy(repayment, is_update=True)
+                create_policy(loan=repayment, is_update=True, old_policy=policy)
             repayment_details = extract_repayment_details(repayment)
+
             serializer = PremiumPaymentSerializer(
                 data=repayment_details
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
         except Exception as e:
-            print(f"Error saving {repayment['loanId']}")
+            print(f"Error saving repayment {repayment}")
             print(e)
 
 
+def is_legacy_policy(product_id) -> bool:
+    legacy_ids = ["106", "107", "108"]
+    return product_id in legacy_ids
+
+
 def extract_repayment_details(repayment):
+    product_id = repayment.get("product_id")
+    if is_legacy_policy(product_id):
+        policy_number = get_loan_id_from_legacy_loan(repayment.get("loan_external_id"))
+    else:
+        policy_number = repayment["loanId"]
     return {
-        "policy_id": repayment["loanId"],
+        "policy_id": policy_number,
         "payment_date": repayment["transactionDate"],
         "amount": round(float(repayment.get("paidAmount", "0")), 2),
         "transaction_type": repayment["paymentType"],
@@ -569,14 +592,14 @@ def __fetch_new_policies_from_fin_connect(start_date: date, end_date: date, tena
         print(f'response_status: {response_status}:: data: {data}')
         return data
     except Exception as e:
-        print("Something went wrong fetching new loans")
+        print("Something went wrong fetching new loans, retrying")
         print(e)
         return new_loans
 
 
 def __fetch_loan_repayments_from_fin_connect(start_date: date, end_date: date, tenant_id):
     print("Fetching loan repayments")
-    repayments = []
+    collections = []
     try:
         response_status, data = query_repayments(tenant_id, start_date, end_date)
         print(f'response_status: {response_status}:: data: {data}')
@@ -584,49 +607,52 @@ def __fetch_loan_repayments_from_fin_connect(start_date: date, end_date: date, t
     except Exception as e:
         print("Something went wrong fetching loan repayments")
         print(e)
-        return repayments
+        return collections
 
 
 def __fetch_closed_loans_from_fin_connect(start_date: date, end_date: date, tenant_id):
     print("Fetching closed loans")
-    collections = []
+    closed_loans = []
     try:
         response_status, data = query_closed_loans(tenant_id, start_date, end_date)
         print(f'response_status: {response_status}:: data: {data}')
         return data
     except Exception as e:
-        print("Something went wrong fetching closed loans")
+        print("Something went wrong fetching closed loans, retrying")
         print(e)
-        return collections
+        return closed_loans
 
 
 def create_claims_for_written_off_loans(written_off_loans):
     fin_claimant_details = ClaimantDetails.objects.filter(name="Fin").first()
     if fin_claimant_details is None:
         raise Exception("No Fin claimant details found")
-    claims = []
     for loan in written_off_loans:
+        product_id = loan.get("product_id")
+        if is_legacy_policy(product_id):
+            policy_number = get_loan_id_from_legacy_loan(loan.get("loan_external_id"))
+        else:
+            policy_number = loan["loanId"]
         try:
-            policy = Policy.objects.filter(policy_number=loan["loanId"]).first()
+            policy = Policy.objects.filter(policy_number=policy_number).first()
             if policy is None:
                 create_policy(loan)
+                policy = Policy.objects.filter(policy_number=policy_number).first()
             else:
                 create_policy(loan, is_update=True, old_policy=policy)
-            claim = build_claim(loan, fin_claimant_details)
-            claims.append(claim)
+            claim = build_claim(loan, fin_claimant_details, policy)
+            serializer = ClaimSerializer(
+                data=claim
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            policy.policy_status = 'C'
+            policy.closed_date = date.today()
+            policy.save()
+
         except Exception as e:
             print(f"Error creating claim for {loan['loanId']}")
             print(e)
-
-    try:
-        serializer = ClaimSerializer(
-            data=claims, many=True
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-    except Exception as e:
-        print(f"Error saving claims")
-    return claims
 
 
 def __fetch_written_off_policies_from_fin_connect(start_date: date, end_date: date, tenant_id):
@@ -642,9 +668,8 @@ def __fetch_written_off_policies_from_fin_connect(start_date: date, end_date: da
         return written_off_loans
 
 
-def build_claim(written_off_loan, fin_claimant_details):
+def build_claim(written_off_loan, fin_claimant_details, policy):
     loan_id = written_off_loan["loanId"]
-    policy = Policy.objects.filter(policy_number=loan_id).first()
     if policy:
         claim = {
             "policy_id": loan_id,

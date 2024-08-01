@@ -21,6 +21,7 @@ class Policy(BaseModel):
     )
     commencement_date = models.DateField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
+    closed_date = models.DateField(null=True, blank=True)
     sum_insured = models.DecimalField(max_digits=20, decimal_places=2)
     total_premium = models.DecimalField(
         null=True, blank=True, max_digits=20, decimal_places=2
@@ -66,9 +67,9 @@ class Policy(BaseModel):
     )
     admin_fee = models.DecimalField(default=0, max_digits=20, decimal_places=2)
     submitted_to_insurer = models.BooleanField(default=False)
-    entity = models.CharField(max_length=50, null=False, blank=False, default='Nifty Cover')
+    entity = models.CharField(max_length=50, null=False, blank=False, default='Indlu')
     policy_provider_type = models.CharField(max_length=25, null=True, blank=True, default='Internal Credit Life')
-    is_legacy = models.BooleanField(default=True)
+    is_legacy = models.BooleanField(default=False)
 
     def get_status_symbol(self):
         """

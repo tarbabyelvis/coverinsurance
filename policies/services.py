@@ -19,7 +19,7 @@ from core.utils import get_dict_values, merge_dict_into_another, replace_keys, g
 from integrations.utils import calculate_binder_fees_amount, calculate_commission_amount, \
     calculate_guard_risk_admin_amount
 from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, CLIENT_COLUMNS_INDLU, POLICY_COLUMNS_INDLU, \
-    POLICY_CLIENTS_COLUMNS_CFSA, POLICY_CLIENTS_COLUMNS_CFSA_CORRECT
+    POLICY_CLIENTS_COLUMNS_CFSA, POLICY_CLIENTS_COLUMNS_CFSA_CORRECT, POLICY_CLIENTS_COLUMNS_CFSA_UPDATE
 from policies.constants import FUNERAL_POLICY_BENEFICIARY_COLUMNS, \
     FUNERAL_POLICY_CLIENT_COLUMNS, DEFAULT_BENEFICIARY_FIELDS, POLICY_CLIENT_COLUMNS_INDLU
 from policies.models import Policy
@@ -255,40 +255,55 @@ def process_worksheet(
         raise ValidationError(f"{data_type.capitalize()} headers not matching the ones on the excel sheet")
 
     processed_data = []
-
     for row in worksheet.iter_rows(min_row=2, values_only=True):
         if any(cell is not None for cell in row):
             row_dict = dict(zip(headers, row))
-            row_dict = replace_keys(columns, row_dict)
-            data = {k: row_dict[k] for k in columns if k in row_dict}
-            if data_type == "client_policy":
-                default_columns = {**DEFAULT_CLIENT_FIELDS, **DEFAULT_POLICY_FIELDS}
-            elif data_type == "policy":
-                default_columns = {**DEFAULT_POLICY_FIELDS, "entity": "Indlu", "product_name": "Indlu Credit Life",
-                                   "sub_scheme": "Credit Life",
-                                   "commission_frequency": "Monthly",
-                                   "premium_frequency": "Monthly",
-                                   }
-            elif data_type == "client":
-                default_columns = {**DEFAULT_CLIENT_FIELDS}
-            elif data_type == "repayment":
-                default_columns = {}
-            elif data_type == "policy_client_dump" or data_type == 'cfsa' or data_type == 'cfsacorrect':
-                default_columns = {**DEFAULT_POLICY_FIELDS, **DEFAULT_CLIENT_FIELDS,
-                                   "entity": "Indlu",
-                                   "policy_type_id": 1,
-                                   "product_name": "Indlu Credit Life",
-                                   "sub_scheme": "Credit Life",
-                                   "commission_frequency": "Monthly",
-                                   "premium_frequency": "Monthly",
-                                   "commission_percentage": 7.50
-                                   }
-            else:
-                default_columns = DEFAULT_BENEFICIARY_FIELDS
-
-            data = merge_dict_into_another(data, default_columns)
-            processed_data.append(process_data(data, data_type))
-    return processed_data
+            if row_dict is not None:
+                row_dict = replace_keys(columns, row_dict)
+                if row_dict is not None:
+                    data = {k: row_dict[k] for k in columns if k in row_dict}
+                    if data is not None:
+                        policy_number = data["policy_number"]
+                        print(f'policy number: {policy_number}')
+                        policy = Policy.objects.filter(policy_number=policy_number).first()
+                        if policy is not None:
+                            policy.business_unit = 'THF'
+                            policy.product_name = 'Housing Loans (Take on)'
+                            policy.sub_scheme = 'Long Term - Housing Finance'
+                            policy.save()
+    # for row in worksheet.iter_rows(min_row=2, values_only=True):
+    #     if any(cell is not None for cell in row):
+    #         row_dict = dict(zip(headers, row))
+    #         row_dict = replace_keys(columns, row_dict)
+    #         data = {k: row_dict[k] for k in columns if k in row_dict}
+    #         if data_type == "client_policy":
+    #             default_columns = {**DEFAULT_CLIENT_FIELDS, **DEFAULT_POLICY_FIELDS}
+    #         elif data_type == "policy":
+    #             default_columns = {**DEFAULT_POLICY_FIELDS, "entity": "Indlu", "product_name": "Indlu Credit Life",
+    #                                "sub_scheme": "Credit Life",
+    #                                "commission_frequency": "Monthly",
+    #                                "premium_frequency": "Monthly",
+    #                                }
+    #         elif data_type == "client":
+    #             default_columns = {**DEFAULT_CLIENT_FIELDS}
+    #         elif data_type == "repayment":
+    #             default_columns = {}
+    #         elif data_type == "policy_client_dump" or data_type == 'cfsa' or data_type == 'cfsacorrect':
+    #             default_columns = {**DEFAULT_POLICY_FIELDS, **DEFAULT_CLIENT_FIELDS,
+    #                                "entity": "Indlu",
+    #                                "policy_type_id": 1,
+    #                                "product_name": "Indlu Credit Life",
+    #                                "sub_scheme": "Credit Life",
+    #                                "commission_frequency": "Monthly",
+    #                                "premium_frequency": "Monthly",
+    #                                "commission_percentage": 7.50
+    #                                }
+    #         else:
+    #             default_columns = DEFAULT_BENEFICIARY_FIELDS
+    #
+    #         data = merge_dict_into_another(data, default_columns)
+    #         processed_data.append(process_data(data, data_type))
+    # return processed_data
 
 
 def process_data(data: Dict[str, Any], data_type: str) -> Dict[str, Any]:
@@ -619,7 +634,9 @@ def upload_indlu_clients_and_policies(
     wb = openpyxl.load_workbook(file_obj.file)
     # clients = process_worksheet(wb, "Members", CLIENT_COLUMNS_INDLU, "client")
     data_type = source
-    if data_type == 'cfsa':
+    if data_type == 'cfsa_update':
+        policy_clients_dump = process_worksheet(wb, "DataDump", POLICY_CLIENTS_COLUMNS_CFSA_UPDATE, "cfsa_update")
+    elif data_type == 'cfsa':
         policy_clients_dump = process_worksheet(wb, "Data", POLICY_CLIENTS_COLUMNS_CFSA, "cfsa")
     else:
         policy_clients_dump = process_worksheet(wb, "DataDump", POLICY_CLIENT_COLUMNS_INDLU, "policy_client_dump")
@@ -627,10 +644,10 @@ def upload_indlu_clients_and_policies(
         **CLIENT_COLUMNS_INDLU,
         "primary_id_document_type": 1,
         "entity_type": "Individual"}
-    dump_policies, dump_clients = extract_from_dump(policy_clients_dump, client_columns)
-    updated_clients = extract_employment_info_from_client(dump_clients)
-    extract_and_save_sectors(dump_clients)
-    save_client_policy_members_data(dump_policies, updated_clients)
+    # dump_policies, dump_clients = extract_from_dump(policy_clients_dump, client_columns)
+    # updated_clients = extract_employment_info_from_client(dump_clients)
+    # extract_and_save_sectors(dump_clients)
+    # save_client_policy_members_data(dump_policies, updated_clients)
     print('Done saving policies and clients from dump')
 
 
