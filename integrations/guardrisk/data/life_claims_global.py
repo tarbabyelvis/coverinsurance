@@ -2,8 +2,6 @@ import json
 import logging
 from datetime import date, datetime
 
-from config.models import InsuranceCompany
-from core.utils import get_loan_id_from_legacy_loan
 from integrations.utils import is_new_policy, generate_claim_reference
 
 log = logging.getLogger(__name__)
@@ -25,8 +23,8 @@ retrenchment_waiting_period = 6
 
 def prepare_life_claims_payload(data: list, start_date: date, end_date: date, client_identifier):
     original_date = datetime.now()
-    timestamp = original_date.strftime("%Y/%m/%d")
-    start_date = start_date.strftime("%Y/%m/%d")
+    timestamp = original_date.strftime("%Y-%m-%d")
+    start_date = start_date.strftime("%Y-%m-%d")
     end_date = end_date.strftime("%Y/%m/%d")
     result = []
     for claim in data:
@@ -40,15 +38,9 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
                 policy_details = json.loads(policy["policy_details"])
         except json.JSONDecodeError as e:
             policy_details = policy["policy_details"]
-        if policy["is_legacy"]:
-            division = policy_details.get("division_identifier")
-            if policy["external_reference"]:
-                policy_number = get_loan_id_from_legacy_loan(policy["external_reference"])
-            else:
-                policy_number = policy["policy_number"]
-        else:
-            division = policy.get("business_unit") or ""
-            policy_number = policy["policy_number"]
+
+        policy_number = policy["policy_number"]
+        division = policy.get("business_unit")
         claim_details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
@@ -64,7 +56,7 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
             "TermOfPolicy": policy["policy_term"],
             "PolicyStatus": policy["policy_status"],
             "PolicyStatusDate": timestamp,
-            "NewPolicyIndicator": is_new_policy(policy["created"]),
+            "NewPolicyIndicator": is_new_policy(policy["commencement_date"], start_date, end_date),
             "ProductName": policy["product_name"],
             "ProductOption": product_option,
             "SalesChannel": policy_details.get("sales_channel", ""),

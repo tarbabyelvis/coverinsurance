@@ -419,7 +419,18 @@ POLICY_COLUMNS_INDLU = {
     # these are for control in policy_client_indlu
     "total_policy_premium_collected": "total_policy_premium_collected"
 }
-
+POLICY_CLIENTS_COLUMNS_THF_UPDATE = {
+    "loanId": "LoanRefId",
+    "policy_status": "Status",
+    "expiry_date": "CloseDate",
+}
+POLICY_CLIENTS_COLUMNS_CFSA_UPDATE = {
+    "loanId": "Loan Id",
+    "product_id": "product_id",
+    "closed_reason": "closed_reason",
+    "expiry_date": "closed_date",
+    "loan_external_id": "loan_external_id",
+}
 POLICY_CLIENTS_COLUMNS_CFSA = {
     "policy_number": "Policy Number",
     "client_id": "Client Identifier",  # Not there

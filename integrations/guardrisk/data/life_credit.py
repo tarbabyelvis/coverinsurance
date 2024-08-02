@@ -2,7 +2,6 @@ import json
 from datetime import date, datetime
 
 from config.models import Relationships
-from core.utils import get_loan_id_from_legacy_loan
 from integrations.utils import get_frequency_number, populate_dependencies, is_new_policy
 
 
@@ -51,15 +50,9 @@ def prepare_life_credit_payload(
         death_waiting_period = 3
         ptd_waiting_period = 3
         retrenchment_waiting_period = 6
-        if policy["is_legacy"]:
-            division = policy_details.get("division_identifier")
-            if policy["external_reference"]:
-                policy_number = get_loan_id_from_legacy_loan(policy["external_reference"])
-            else:
-                policy_number = policy["policy_number"]
-        else:
-            division = policy.get("business_unit") or ""
-            policy_number = policy["policy_number"]
+        current_loan_balance = policy["policy_details"]["current_outstanding_balance"]
+        policy_number = policy["policy_number"]
+        division = policy["business_unit"]
         details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
@@ -78,7 +71,7 @@ def prepare_life_credit_payload(
             "TermOfPolicy": policy["policy_term"],
             "PolicyStatus": policy["policy_status"],
             "PolicyStatusDate": timestamp,
-            "NewPolicyIndicator": is_new_policy(policy["created"]),
+            "NewPolicyIndicator": is_new_policy(policy["commencement_date"], start_date, end_date),
             "SalesChannel": policy_details.get("sales_channel", ""),
             "CancelledbyPolicyholderCoolingPeriodInsurer": "",
             "DeathIndicator": "Y",
@@ -118,11 +111,11 @@ def prepare_life_credit_payload(
             "IncomeContinuationCoverWaitingPeriod": None,
             "PHICoverWaitingPeriod": None,
             "RetrenchmentCoverWaitingPeriod": retrenchment_waiting_period,
-            "DeathCurrentSumAssured": policy_details.get("death_current_sum_insured", ""),
-            "PTDCurrentSumAssured": policy_details.get("ptd_current_sum_assured", ""),
+            "DeathCurrentSumAssured": current_loan_balance,
+            "PTDCurrentSumAssured": current_loan_balance,
             "IncomeContinuationCurrentSumAssured": None,
             "DreadDiseaseCurrentSumAssured": None,
-            "RetrenchmentCurrentSumAssured": policy_details.get("retrenchment_current_sum_assured", ""),
+            "RetrenchmentCurrentSumAssured": current_loan_balance,
             "ReinsurerName": None,
             "DeathCurrentRISumAssured": None,
             "PTDCurrentRISumAssured": None,
@@ -147,7 +140,7 @@ def prepare_life_credit_payload(
             "TotalFinancialReinsuranceCashflows": None,
             "CommissionFrequency": get_frequency_number(policy.get("commission_frequency", "")),
             "Commission": float(policy["commission_amount"]),
-            "AdminBinderFees": policy["admin_fee"],
+            "AdminBinderFees": policy["policy_details"].get("binder_fees", ""),
             "OutsourcingFees": None,
             "MarketingAdvertisingFees": None,
             "ManagementFees": policy_details.get("management_fee", ""),
@@ -156,8 +149,8 @@ def prepare_life_credit_payload(
             "GrossClaimPaid": None,
             "ReinsuranceRecoveries": None,
             "OriginalLoanBalance": policy["sum_insured"],
-            "CurrentOutstandingBalance": policy_details.get("current_outstanding_balance", ""),
-            "InstallmentAmount": policy_details.get("instalment_amount", 0),
+            "CurrentOutstandingBalance": current_loan_balance,
+            "InstallmentAmount": policy_details.get("installment_amount", 0),
             "PrincipalSurname": client.get("last_name", ""),
             "PrincipalFirstName": client.get("first_name", ""),
             "PrincipalInitials": client.get("middle_name", ""),

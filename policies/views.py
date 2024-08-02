@@ -2,7 +2,7 @@ import logging
 
 from rest_framework.permissions import IsAuthenticated
 
-from core.utils import CustomPagination, get_current_schema
+from core.utils import CustomPagination, get_current_schema, generate_policy_number
 from policies.constants import (
     CLIENT_COLUMNS,
     POLICY_COLUMNS,
@@ -241,7 +241,9 @@ class CreateClientAndPolicyAPIView(APIView):
     )
     @transaction.atomic
     def post(self, request, *args, **kwargs):
-        serializer = ClientPolicyRequestSerializer(data=request.data)
+        data = request.data.copy()
+        print(f'data coming {data}')
+        serializer = ClientPolicyRequestSerializer(data=data)
 
         if serializer.is_valid():
             validated_data = serializer.save()
@@ -290,7 +292,7 @@ class UploadClientAndPolicyExcelAPIView(APIView):
                 upload_indlu_clients_and_policies(
                     file_obj, source
                 )
-            elif source == "cfsa":
+            elif source == "cfsa_update":
                 upload_indlu_clients_and_policies(
                     file_obj, source
                 )

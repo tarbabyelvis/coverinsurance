@@ -11,7 +11,7 @@ from clients.models import ClientDetails, ClientEmploymentDetails
 from clients.serializers import ClientDetailsSerializer
 from config.models import BusinessSector, InsuranceCompany, Relationships
 from config.serializers import AgentSerializer, InsuranceCompanySerializer
-from core.utils import convert_to_datetime
+from core.utils import convert_to_datetime, generate_policy_number
 from policies.constants import STATUS_MAPPING
 from policies.models import (
     Policy,
@@ -95,7 +95,7 @@ class PolicySerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         # Convert QueryDict to a mutable dictionary
         mutable_data = data.copy()
-
+        print(f'policy data {mutable_data}')
         if "client" in mutable_data and isinstance(
                 mutable_data["client"], ClientDetails
         ):
@@ -120,6 +120,11 @@ class PolicySerializer(serializers.ModelSerializer):
             except ObjectDoesNotExist:
                 raise serializers.ValidationError("Invalid client ID.")
 
+        policy_number = mutable_data['policy_number']
+        if isinstance(policy_number, str):
+            if policy_number.strip() == "":
+                policy_number = generate_policy_number()
+                mutable_data['policy_number'] = policy_number
         # Convert policy_status to a proper format if needed
         if "policy_status" in mutable_data:
             policy_status = mutable_data["policy_status"]
@@ -135,6 +140,9 @@ class PolicySerializer(serializers.ModelSerializer):
         if "commencement_date" in mutable_data:
             if isinstance(mutable_data["commencement_date"], datetime):
                 mutable_data["commencement_date"] = mutable_data["commencement_date"].date()
+        if "external_reference" in mutable_data:
+            if mutable_data["external_reference"] == '':
+                mutable_data["external_reference"] = None
         # Handle rounding and casting for decimal fields
         if "total_premium" not in mutable_data:
             mutable_data["total_premium"] = 0
@@ -500,9 +508,8 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
             )
 
         if policy.policy_payment_schedule.filter(is_paid=False).count() == 0:
-            policy.policy_status = "paid"
-            policy.save()
-
+            policy.policy_status = "P"
+        policy.save()
         return premium_payment
 
     @transaction.atomic
@@ -532,3 +539,9 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+
+
+def update_policy_balances(policy, amount_paid):
+    policy_details = policy.policy_details
+    outstanding_balance = float(policy_details.get('current_outstanding_balance'))
+    policy.policy_details['current_outstanding_balance'] = outstanding_balance - float(amount_paid)

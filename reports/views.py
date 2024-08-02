@@ -45,22 +45,18 @@ class BordrexReportView(APIView):
         from_date = request.GET.get("from", None)
         to_date = request.GET.get("to", None)
         entity = request.GET.get("entity")
-
         # validate dates to make sure they are not null
-        if not from_date or not to_date:
+        if not from_date or not to_date or not entity:
             return HTTPResponse.error(
-                message="from and to dates are required",
+                message="from and to dates and entity are required",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         try:
             from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
             to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
-            policies = Policy.objects.filter(
-                created__gte=from_date, created__lte=to_date, entity=entity
-            )
+            policies = fetch_active_policies(entity)
             paginator = self.pagination_class()
             result_page = paginator.paginate_queryset(policies, request)
-
             serializer = PolicyDetailSerializer(result_page, many=True).data
             report = bordrex_report_util(serializer, from_date, to_date, entity=entity)
             return HTTPResponse.success(
@@ -124,9 +120,7 @@ class BordrexExcelExportView(APIView):
         try:
             from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
             to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
-            policies = Policy.objects.filter(
-                created__gte=from_date, created__lte=to_date, entity=entity
-            )
+            policies = fetch_active_policies(entity)
 
             # Serialize data
             serializer = PolicyDetailSerializer(policies, many=True)
@@ -148,3 +142,11 @@ class BordrexExcelExportView(APIView):
                 message=f"An error occurred: {str(e)}",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+def fetch_active_policies(entity):
+    return Policy.objects.filter(
+        policy_status="A",
+        entity=entity,
+        policy_provider_type='Internal Credit Life'
+    )
