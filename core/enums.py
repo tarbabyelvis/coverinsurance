@@ -38,5 +38,6 @@ class ClaimStatus(models.TextChoices):
     CREATED = "CREATED", "Created"
     ON_ASSESSMENT = "ON_ASSESSMENT", "On Assessment"
     SUBMITTED = "SUBMITTED", "Submitted"
+    REVIEW = "REVIEW", "Review"
     APPROVED = "APPROVED", "Approved"
     REPUDIATED = "REPUDIATED", "Repudiated"
