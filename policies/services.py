@@ -1,9 +1,7 @@
 import json
 import logging
-import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, date, time
-from dateutil import parser
 from typing import Any, Dict, List
 
 import openpyxl
@@ -18,10 +16,9 @@ from core.enums import PremiumFrequency
 from core.utils import get_dict_values, merge_dict_into_another, replace_keys, get_current_schema
 from integrations.utils import calculate_binder_fees_amount, calculate_commission_amount, \
     calculate_guard_risk_admin_amount
-from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, CLIENT_COLUMNS_INDLU, POLICY_COLUMNS_INDLU, \
-    POLICY_CLIENTS_COLUMNS_CFSA, POLICY_CLIENTS_COLUMNS_CFSA_CORRECT, POLICY_CLIENTS_COLUMNS_CFSA_UPDATE
+from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, POLICY_CLIENTS_COLUMNS_THF_UPDATE
 from policies.constants import FUNERAL_POLICY_BENEFICIARY_COLUMNS, \
-    FUNERAL_POLICY_CLIENT_COLUMNS, DEFAULT_BENEFICIARY_FIELDS, POLICY_CLIENT_COLUMNS_INDLU
+    FUNERAL_POLICY_CLIENT_COLUMNS
 from policies.models import Policy
 from policies.serializers import BeneficiarySerializer
 from policies.serializers import ClientPolicyRequestSerializer, PremiumPaymentSerializer
@@ -263,14 +260,40 @@ def process_worksheet(
                 if row_dict is not None:
                     data = {k: row_dict[k] for k in columns if k in row_dict}
                     if data is not None:
-                        policy_number = data["policy_number"]
+                        print(f'data {data}')
+                        policy_number = data["loanId"]
                         print(f'policy number: {policy_number}')
                         policy = Policy.objects.filter(policy_number=policy_number).first()
                         if policy is not None:
-                            policy.business_unit = 'THF'
-                            policy.product_name = 'Housing Loans (Take on)'
-                            policy.sub_scheme = 'Long Term - Housing Finance'
+                            print(f'policy {policy}')
+                            status = data["policy_status"]
+                            if status == 'F':
+                                policy.policy_status = "P"
+                            else:
+                                policy.policy_status = status
+                            closed_date = data["expiry_date"]
+                            if closed_date is not None and closed_date is not "" and status in ['C', 'F',
+                                                                                                'P',
+                                                                                                'X']:
+                                policy.closed_date = closed_date.date()
                             policy.save()
+    # for row in worksheet.iter_rows(min_row=2, values_only=True):
+    #     if any(cell is not None for cell in row):
+    #         row_dict = dict(zip(headers, row))
+    #         if row_dict is not None:
+    #             row_dict = replace_keys(columns, row_dict)
+    #             if row_dict is not None:
+    #                 data = {k: row_dict[k] for k in columns if k in row_dict}
+    #                 if data is not None:
+    #                     print(f'data {data}')
+    #                     policy_number, _ = get_policy_number_and_external_id(data)
+    #                     print(f'policy number: {policy_number}')
+    #                     policy = Policy.objects.filter(policy_number=policy_number).first()
+    #                     if policy is not None:
+    #                         print(f'policy {policy}')
+    #                         policy.policy_status = map_closure_reason(data["closed_reason"])
+    #                         policy.closed_date = data["expiry_date"]
+    #                         policy.save()
     # for row in worksheet.iter_rows(min_row=2, values_only=True):
     #     if any(cell is not None for cell in row):
     #         row_dict = dict(zip(headers, row))
@@ -279,7 +302,7 @@ def process_worksheet(
     #         if data_type == "client_policy":
     #             default_columns = {**DEFAULT_CLIENT_FIELDS, **DEFAULT_POLICY_FIELDS}
     #         elif data_type == "policy":
-    #             default_columns = {**DEFAULT_POLICY_FIELDS, "entity": "Indlu", "product_name": "Indlu Credit Life",
+    #             default_columns = {**DEFAULT_POLICY_FIELDS, "entity": "Indlu",
     #                                "sub_scheme": "Credit Life",
     #                                "commission_frequency": "Monthly",
     #                                "premium_frequency": "Monthly",
@@ -292,7 +315,6 @@ def process_worksheet(
     #             default_columns = {**DEFAULT_POLICY_FIELDS, **DEFAULT_CLIENT_FIELDS,
     #                                "entity": "Indlu",
     #                                "policy_type_id": 1,
-    #                                "product_name": "Indlu Credit Life",
     #                                "sub_scheme": "Credit Life",
     #                                "commission_frequency": "Monthly",
     #                                "premium_frequency": "Monthly",
@@ -363,6 +385,9 @@ def process_indlu_policy_client_dump_data(policy_data: Dict[str, Any]):
     print(f'policy data {policy_data}')
     if 'business_unit' not in policy_data:
         policy_data['business_unit'] = 'THF'
+        policy_data["product_name"] = 'Housing Loans (Take on)'
+        policy_data["sub_scheme"] = 'Credit Life'
+
     if 'policy_status' in policy_data:
         status = policy_data['policy_status']
         if status == 'F':
@@ -635,18 +660,18 @@ def upload_indlu_clients_and_policies(
     # clients = process_worksheet(wb, "Members", CLIENT_COLUMNS_INDLU, "client")
     data_type = source
     if data_type == 'cfsa_update':
-        policy_clients_dump = process_worksheet(wb, "DataDump", POLICY_CLIENTS_COLUMNS_CFSA_UPDATE, "cfsa_update")
-    elif data_type == 'cfsa':
-        policy_clients_dump = process_worksheet(wb, "Data", POLICY_CLIENTS_COLUMNS_CFSA, "cfsa")
-    else:
-        policy_clients_dump = process_worksheet(wb, "DataDump", POLICY_CLIENT_COLUMNS_INDLU, "policy_client_dump")
-    client_columns = {
-        **CLIENT_COLUMNS_INDLU,
-        "primary_id_document_type": 1,
-        "entity_type": "Individual"}
+        policy_clients_dump = process_worksheet(wb, "DataDump", POLICY_CLIENTS_COLUMNS_THF_UPDATE, "cfsa_update")
+    # elif data_type == 'cfsa':
+    #     policy_clients_dump = process_worksheet(wb, "Data", POLICY_CLIENTS_COLUMNS_CFSA, "cfsa")
+    # else:
+    #     policy_clients_dump = process_worksheet(wb, "DataDump", POLICY_CLIENT_COLUMNS_INDLU, "policy_client_dump")
+    # client_columns = {
+    #     **CLIENT_COLUMNS_INDLU,
+    #     "primary_id_document_type": 1,
+    #     "entity_type": "Individual"}
     # dump_policies, dump_clients = extract_from_dump(policy_clients_dump, client_columns)
     # updated_clients = extract_employment_info_from_client(dump_clients)
-    # extract_and_save_sectors(dump_clients)
+    # # extract_and_save_sectors(dump_clients)
     # save_client_policy_members_data(dump_policies, updated_clients)
     print('Done saving policies and clients from dump')
 

@@ -2,12 +2,12 @@ from collections import defaultdict
 from datetime import date
 from io import BytesIO
 
-from core.utils import get_loan_id_from_legacy_loan
+import openpyxl
+from openpyxl.styles import Font
+
 from integrations.guardrisk.data.premiums import calculate_binder_fee_amount, calculate_insurer_commission_amount
 from integrations.utils import is_new_policy, calculate_nett_amount, calculate_vat_amount, \
     calculate_guard_risk_admin_amount, calculate_amount_excluding_vat
-import openpyxl
-from openpyxl.styles import Font
 
 
 def bordrex_report_util(policies, from_date, to_date, entity):

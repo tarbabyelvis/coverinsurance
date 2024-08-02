@@ -1,9 +1,9 @@
 import json
 from datetime import date, datetime
 
-from config.models import Relationships, InsuranceCompany
-from core.utils import get_initial_letter, get_loan_id_from_legacy_loan
-from integrations.utils import get_frequency_number, populate_dependencies, is_new_policy
+from config.models import Relationships
+from core.utils import get_initial_letter
+from integrations.utils import get_frequency_number, is_new_policy
 
 product_option = "all"
 premium_type = "Regular"

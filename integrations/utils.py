@@ -1,5 +1,7 @@
 import re
 from datetime import datetime, timedelta, date
+from dateutil import parser
+
 
 import requests
 from integrations.models import IntegrationLogs
@@ -52,9 +54,9 @@ def is_new_policy(commencement_date, reporting_period_start,
                   reporting_period_end) -> str:  # TODO add the transferred T and R Replacement adjustments
     commencement_date = datetime.strptime(commencement_date, '%Y-%m-%d').date()
     if isinstance(reporting_period_start, str):
-        reporting_period_start = datetime.strptime(reporting_period_start, '%Y-%m-%d').date()
-    if isinstance(reporting_period_start, str):
-        reporting_period_end = datetime.strptime(reporting_period_end, '%Y-%m-%d').date()
+        reporting_period_start = parser.parse(reporting_period_start).date()
+    if isinstance(reporting_period_end, str):
+        reporting_period_end = parser.parse(reporting_period_end).date()
     if reporting_period_start <= commencement_date <= reporting_period_end:
         return 'Y'
     else:

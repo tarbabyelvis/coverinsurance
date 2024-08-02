@@ -2,8 +2,6 @@ import json
 import logging
 from datetime import date, datetime
 
-from config.models import InsuranceCompany
-from core.utils import get_loan_id_from_legacy_loan
 from integrations.utils import is_new_policy, generate_claim_reference
 
 log = logging.getLogger(__name__)
@@ -25,8 +23,8 @@ retrenchment_waiting_period = 6
 
 def prepare_life_claims_payload(data: list, start_date: date, end_date: date, client_identifier):
     original_date = datetime.now()
-    timestamp = original_date.strftime("%Y/%m/%d")
-    start_date = start_date.strftime("%Y/%m/%d")
+    timestamp = original_date.strftime("%Y-%m-%d")
+    start_date = start_date.strftime("%Y-%m-%d")
     end_date = end_date.strftime("%Y/%m/%d")
     result = []
     for claim in data:
