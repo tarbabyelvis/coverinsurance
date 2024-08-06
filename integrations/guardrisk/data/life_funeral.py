@@ -56,6 +56,7 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
         current_loan_balance = policy["policy_details"]["current_outstanding_balance"]
         policy_number = policy["policy_number"]
         division = policy.get("business_unit")
+        premium = policy.get("premium")
         details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
@@ -91,19 +92,19 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
             "DeathRIPremium": "N/A",
             "DeathRIPercentage": "N/A",
             "TotalPolicyPremiumCollected": policy_details.get("total_policy_premium_collected", "0.00"),
-            "TotalPolicyPremiumPayable": policy_details.get("total_loan_schedule", "0.00"),
-            "TotalPolicyPremium": policy["total_premium"],
-            "TotalPolicyPremiumSubsidy": policy["total_premium"],
-            "TotalReinsurancePremium": policy["total_premium"],
-            "TotalReinsurancePremiumPayable": policy["total_premium"],
-            "TotalFinancialReinsuranceCashflows": policy["total_premium"],
-            "TotalFinancialReinsurancePayable": policy["total_premium"],
+            "TotalPolicyPremiumPayable": policy_details.get("total_premium", "0.00"),
+            "TotalPolicyPremium": policy["premium"],
+            "TotalPolicyPremiumSubsidy": policy["premium"],
+            "TotalReinsurancePremium": policy["premium"],
+            "TotalReinsurancePremiumPayable": policy["premium"],
+            "TotalFinancialReinsuranceCashflows": policy["premium"],
+            "TotalFinancialReinsurancePayable": policy["premium"],
             "CommissionFrequency": get_frequency_number(policy.get("commission_frequency", "Monthly")),
             "Commission": policy["commission_amount"],
             "AdminBinderFees": policy["policy_details"].get("binder_fees", ""),
             "OutsourcingFees": None,
             "MarketingAdvertisingFees": None,
-            "ManagementFees": policy_details.get("management_fee", ""),
+            "ManagementFees": policy_details.get("admin_fee", ""),
             "ClaimsHandlingFee": None,
             "TotalGrossClaimAmount": None,
             "GrossClaimPaid": None,

@@ -421,8 +421,8 @@ POLICY_COLUMNS_INDLU = {
 }
 POLICY_CLIENTS_COLUMNS_THF_UPDATE = {
     "loanId": "LoanRefId",
-    "policy_status": "Status",
-    "expiry_date": "CloseDate",
+    "total_premium": "CLI Sched",
+    "premium": "Monthly CLI Prem",
 }
 POLICY_CLIENTS_COLUMNS_CFSA_UPDATE = {
     "loanId": "Loan Id",

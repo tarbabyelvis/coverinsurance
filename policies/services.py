@@ -265,18 +265,13 @@ def process_worksheet(
                         print(f'policy number: {policy_number}')
                         policy = Policy.objects.filter(policy_number=policy_number).first()
                         if policy is not None:
-                            print(f'policy {policy}')
-                            status = data["policy_status"]
-                            if status == 'F':
-                                policy.policy_status = "P"
-                            else:
-                                policy.policy_status = status
-                            closed_date = data["expiry_date"]
-                            if closed_date is not None and closed_date is not "" and status in ['C', 'F',
-                                                                                                'P',
-                                                                                                'X']:
-                                policy.closed_date = closed_date.date()
-                            policy.save()
+                            if policy.premium is None:
+                                print(f'policy {policy}')
+                                premium = policy.total_premium
+                                total_premium = data["total_premium"]
+                                policy.premium = premium
+                                policy.total_premium = total_premium
+                                policy.save()
     # for row in worksheet.iter_rows(min_row=2, values_only=True):
     #     if any(cell is not None for cell in row):
     #         row_dict = dict(zip(headers, row))

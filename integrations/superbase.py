@@ -31,6 +31,13 @@ def query_repayments(tenant_id, start_date, end_date):
     return __fetch_data(tenant_id, json_payload, "/query-report")
 
 
+def query_premium_adjustments(tenant_id):
+    json_payload = {
+        "reportName": "Premiums Correction"
+    }
+    return __fetch_data(tenant_id, json_payload, "/query-report")
+
+
 def query_closed_loans(tenant_id, start_date, end_date):
     json_payload = {
         "reportName": "Loan Closure - Creation Details",
@@ -55,32 +62,9 @@ def query_written_off_loans(tenant_id, start_date, end_date):
     }
     return __fetch_data(tenant_id, json_payload, "/query-report")
 
-    def loan_transaction(self, payload, tenant_id):
-        status = 0
-        data = {}
 
-        print("We are sending this: ", payload)
-        response = requests.post(
-            SUPABASE_URL + "/loan-transaction",
-            json=payload,
-            headers={
-                "tenant-id": tenant_id,
-                "source": "loantracker",
-                "Authorization": "Bearer {}".format(SUPABASE_TOKEN),
-            },
-        )
-        print("Request sent to supabase")
-        print(response.text)
-        response_object = json.loads(response.text)
-
-        if response.ok and response_object["message"]["result"] == 200:
-            status = 200
-            data = response_object["message"]["data"]
-        else:
-            status = 400
-            data = {"message": response_object["message"]["message"]}
-
-        return status, data
+def loan_transaction(tenant_id, payload):
+    return __fetch_data(tenant_id, payload, "/loan-transaction")
 
 
 def __fetch_data(tenant_id, payload, uri):
@@ -88,16 +72,17 @@ def __fetch_data(tenant_id, payload, uri):
     attempt = 0
     status = 0
     while attempt < max_retries:
-        response = make_request(tenant_id, payload, uri)
-        status, data = process_response(response)
+        response = __make_request(tenant_id, payload, uri)
+        status, data = __process_response(response)
         if status == 200:
             return status, data
         else:
             attempt += 1
+            print(f'attempt {attempt} for payload {json.dumps(payload)}')
     return status, None
 
 
-def make_request(tenant_id, payload, uri):
+def __make_request(tenant_id, payload, uri):
     return requests.post(
         SUPABASE_URL + uri,
         json=payload,
@@ -108,7 +93,7 @@ def make_request(tenant_id, payload, uri):
     )
 
 
-def process_response(response):
+def __process_response(response):
     try:
         response_json = response.json()  # Use response.json() instead of json.loads(response.text)
     except json.JSONDecodeError:

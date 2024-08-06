@@ -1,16 +1,22 @@
 import logging
+
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
 from drf_yasg import openapi
 from claims.models import Claim
 from drf_yasg.utils import swagger_auto_schema
-from core.utils import CustomPagination
+from core.utils import CustomPagination, is_valid_date
+from integrations.superbase import loan_transaction
 from .serializers import ClaimSerializer
 from rest_framework import status
 from datetime import datetime
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.http import Http404
+
+#from .services import process_claim_repayment
 
 logger = logging.getLogger(__name__)
 
@@ -213,3 +219,23 @@ class ClaimDetailAPIView(APIView):
         return HTTPResponse.error(
             message=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST
         )
+
+
+class AddRepayment(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        if not request.data:
+            return Response(
+                {"error": "missing parameters"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        else:
+            #process_claim_repayment()
+            pass
+
+            # except Exception as e:
+            #     print(e)
+            #     return Response(
+            #         {"error": "error making repayment"},
+            #         status=status.HTTP_400_BAD_REQUEST,
+            #     )

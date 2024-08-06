@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from django.db.models import Sum, Value, DecimalField
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -8,8 +10,8 @@ from rest_framework.views import APIView
 
 from core.http_response import HTTPResponse
 from core.utils import CustomPagination
-from policies.models import Policy
-from policies.serializers import PolicyDetailSerializer
+from policies.models import PremiumPayment
+from policies.serializers import PolicyDetailSerializer, PremiumPaymentSerializer
 from reports.utils import bordrex_report_util, generate_excel_report_util
 
 
@@ -54,11 +56,11 @@ class BordrexReportView(APIView):
         try:
             from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
             to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
-            policies = fetch_active_policies(entity)
+            policy_payments = fetch_active_policies_payments(entity, start_date=from_date, end_date=to_date)
             paginator = self.pagination_class()
-            result_page = paginator.paginate_queryset(policies, request)
-            serializer = PolicyDetailSerializer(result_page, many=True).data
-            report = bordrex_report_util(serializer, from_date, to_date, entity=entity)
+            result_page = paginator.paginate_queryset(policy_payments, request)
+            payments = PremiumPaymentSerializer(result_page, many=True).data
+            report = bordrex_report_util(payments, from_date, to_date, entity=entity)
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
@@ -120,10 +122,10 @@ class BordrexExcelExportView(APIView):
         try:
             from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
             to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
-            policies = fetch_active_policies(entity)
+            policies_payments = fetch_active_policies_payments(entity, start_date=from_date, end_date=to_date)
 
             # Serialize data
-            serializer = PolicyDetailSerializer(policies, many=True)
+            serializer = PremiumPaymentSerializer(policies_payments, many=True)
             report = generate_excel_report_util(serializer.data, from_date, to_date, entity=entity)
 
             # Serve the Excel file as a response
@@ -144,9 +146,23 @@ class BordrexExcelExportView(APIView):
             )
 
 
-def fetch_active_policies(entity):
-    return Policy.objects.filter(
-        policy_status="A",
-        entity=entity,
-        policy_provider_type='Internal Credit Life'
+def fetch_active_policies_payments(entity, start_date, end_date):
+    # result = (
+    #     PremiumPayment.objects.filter(
+    #         payment_date__gte=start_date,
+    #         payment_date__lte=end_date,
+    #         policy__policy_status="A",
+    #         policy__entity=entity,
+    #         policy__policy_provider_type='Internal Credit Life'
+    #     )
+    #     .values('policy__policy_number')
+    #     .annotate(
+    #         total_amount=Coalesce(Sum('amount'), Value(0), output_field=DecimalField())
+    #     ))
+    # return list(result)
+    return PremiumPayment.objects.filter(
+        payment_date__gte=start_date,
+        payment_date__lte=end_date,
+        policy__entity=entity,
+        policy__policy_provider_type='Internal Credit Life'
     )

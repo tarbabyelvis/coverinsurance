@@ -23,6 +23,9 @@ class Policy(BaseModel):
     expiry_date = models.DateField(null=True, blank=True)
     closed_date = models.DateField(null=True, blank=True)
     sum_insured = models.DecimalField(max_digits=20, decimal_places=2)
+    premium = models.DecimalField(
+        null=True, blank=True, max_digits=20, decimal_places=2
+    )
     total_premium = models.DecimalField(
         null=True, blank=True, max_digits=20, decimal_places=2
     )

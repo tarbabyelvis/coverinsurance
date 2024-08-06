@@ -53,6 +53,7 @@ def prepare_life_credit_payload(
         current_loan_balance = policy["policy_details"]["current_outstanding_balance"]
         policy_number = policy["policy_number"]
         division = policy["business_unit"]
+        premium = policy["premium"]
         details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
@@ -84,11 +85,11 @@ def prepare_life_credit_payload(
             "IncomeContinuationCoverTermIfDifferenttoPolicyTerm": None,
             "DreadDiseaseCoverTermIfDifferenttoPolicyTerm": None,
             "RetrenchmentCoverTermIfDifferenttoPolicyTerm": None,
-            "DeathPremium": policy.get("premium", ""),
-            "PTDPremium": policy_details.get("PTD_premium", ""),
+            "DeathPremium": premium,
+            "PTDPremium": premium,
             "IncomeContinuationPremium": 0,
             "DreadDiseasePremium": 0,
-            "RetrenchmentPremium": policy_details.get("retrenchment_premium", ""),
+            "RetrenchmentPremium": premium,
             "PremiumFrequency": get_frequency_number(policy.get("premium_frequency")),
             "PremiumType": premium_type,
             "DeathOriginalSumAssured": policy.get("sum_insured"),
@@ -143,7 +144,7 @@ def prepare_life_credit_payload(
             "AdminBinderFees": policy["policy_details"].get("binder_fees", ""),
             "OutsourcingFees": None,
             "MarketingAdvertisingFees": None,
-            "ManagementFees": policy_details.get("management_fee", ""),
+            "ManagementFees": policy.get("admin_fee", ""),
             "ClaimsHandlingFee": None,
             "TotalGrossClaimAmount": None,
             "GrossClaimPaid": None,

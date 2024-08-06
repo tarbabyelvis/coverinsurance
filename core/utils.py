@@ -112,6 +112,14 @@ def serialize_dates(obj):
         return obj
 
 
+def is_valid_date(date_string, date_format="%Y-%m-%d"):
+    try:
+        datetime.strptime(date_string, date_format)
+        return True
+    except ValueError:
+        return False
+
+
 def get_current_schema():
     with connection.cursor() as cursor:
         cursor.execute("SHOW search_path")

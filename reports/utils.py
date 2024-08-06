@@ -5,6 +5,7 @@ from io import BytesIO
 import openpyxl
 from openpyxl.styles import Font
 
+from clients.models import ClientDetails
 from integrations.guardrisk.data.premiums import calculate_binder_fee_amount, calculate_insurer_commission_amount
 from integrations.utils import is_new_policy, calculate_nett_amount, calculate_vat_amount, \
     calculate_guard_risk_admin_amount, calculate_amount_excluding_vat
@@ -20,7 +21,7 @@ def generate_main_report(policies):
     for policy in policies:
         division = policy['division']
         try:
-            risk_premium = float(policy['total_premium'])
+            risk_premium = float(policy['premium'])
         except TypeError as e:
             risk_premium = 0
         else:
@@ -102,15 +103,15 @@ def calculate_total(*amounts):
     return sum(amounts)
 
 
-def generate_excel_report_util(policies, from_date, to_date, entity):
+def generate_excel_report_util(policy_payments, from_date, to_date, entity):
     wb = openpyxl.Workbook()
     ws_front_sheet = wb.active
     ws_front_sheet.title = "Borderaux Report"
     ws_policies_sheet = wb.create_sheet(title="Data")
     timestamp = date.today().strftime("%Y%m%d")
     client_identifier = get_client_identifier(entity)
-    policies = populate_policies(policies, from_date, to_date, entity, timestamp)
-    reports, totals = generate_main_report(policies)
+    policy_payments = populate_policies(policy_payments, from_date, to_date, entity, timestamp)
+    reports, totals = generate_main_report(policy_payments)
     generate_template_data(reports, totals, from_date, to_date, ws_front_sheet, f'L00{client_identifier}')
     header = ["Time Stamp", "Period Start", "Period End", "Administrator Identifier", "Insurer Name",
               "Client Identifier", "Division", "Risk Identifier", "Sub Scheme Name", "Policy Number",
@@ -125,7 +126,7 @@ def generate_excel_report_util(policies, from_date, to_date, entity):
               "Life 1 City", "Life 1 Province", "Postal Code", "Life 1 Phone Number"
               ]
     ws_policies_sheet.append(header)
-    policies_data = convert_dictionary_to_list(policies)
+    policies_data = convert_dictionary_to_list(policy_payments)
     for row in policies_data:
         ws_policies_sheet.append(row)
     buffer = BytesIO()
@@ -140,7 +141,7 @@ def generate_template_data(reports, totals, from_date, to_date, ws_front_sheet, 
     end_date = to_date.strftime('%Y-%m-%d')
 
     header_info = [
-        ("INDLUE (PTY) LTD - Cell no", client_identifier,),
+        ("INDLUE (PTY) LTD - Cell no", client_identifier),
         ("Monthly Insurance Remittance", ""),
         ("Remittance No.", ""),
         ("Date:", timestamp),
@@ -175,24 +176,29 @@ def generate_template_data(reports, totals, from_date, to_date, ws_front_sheet, 
         ws_front_sheet.append(row)
 
 
-def populate_policies(policies, from_date, to_date, entity, timestamp):
+def populate_policies(policy_payments, from_date, to_date, entity, timestamp):
+    # policy_payments = list(map(lambda p: p, policy_payments))
     flattened_data = []
-    for policy in policies:
-        premium_amount = float(policy["total_premium"])
-        vat_amount = calculate_vat_amount(premium_amount)
-        premium_less_vat = calculate_amount_excluding_vat(premium_amount, vat_amount)
-        guardrisk_amount = calculate_guard_risk_admin_amount(premium_amount)
-        commission = calculate_insurer_commission_amount(premium_amount)
-        binder_fee = calculate_binder_fee_amount(premium_amount)
-        nett_amount = calculate_nett_amount(premium_amount, guardrisk_amount, commission, binder_fee)
-        first_name = policy["client"]["first_name"]
-        last_name = policy["client"]["last_name"]
+    for policy_payment in policy_payments:
+        policy = policy_payment["policy"]
+        client = ClientDetails.objects.get(pk=policy["client"])
+        premium = float(policy["premium"])
+        premium_amount_paid = float(policy_payment["amount"])
+        vat_amount = calculate_vat_amount(premium_amount_paid)
+        premium_less_vat = calculate_amount_excluding_vat(premium_amount_paid, vat_amount)
+        guardrisk_amount = calculate_guard_risk_admin_amount(premium_amount_paid)
+        commission = calculate_insurer_commission_amount(premium_amount_paid)
+        binder_fee = calculate_binder_fee_amount(premium_amount_paid)
+        nett_amount = calculate_nett_amount(premium_amount_paid, guardrisk_amount, commission, binder_fee)
+        first_name = client.first_name
+        last_name = client.last_name
         initials = f"{first_name[0]}{last_name[0]}"
         current_loan_balance = policy["policy_details"].get("current_outstanding_balance", "")
         policy_number = policy["policy_number"]
         policy_term = policy["policy_term"]
         business_unit = policy["business_unit"]
         risk_identifier = generate_risk_identifier(business_unit, policy_term)
+        commencement_date = policy["commencement_date"]
         flattened_item = {
             "timestamp": timestamp,
             "period_start": from_date,
@@ -204,16 +210,16 @@ def populate_policies(policies, from_date, to_date, entity, timestamp):
             "risk_identifier": policy["policy_details"].get("risk_identifier", risk_identifier),
             "sub_scheme": policy.get("sub_scheme", ""),
             "policy_number": policy_number,
-            "commencement_date": policy["commencement_date"],
+            "commencement_date": commencement_date,
             "expiry_date": policy["expiry_date"],
-            "new_business_indicator": is_new_policy(policy["commencement_date"], from_date, to_date),
+            "new_business_indicator": is_new_policy(commencement_date, from_date, to_date),
             "policy_term": policy_term,
-            "total_premium": policy["total_premium"],
-            "premium_paid": policy["policy_details"].get("total_policy_premium_collected", ""),
-            "commission_amount": policy["commission_amount"],
-            "binder_fee": policy["policy_details"].get("binder_fees", ""),
+            "premium": premium,
+            "premium_paid": premium_amount_paid,
+            "commission_amount": commission,
+            "binder_fee": binder_fee,
             "net_premium_paid_to_gr": nett_amount,
-            "admin_fee": policy["admin_fee"],
+            "admin_fee": guardrisk_amount,
             "premium_frequency": policy["premium_frequency"],
             "death_indicator": "Y",
             "ptd_indicator": "Y",
@@ -228,15 +234,15 @@ def populate_policies(policies, from_date, to_date, entity, timestamp):
             "last_name": last_name,
             "first_name": first_name,
             "initials": initials,
-            "primary_id_number": policy["client"]["primary_id_number"],
-            "gender": policy["client"]["gender"],
-            "date_of_birth": policy["client"]["date_of_birth"],
-            "date_of_death": policy["client"]["date_of_death"],
-            "address_street": policy["client"]["address_street"],
-            "address_town": policy["client"]["address_town"],
-            "address_province": policy["client"]["address_province"],
-            "postal_code": policy.get("postal_code", ""),
-            "phone_number": policy["client"]["phone_number"]
+            "primary_id_number": client.primary_id_number,
+            "gender": client.gender,
+            "date_of_birth": client.date_of_birth,
+            "date_of_death": client.date_of_death,
+            "address_street": client.address_street,
+            "address_town": client.address_town,
+            "address_province": client.address_province,
+            "postal_code": client.postal_code,
+            "phone_number": client.phone_number
         }
         flattened_data.append(flattened_item)
     return flattened_data
