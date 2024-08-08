@@ -21,12 +21,12 @@ def prepare_life_credit_payload(
         policy_dependants = policy["policy_dependants"]
         insurer = policy["insurer"]
         spouse = filter(
-            lambda x: x if relationships[x["relationship"]].name.lower() == "spouse" else None,
+            lambda x: x if relationships[x["relationship"]].name.lower() == "spouse" else "N/A",
             policy_dependants,
         )
         spouse = list(spouse)
         other_dependants_filter = filter(
-            lambda x: x if relationships[x["relationship"]].lower() != "spouse" else None,
+            lambda x: x if relationships[x["relationship"]].lower() != "spouse" else "N/A",
             policy_dependants,
         )
         other_dependants = list(other_dependants_filter)
@@ -44,16 +44,19 @@ def prepare_life_credit_payload(
         premium_type = "Regular"
         death_cover_structure = "L"
         retrenchment_cover_structure = "L"
-        death_cover_benefit_payment_period = 1
-        ptd_cover_benefit_payment_period = 1
-        retrenchment_death_payment_period = 30
-        death_waiting_period = 3
-        ptd_waiting_period = 3
-        retrenchment_waiting_period = 6
+        death_cover_benefit_payment_period = "1"
+        ptd_cover_benefit_payment_period = "1"
+        retrenchment_death_payment_period = "30"
+        death_waiting_period = "3"
+        ptd_waiting_period = "3"
+        retrenchment_waiting_period = '6'
         current_loan_balance = policy["policy_details"]["current_outstanding_balance"]
         policy_number = policy["policy_number"]
         division = policy["business_unit"]
         premium = policy["premium"]
+        firstname = client.get("first_name", "")
+        lastname = client.get("last_name", "")
+        initials = firstname[0]+lastname[0]
         details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
@@ -69,7 +72,7 @@ def prepare_life_credit_payload(
             "ProductOption": product_option,
             "PolicyCommencementDate": policy["commencement_date"],
             "PolicyExpiryDate": policy.get("expiry_date", ""),
-            "TermOfPolicy": policy["policy_term"],
+            "TermOfPolicy": str(policy["policy_term"]),
             "PolicyStatus": policy["policy_status"],
             "PolicyStatusDate": timestamp,
             "NewPolicyIndicator": is_new_policy(policy["commencement_date"], start_date, end_date),
@@ -80,15 +83,15 @@ def prepare_life_credit_payload(
             "IncomeContinuationIndicator": "N",
             "DreadDiseaseIndicator": "N",
             "RetrenchmentIndicator": "Y",
-            "DeathCoverTermIfDifferenttoPolicyTerm": None,
-            "PTDCoverTermIfDifferenttoPolicyTerm": None,
-            "IncomeContinuationCoverTermIfDifferenttoPolicyTerm": None,
-            "DreadDiseaseCoverTermIfDifferenttoPolicyTerm": None,
-            "RetrenchmentCoverTermIfDifferenttoPolicyTerm": None,
+            "DeathCoverTermIfDifferenttoPolicyTerm": "N/A",
+            "PTDCoverTermIfDifferenttoPolicyTerm": "N/A",
+            "IncomeContinuationCoverTermIfDifferenttoPolicyTerm": "N/A",
+            "DreadDiseaseCoverTermIfDifferenttoPolicyTerm": "N/A",
+            "RetrenchmentCoverTermIfDifferenttoPolicyTerm": "N/A",
             "DeathPremium": premium,
             "PTDPremium": premium,
-            "IncomeContinuationPremium": 0,
-            "DreadDiseasePremium": 0,
+            "IncomeContinuationPremium": "0",
+            "DreadDiseasePremium": "0",
             "RetrenchmentPremium": premium,
             "PremiumFrequency": get_frequency_number(policy.get("premium_frequency")),
             "PremiumType": premium_type,
@@ -99,62 +102,62 @@ def prepare_life_credit_payload(
             "RetrenchmentOriginalSumAssured": policy.get("sum_insured"),
             "DeathCoverStructure": death_cover_structure,
             "PTDCoverStructure": policy_details.get("death_cover_structure", "L"),
-            "IncomeContinuationCoverStructure": None,
-            "DreadDiseaseCoverStructure": None,
+            "IncomeContinuationCoverStructure": "N/A",
+            "DreadDiseaseCoverStructure": "N/A",
             "RetrenchmentCoverStructure": retrenchment_cover_structure,
             "DeathCoverBenefitPaymentPeriod": death_cover_benefit_payment_period,
             "PTDCoverBenefitPaymentPeriod": ptd_cover_benefit_payment_period,
-            "IncomeContinuationCoverBenefitPaymentPeriod": None,
-            "DreadDiseaseCoverBenefitPaymentPeriod": None,
+            "IncomeContinuationCoverBenefitPaymentPeriod": "N/A",
+            "DreadDiseaseCoverBenefitPaymentPeriod": "N/A",
             "RetrenchmentCoverBenefitPaymentPeriod": retrenchment_death_payment_period,
             "DeathCoverWaitingPeriod": death_waiting_period,
             "PTDCoverWaitingPeriod": ptd_waiting_period,
-            "IncomeContinuationCoverWaitingPeriod": None,
-            "PHICoverWaitingPeriod": None,
+            "IncomeContinuationCoverWaitingPeriod": "N/A",
+            "PHICoverWaitingPeriod": "N/A",
             "RetrenchmentCoverWaitingPeriod": retrenchment_waiting_period,
             "DeathCurrentSumAssured": current_loan_balance,
             "PTDCurrentSumAssured": current_loan_balance,
-            "IncomeContinuationCurrentSumAssured": None,
-            "DreadDiseaseCurrentSumAssured": None,
+            "IncomeContinuationCurrentSumAssured": "N/A",
+            "DreadDiseaseCurrentSumAssured": "N/A",
             "RetrenchmentCurrentSumAssured": current_loan_balance,
-            "ReinsurerName": None,
-            "DeathCurrentRISumAssured": None,
-            "PTDCurrentRISumAssured": None,
-            "IncomeContinuationCurrentRISumAssured": None,
-            "DreadDiseaseCurrentRISumAssured": None,
-            "RetrenchmentCurrentRISumAssured": None,
-            "DeathRIPremium": None,
-            "PTDRIPremium": None,
-            "IncomeContinuationRIPremium": None,
-            "DreadDiseaseRIPremium": None,
-            "RetrenchmentRIPremium": None,
-            "DeathRIPercentage": None,
-            "PTDRIPercentage": None,
-            "IncomeContinuationRIPercentage": None,
-            "DreadDiseaseRIPercentage": None,
-            "RetrenchmentRIPercentage": None,
-            "TotalPolicyPremiumCollected": policy_details.get("total_policy_premium_collected", "0.00"),
-            "TotalPolicyPremiumPayable": policy_details.get("total_loan_schedule", "0.00"),
-            "TotalPolicyPremiumSubsidy": None,
-            "TotalReinsurancePremium": None,
-            "TotalReinsurancePremiumPayable": None,
-            "TotalFinancialReinsuranceCashflows": None,
+            "ReinsurerName": "N/A",
+            "DeathCurrentRISumAssured": "N/A",
+            "PTDCurrentRISumAssured": "N/A",
+            "IncomeContinuationCurrentRISumAssured": "N/A",
+            "DreadDiseaseCurrentRISumAssured": "N/A",
+            "RetrenchmentCurrentRISumAssured": "N/A",
+            "DeathRIPremium": "N/A",
+            "PTDRIPremium": "N/A",
+            "IncomeContinuationRIPremium": "N/A",
+            "DreadDiseaseRIPremium": "N/A",
+            "RetrenchmentRIPremium": "N/A",
+            "DeathRIPercentage": "N/A",
+            "PTDRIPercentage": "N/A",
+            "IncomeContinuationRIPercentage": "N/A",
+            "DreadDiseaseRIPercentage": "N/A",
+            "RetrenchmentRIPercentage": "N/A",
+            "TotalPolicyPremiumCollected": f'{policy_details.get("total_policy_premium_collected", "0.00")}',
+            "TotalPolicyPremiumPayable": f'{policy.get("total_premium", "0.00")}',
+            "TotalPolicyPremiumSubsidy": "N/A",
+            "TotalReinsurancePremium": "N/A",
+            "TotalReinsurancePremiumPayable": "N/A",
+            "TotalFinancialReinsuranceCashflows": "N/A",
             "CommissionFrequency": get_frequency_number(policy.get("commission_frequency", "")),
-            "Commission": float(policy["commission_amount"]),
-            "AdminBinderFees": policy["policy_details"].get("binder_fees", ""),
-            "OutsourcingFees": None,
-            "MarketingAdvertisingFees": None,
+            "Commission": policy["commission_amount"],
+            "AdminBinderFees": str(policy["policy_details"].get("binder_fees", "")),
+            "OutsourcingFees": "N/A",
+            "MarketingAdvertisingFees": "N/A",
             "ManagementFees": policy.get("admin_fee", ""),
-            "ClaimsHandlingFee": None,
-            "TotalGrossClaimAmount": None,
-            "GrossClaimPaid": None,
-            "ReinsuranceRecoveries": None,
+            "ClaimsHandlingFee": "N/A",
+            "TotalGrossClaimAmount": "N/A",
+            "GrossClaimPaid": "N/A",
+            "ReinsuranceRecoveries": "N/A",
             "OriginalLoanBalance": policy["sum_insured"],
             "CurrentOutstandingBalance": current_loan_balance,
             "InstallmentAmount": policy_details.get("installment_amount", 0),
-            "PrincipalSurname": client.get("last_name", ""),
-            "PrincipalFirstName": client.get("first_name", ""),
-            "PrincipalInitials": client.get("middle_name", ""),
+            "PrincipalSurname": lastname,
+            "PrincipalFirstName": firstname,
+            "PrincipalInitials": initials,
             "PrincipalID": client.get("primary_id_number", ""),
             "PrincipalGender": client.get("gender", ""),
             "PrincipalDateofBirth": client.get("date_of_birth", ""),

@@ -212,6 +212,23 @@ class LoanProduct(models.Model):
         verbose_name_plural = "Loan Product Configs"
 
 
+class PaymentAccount(models.Model):
+    name = models.CharField(max_length=60)
+    payment_type_id = models.IntegerField()
+    account_number = models.CharField(max_length=60)
+    check_number = models.CharField(max_length=60)
+    routing_code = models.CharField(max_length=60)
+    bank_number = models.CharField(max_length=60)
+
+
+class Sms(models.Model):
+    template = models.CharField(max_length=60, unique=True, null=False, blank=False)
+    template_id = models.IntegerField()
+    service_name = models.TextField(null=True, default=None, blank=True)
+    sms_from = models.CharField(max_length=500, null=True, blank=True)
+    linked_organization = models.CharField(max_length=20)
+
+
 # register the class for Audit
 auditlog.register(PolicyName)
 auditlog.register(InsuranceCompany)
@@ -225,3 +242,5 @@ auditlog.register(OrganisationConfig)
 auditlog.register(PolicyTypeFields)
 auditlog.register(ClaimantDetails)
 auditlog.register(LoanProduct)
+auditlog.register(PaymentAccount)
+auditlog.register(Sms)

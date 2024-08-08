@@ -1,5 +1,7 @@
+import re
 import traceback
 from datetime import datetime, date
+from typing import Final
 
 from django.db.models import Q
 
@@ -12,7 +14,7 @@ from integrations.enums import Integrations
 from integrations.guardrisk.guardrisk import GuardRisk
 from integrations.models import IntegrationConfigs
 from integrations.superbase import query_new_loans, query_repayments, query_closed_loans, query_written_off_loans, \
-    query_premium_adjustments
+    query_premium_adjustments, query_loans_past_due
 from integrations.utils import calculate_binder_fees_amount, calculate_commission_amount, \
     calculate_guard_risk_admin_amount
 from jobs.models import TaskLog
@@ -351,7 +353,8 @@ def __fetch_policies(start_date: datetime, end_date: datetime, policy_type: Poli
     return Policy.objects.filter(
         Q(policy_status='A', policy_type__policy_type=policy_type.name, policy_provider_type='Internal Credit Life',
           commencement_date__range=(start_date, end_date)) |
-        Q(policy_status__in=('P', 'C'), policy_type__policy_type=policy_type.name,
+        Q(policy_status__in=('P', 'C', 'X'), policy_type__policy_type=policy_type.name,
+          # TODO add the lapsed policies once notifications are done
           policy_provider_type='Internal Credit Life',
           closed_date__range=(start_date, end_date))
     )
@@ -374,16 +377,18 @@ def __fetch_premiums(start_date: datetime, end_date: datetime):
 
 
 def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
-    # new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
-    # closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
-    # written_off_loans = __fetch_written_off_loans_from_fin_connect(start_date, end_date, fineract_org_id)
-    # repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
-    loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
-    # process_new_loans(new_loans)
-    # process_closed_loans(closed_loans)
-    # process_claims_from_fineract(written_off_loans)
-    # process_repayments(repayments)
-    process_adjustments(loans)
+    new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    written_off_loans = __fetch_written_off_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
+    # loans_past_due = __fetch_past_loans_due(fineract_org_id)
+    # loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
+    process_new_loans(new_loans)
+    process_closed_loans(closed_loans)
+    process_claims_from_fineract(written_off_loans)
+    process_repayments(repayments)
+    # process_adjustments(loans)
+    # update_lapsed_loans(loans_past_due)
     print(f'Done processing fineract data fetch for {start_date} to {end_date} and tenant {fineract_org_id}')
 
 
@@ -440,6 +445,28 @@ def process_closed_loans(closed_loans):
 
 def process_claims_from_fineract(written_off_loans):
     create_claims_for_written_off_loans(written_off_loans)
+
+
+DAYS_TO_LAPSE_POLICY_FOR_NON_PREMIUM_PAYMENT: Final = 60
+
+
+def update_lapsed_loans(lapsed):
+    db_policies = []
+    for loan in lapsed:
+        try:
+            days_past_due = float(loan['days_past_due'])
+            if days_past_due > DAYS_TO_LAPSE_POLICY_FOR_NON_PREMIUM_PAYMENT:
+                policy_number, _ = get_policy_number_and_external_id(loan)
+                policy = Policy.objects.filter(policy_number=policy_number).first()
+                if policy is not None:
+                    if policy.policy_status != 'L':
+                        policy.policy_status = 'L'
+                        policy.closed_date = date.today()
+                        db_policies.append(policy)
+        except Exception as e:
+            print(f"Error lapsing loan{loan}")
+            print(e)
+    Policy.objects.bulk_update(db_policies, fields=['policy_status', 'closed_date'])
 
 
 def update_closed_loans(closed_loans):
@@ -575,7 +602,6 @@ def create_policy(loan, is_update: bool = False, old_policy=None):
 def save_repayments(repayments):
     for repayment in repayments:
         policy_number, _ = get_policy_number_and_external_id(repayment)
-        print(f'policy_number: {policy_number}')
         try:
             policy = Policy.objects.filter(policy_number=policy_number).first()
             if policy is not None:
@@ -711,6 +737,19 @@ def __fetch_written_off_loans_from_fin_connect(start_date: date, end_date: date,
         print("Something went wrong fetching written loans")
         print(e)
         return written_off_loans
+
+
+def __fetch_past_loans_due(tenant_id):
+    print("Fetching loans past due")
+    loans_past = []
+    try:
+        response_status, data = query_loans_past_due(tenant_id)
+        print(f'response_status: {response_status}:: data: {data}')
+        return data
+    except Exception as e:
+        print("Something went wrong fetching loan past due")
+        print(e)
+        return loans_past
 
 
 def build_claim(written_off_loan, fin_claimant_details, policy):

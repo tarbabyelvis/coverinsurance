@@ -2,7 +2,6 @@ import re
 from datetime import datetime, timedelta, date
 from dateutil import parser
 
-
 import requests
 from integrations.models import IntegrationLogs
 
@@ -39,20 +38,21 @@ def post_request_and_save(request_data, url, headers, service):
 
 def get_frequency_number(frequency: str):
     if frequency == 'Monthly':
-        return 12
+        return "12"
     elif frequency == 'Quarterly':
-        return 4
+        return "4"
     elif frequency == 'Bi-Annually' or frequency == 'Semi Annual' or frequency == 'Bi Annual':
-        return 2
+        return "2"
     elif frequency == 'Annually' or frequency == 'Annual':
-        return 1
+        return "1"
     else:
-        return 0
+        return "0"
 
 
 def is_new_policy(commencement_date, reporting_period_start,
                   reporting_period_end) -> str:  # TODO add the transferred T and R Replacement adjustments
-    commencement_date = datetime.strptime(commencement_date, '%Y-%m-%d').date()
+    if isinstance(commencement_date, str):
+        commencement_date = parser.parse(commencement_date).date()
     if isinstance(reporting_period_start, str):
         reporting_period_start = parser.parse(reporting_period_start).date()
     if isinstance(reporting_period_end, str):

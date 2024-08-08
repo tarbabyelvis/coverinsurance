@@ -1,8 +1,11 @@
 import json
-import time
+
 import requests
+from supabase import create_client, Client
 
 from FinCover.settings import SUPABASE_URL, SUPABASE_TOKEN
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_TOKEN)
 
 
 def query_new_loans(tenant_id, start_date, end_date):
@@ -38,7 +41,25 @@ def query_premium_adjustments(tenant_id):
     return __fetch_data(tenant_id, json_payload, "/query-report")
 
 
+def query_loans_past_due(tenant_id):
+    json_payload = {
+        "reportName": "Days Past Due"
+    }
+    return __fetch_data(tenant_id, json_payload, "/query-report")
+
+
 def query_closed_loans(tenant_id, start_date, end_date):
+    json_payload = {
+        "reportName": "Loan Closure - Creation Details",
+        "payload": {
+            "R_startDate": __serialize_dates(start_date),
+            "R_endDate": __serialize_dates(end_date),
+        }
+    }
+    return __fetch_data(tenant_id, json_payload, "/query-report")
+
+
+def send_sms(tenant_id, ):
     json_payload = {
         "reportName": "Loan Closure - Creation Details",
         "payload": {
@@ -61,6 +82,10 @@ def query_written_off_loans(tenant_id, start_date, end_date):
         }
     }
     return __fetch_data(tenant_id, json_payload, "/query-report")
+
+
+def send_sms_messages(data):
+    return __insert_data(data, 'comms_templates')
 
 
 def loan_transaction(tenant_id, payload):
@@ -95,12 +120,11 @@ def __make_request(tenant_id, payload, uri):
 
 def __process_response(response):
     try:
-        response_json = response.json()  # Use response.json() instead of json.loads(response.text)
+        response_json = response.json()
     except json.JSONDecodeError:
         print("Failed to decode JSON from response")
         response_json = {}
 
-    # Check if response_json is a dictionary
     if isinstance(response_json, dict):
         message = response_json.get("message")
         if isinstance(message, dict) and message.get("result") == 200:
@@ -111,3 +135,18 @@ def __process_response(response):
     else:
         print("Response JSON is not a dictionary")
         return 0, None
+
+
+def __insert_data(data, table_name):
+    max_retries = 2
+    attempt = 0
+    status = 0
+    while attempt < max_retries:
+        response = supabase.table(table_name).insert(data).execute()
+        status, data = __process_response(response)
+        if status == 201:
+            return status, data
+        else:
+            attempt += 1
+            print(f'attempt {attempt} of saving data to table {table_name}')
+    return status, None

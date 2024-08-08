@@ -1,7 +1,8 @@
+from collections import defaultdict
 from datetime import datetime
 
-from django.db.models import Sum, Value, DecimalField
-from django.db.models.functions import Coalesce
+from django.core.paginator import Paginator
+from django.db.models import Q, F, Sum, Value, DecimalField
 from django.http import HttpResponse
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -10,8 +11,8 @@ from rest_framework.views import APIView
 
 from core.http_response import HTTPResponse
 from core.utils import CustomPagination
-from policies.models import PremiumPayment
-from policies.serializers import PolicyDetailSerializer, PremiumPaymentSerializer
+from policies.models import PremiumPayment, Policy
+from policies.serializers import PolicyDetailSerializer
 from reports.utils import bordrex_report_util, generate_excel_report_util
 
 
@@ -54,21 +55,22 @@ class BordrexReportView(APIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
-            to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
             policy_payments = fetch_active_policies_payments(entity, start_date=from_date, end_date=to_date)
-            paginator = self.pagination_class()
-            result_page = paginator.paginate_queryset(policy_payments, request)
-            payments = PremiumPaymentSerializer(result_page, many=True).data
-            report = bordrex_report_util(payments, from_date, to_date, entity=entity)
+            page_number = request.GET.get('page', 1)
+            page_size = request.GET.get('page_size', 20)
+            paginator = Paginator(policy_payments, page_size)
+
+            paginated_payments = paginator.page(page_number)
+            report = bordrex_report_util(paginated_payments, from_date, to_date, entity=entity)
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
                 data={
                     "results": report,
-                    "count": paginator.page.paginator.count if paginator.page else 0,
-                    "next": paginator.get_next_link(),
-                    "previous": paginator.get_previous_link(),
+                    "count": paginator.count if paginator.page else 0,
+                    "next": paginated_payments.has_next() and paginated_payments.next_page_number() or None,
+                    "previous": paginated_payments.has_previous() and paginated_payments.
+                    previous_page_number() or None,
                 },
             )
 
@@ -123,10 +125,7 @@ class BordrexExcelExportView(APIView):
             from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
             to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
             policies_payments = fetch_active_policies_payments(entity, start_date=from_date, end_date=to_date)
-
-            # Serialize data
-            serializer = PremiumPaymentSerializer(policies_payments, many=True)
-            report = generate_excel_report_util(serializer.data, from_date, to_date, entity=entity)
+            report = generate_excel_report_util(policies_payments, from_date, to_date, entity=entity)
 
             # Serve the Excel file as a response
             response = HttpResponse(
@@ -147,22 +146,130 @@ class BordrexExcelExportView(APIView):
 
 
 def fetch_active_policies_payments(entity, start_date, end_date):
-    # result = (
-    #     PremiumPayment.objects.filter(
-    #         payment_date__gte=start_date,
-    #         payment_date__lte=end_date,
-    #         policy__policy_status="A",
-    #         policy__entity=entity,
-    #         policy__policy_provider_type='Internal Credit Life'
-    #     )
-    #     .values('policy__policy_number')
-    #     .annotate(
-    #         total_amount=Coalesce(Sum('amount'), Value(0), output_field=DecimalField())
-    #     ))
-    # return list(result)
-    return PremiumPayment.objects.filter(
+    payment_criteria = Q(
         payment_date__gte=start_date,
         payment_date__lte=end_date,
         policy__entity=entity,
         policy__policy_provider_type='Internal Credit Life'
     )
+
+    # Define the query criteria for policies
+    policy_criteria = Q(
+        entity=entity,
+        policy_provider_type='Internal Credit Life',
+        policy_status='A'
+    )
+    payments = PremiumPayment.objects.filter(payment_criteria).select_related('policy__client').values(
+        'policy_id',
+        'policy__policy_details'
+    ).annotate(
+        premium_paid=Sum('amount'),
+        premium_annotated=F('policy__premium'),
+        policy_number_annotated=F('policy__policy_number'),
+        division=F('policy__business_unit'),
+        risk_identifier_annotated=F('policy__policy_details__risk_identifier'),
+        scheme_sub_annotated=F('policy__sub_scheme'),
+        commencement_date_annotated=F('policy__commencement_date'),
+        expiry_date_annotated=F('policy__expiry_date'),
+        policy_term_annotated=F('policy__policy_term'),
+        premium_frequency_annotated=F('policy__premium_frequency'),
+        sum_insured_annotated=F('policy__sum_insured'),
+        current_outstanding_balance_annotated=F('policy__policy_details__current_outstanding_balance'),
+        installment_amount_annotated=F('policy__policy_details__installment_amount'),
+        last_name=F('policy__client__last_name'),
+        first_name=F('policy__client__first_name'),
+        primary_id_number=F('policy__client__primary_id_number'),
+        gender=F('policy__client__gender'),
+        date_of_birth=F('policy__client__date_of_birth'),
+        date_of_death=F('policy__client__date_of_death'),
+        address_street=F('policy__client__address_street'),
+        address_town=F('policy__client__address_town'),
+        address_province=F('policy__client__address_province'),
+        postal_code=F('policy__client__postal_code'),
+        phone_number=F('policy__client__phone_number')
+    )
+    policy_ids_with_payments = payments.values_list('policy_id', flat=True)
+    policies_without_payments = Policy.objects.filter(policy_criteria).exclude(
+        id__in=policy_ids_with_payments).annotate(
+        premium_paid=Value(0, output_field=DecimalField()),
+        administrator_identifier=F('entity'),
+        policy_number_annotated=F('policy_number'),
+        division=F('business_unit'),
+        scheme_sub_annotated=F('sub_scheme'),
+        commencement_date_annotated=F('commencement_date'),
+        expiry_date_annotated=F('expiry_date'),
+        premium_annotated=F('premium'),
+        policy_term_annotated=F('policy_term'),
+        premium_frequency_annotated=F('premium_frequency'),
+        sum_insured_annotated=F('sum_insured'),
+        current_outstanding_balance_annotated=F('policy_details__current_outstanding_balance'),
+        risk_identifier_annotated=F('policy_details__risk_identifier'),
+        installment_amount_annotated=F('policy_details__installment_amount'),
+        last_name=F('client__last_name'),
+        first_name=F('client__first_name'),
+        primary_id_number=F('client__primary_id_number'),
+        gender=F('client__gender'),
+        date_of_birth=F('client__date_of_birth'),
+        date_of_death=F('client__date_of_death'),
+        address_street=F('client__address_street'),
+        address_town=F('client__address_town'),
+        address_province=F('client__address_province'),
+        postal_code=F('client__postal_code'),
+        phone_number=F('client__phone_number')
+    ).values()
+    payment_map = defaultdict(lambda: {
+        "policy_id": None,
+        "premium_annotated": None,
+        "premium_paid": 0,
+        "division": None,
+        "risk_identifier_annotated": None,
+        "scheme_sub_annotated": None,
+        "commencement_date_annotated": None,
+        "expiry_date_annotated": None,
+        "policy_term_annotated": None,
+        "premium_frequency_annotated": None,
+        "sum_insured_annotated": None,
+        "current_outstanding_balance_annotated": None,
+        "installment_amount_annotated": None,
+        "last_name": None,
+        "first_name": None,
+        "primary_id_number": None,
+        "gender": None,
+        "date_of_birth": None,
+        "date_of_death": None,
+        "address_street": None,
+        "address_town": None,
+        "address_province": None,
+        "postal_code": None,
+        "phone_number": None,
+    })
+    for payment in payments:
+        policy_id = payment['policy_id']
+        payment_map[policy_id]["premium_annotated"] = payment['premium_annotated']
+        payment_map[policy_id]["policy_number_annotated"] = payment['policy_number_annotated']
+        payment_map[policy_id]["policy_id"] = policy_id
+        payment_map[policy_id]["premium_paid"] += payment['premium_paid']
+        payment_map[policy_id]["division"] = payment['division']
+        payment_map[policy_id]["risk_identifier_annotated"] = payment['risk_identifier_annotated']
+        payment_map[policy_id]["scheme_sub_annotated"] = payment['scheme_sub_annotated']
+        payment_map[policy_id]["commencement_date_annotated"] = payment['commencement_date_annotated']
+        payment_map[policy_id]["expiry_date_annotated"] = payment['expiry_date_annotated']
+        payment_map[policy_id]["policy_term_annotated"] = payment['policy_term_annotated']
+        payment_map[policy_id]["premium_frequency_annotated"] = payment['premium_frequency_annotated']
+        payment_map[policy_id]["sum_insured_annotated"] = payment['sum_insured_annotated']
+        payment_map[policy_id]["current_outstanding_balance_annotated"] = payment[
+            'current_outstanding_balance_annotated']
+        payment_map[policy_id]["installment_amount_annotated"] = payment['installment_amount_annotated']
+        payment_map[policy_id]["last_name"] = payment['last_name']
+        payment_map[policy_id]["first_name"] = payment['first_name']
+        payment_map[policy_id]["primary_id_number"] = payment['primary_id_number']
+        payment_map[policy_id]["gender"] = payment['gender']
+        payment_map[policy_id]["date_of_birth"] = payment['date_of_birth']
+        payment_map[policy_id]["date_of_death"] = payment['date_of_death']
+        payment_map[policy_id]["address_street"] = payment['address_street']
+        payment_map[policy_id]["address_town"] = payment['address_town']
+        payment_map[policy_id]["address_province"] = payment['address_province']
+        payment_map[policy_id]["postal_code"] = payment['postal_code']
+        payment_map[policy_id]["phone_number"] = payment['phone_number']
+
+    return list(payment_map.values()) + list(policies_without_payments)

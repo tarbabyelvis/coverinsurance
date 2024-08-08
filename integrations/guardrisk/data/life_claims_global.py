@@ -28,7 +28,6 @@ def prepare_life_claims_payload(data: list, start_date: date, end_date: date, cl
     end_date = end_date.strftime("%Y/%m/%d")
     result = []
     for claim in data:
-        print(f'claim {claim}')
         policy = claim["policy"]
         insurer = policy["insurer"]
         try:

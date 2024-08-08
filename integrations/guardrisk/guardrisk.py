@@ -31,7 +31,6 @@ class GuardRisk:
         url = create_url(self.base_url, path)
         data_size = len(request_data)
         print(f'submitting {data_size} claims')
-        # print(f'request sent:: {request_data}')
         if data_size == 0:
             print(f'Not calling the claims api anymore for {client_identifier}')
             response_data = {"Status": "Ok", "message": "No claims data to send"}
@@ -62,7 +61,6 @@ class GuardRisk:
         url = create_url(self.base_url, path)
         data_size = len(request_data)
         print(f'submitting {data_size} funeral policies')
-        # print(f'request sent:: {request_data}')
         if data_size == 0:
             print(f'Not calling the api anymore for {client_identifier}')
             response_data = {"Status": "Ok", "message": "No funeral data to send"}
@@ -71,7 +69,6 @@ class GuardRisk:
 
         headers = {"CallerId": self.access_key,
                    "RowCount": str(data_size)}
-        print(f'funeral json being sent {request_data}')
         # Call the function to post the request and save it along with the response
         response_data, response_status, _ = post_request_and_save(
             request_data, url, headers, Integrations.GUARDRISK.name
@@ -95,7 +92,6 @@ class GuardRisk:
         )
         data_size = len(request_data)
         print(f'submitting {data_size} credit life policies')
-        print(f'request sent:: {request_data}')
         if data_size == 0:
             print(f'Not calling the credit life api anymore for {client_identifier}')
             response_data = {"Status": "Ok", "message": "No credit life data to send"}
@@ -106,9 +102,11 @@ class GuardRisk:
         headers = {"CallerId": self.access_key,
                    "RowCount": str(data_size)}
         # Call the function to post the request and save it along with the response
+        print(f'credit life json being sent {request_data}')
         response_data, response_status, _ = post_request_and_save(
             request_data, url, headers, Integrations.GUARDRISK.name
         )
+        print(f'response data being sent {response_data}')
 
         return response_data, response_status
 
@@ -127,7 +125,6 @@ class GuardRisk:
         )
         data_size = len(request_data)
         print(f'submitting {data_size} premiums')
-        print(f'request sent:: {request_data}')
         if data_size == 0:
             response_data = {"Status": "Ok", "message": "No premiums to send"}
             response_status = 200

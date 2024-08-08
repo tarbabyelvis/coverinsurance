@@ -16,6 +16,8 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 
+from .services import receipt_claim_repayment, process_claim_payment
+
 #from .services import process_claim_repayment
 
 logger = logging.getLogger(__name__)
@@ -230,12 +232,9 @@ class AddRepayment(APIView):
                 {"error": "missing parameters"}, status=status.HTTP_400_BAD_REQUEST
             )
         else:
-            #process_claim_repayment()
-            pass
+            tenant_id = str(request.tenant).replace("-", "_")
+            data = request.data
+            claim_id = data["claim_id"]
+            process_claim_payment(tenant_id, claim_id)
 
-            # except Exception as e:
-            #     print(e)
-            #     return Response(
-            #         {"error": "error making repayment"},
-            #         status=status.HTTP_400_BAD_REQUEST,
-            #     )
+

@@ -57,6 +57,9 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
         policy_number = policy["policy_number"]
         division = policy.get("business_unit")
         premium = policy.get("premium")
+        firstname = client.get("first_name", "")
+        lastname = client.get("last_name", "")
+        initials = firstname[0] + lastname[0]
         details = {
             "TimeStamp": timestamp,
             "ReportPeriodStart": start_date,
@@ -92,25 +95,25 @@ def prepare_life_funeral_payload(data: list, start_date: date, end_date: date, c
             "DeathRIPremium": "N/A",
             "DeathRIPercentage": "N/A",
             "TotalPolicyPremiumCollected": policy_details.get("total_policy_premium_collected", "0.00"),
-            "TotalPolicyPremiumPayable": policy_details.get("total_premium", "0.00"),
-            "TotalPolicyPremium": policy["premium"],
-            "TotalPolicyPremiumSubsidy": policy["premium"],
-            "TotalReinsurancePremium": policy["premium"],
-            "TotalReinsurancePremiumPayable": policy["premium"],
-            "TotalFinancialReinsuranceCashflows": policy["premium"],
-            "TotalFinancialReinsurancePayable": policy["premium"],
+            "TotalPolicyPremiumPayable": policy.get("total_premium", "0.00"),
+            "TotalPolicyPremium": premium,
+            "TotalPolicyPremiumSubsidy": premium,
+            "TotalReinsurancePremium": premium,
+            "TotalReinsurancePremiumPayable": premium,
+            "TotalFinancialReinsuranceCashflows": premium,
+            "TotalFinancialReinsurancePayable": premium,
             "CommissionFrequency": get_frequency_number(policy.get("commission_frequency", "Monthly")),
             "Commission": policy["commission_amount"],
             "AdminBinderFees": policy["policy_details"].get("binder_fees", ""),
             "OutsourcingFees": None,
             "MarketingAdvertisingFees": None,
-            "ManagementFees": policy_details.get("admin_fee", ""),
+            "ManagementFees": policy.get("admin_fee", ""),
             "ClaimsHandlingFee": None,
             "TotalGrossClaimAmount": None,
             "GrossClaimPaid": None,
             "ReinsuranceRecoveries": None,
-            "PrincipalSurname": client.get("last_name", ""),
-            "PrincipalFirstName": client.get("first_name", ""),
+            "PrincipalSurname": lastname,
+            "PrincipalFirstName": firstname,
             "PrincipalInitials":
                 f"{get_initial_letter(client.get('first_name', ''))} {client.get('last_name', '')}",
             "PrincipalID": client.get("primary_id_number", ""),

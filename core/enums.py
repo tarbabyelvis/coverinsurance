@@ -41,3 +41,10 @@ class ClaimStatus(models.TextChoices):
     REVIEW = "REVIEW", "Review"
     APPROVED = "APPROVED", "Approved"
     REPUDIATED = "REPUDIATED", "Repudiated"
+
+
+class PaymentStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    FAILED = "FAILED", "Failed"
+    SUCCESSFUL = "SUCCESSFUL", "Successful"
+    CANCELLED = "CANCELLED", "Cancelled"

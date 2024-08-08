@@ -5,7 +5,6 @@ from io import BytesIO
 import openpyxl
 from openpyxl.styles import Font
 
-from clients.models import ClientDetails
 from integrations.guardrisk.data.premiums import calculate_binder_fee_amount, calculate_insurer_commission_amount
 from integrations.utils import is_new_policy, calculate_nett_amount, calculate_vat_amount, \
     calculate_guard_risk_admin_amount, calculate_amount_excluding_vat
@@ -92,8 +91,8 @@ def generate_main_report(policies):
         "{:,.2f}".format(sub_totals["total_risk_premium"]),
         "{:,.2f}".format(sub_totals["total_guardrisk_fee"]),
         "{:,.2f}".format(sub_totals["total_commission"]),
-        "{:,.2f}".format(calculate_total(total_binder_fee, vat_total_binder_fee)),
-        "{:,.2f}".format(calculate_total(total_nett_sub, vat_total_nett))
+        "{:,.2f}".format(total_binder_fee),
+        "{:,.2f}".format(total_nett_sub)
     ]
     totals = [sub_totals_sum, vat_totals_sum, totals_sum]
     return aggregates, totals
@@ -177,50 +176,46 @@ def generate_template_data(reports, totals, from_date, to_date, ws_front_sheet, 
 
 
 def populate_policies(policy_payments, from_date, to_date, entity, timestamp):
-    # policy_payments = list(map(lambda p: p, policy_payments))
     flattened_data = []
-    for policy_payment in policy_payments:
-        policy = policy_payment["policy"]
-        client = ClientDetails.objects.get(pk=policy["client"])
-        premium = float(policy["premium"])
-        premium_amount_paid = float(policy_payment["amount"])
+    for data in policy_payments:
+        policy_number = data["policy_number_annotated"]
+        premium = float(data["premium_annotated"])
+        premium_amount_paid = float(data["premium_paid"])
         vat_amount = calculate_vat_amount(premium_amount_paid)
         premium_less_vat = calculate_amount_excluding_vat(premium_amount_paid, vat_amount)
         guardrisk_amount = calculate_guard_risk_admin_amount(premium_amount_paid)
         commission = calculate_insurer_commission_amount(premium_amount_paid)
         binder_fee = calculate_binder_fee_amount(premium_amount_paid)
         nett_amount = calculate_nett_amount(premium_amount_paid, guardrisk_amount, commission, binder_fee)
-        first_name = client.first_name
-        last_name = client.last_name
+        commencement_date = data["commencement_date_annotated"]
+        business_unit = data["division"]
+        policy_term = data["policy_term_annotated"]
+        first_name = data["first_name"]
+        last_name = data["last_name"]
         initials = f"{first_name[0]}{last_name[0]}"
-        current_loan_balance = policy["policy_details"].get("current_outstanding_balance", "")
-        policy_number = policy["policy_number"]
-        policy_term = policy["policy_term"]
-        business_unit = policy["business_unit"]
-        risk_identifier = generate_risk_identifier(business_unit, policy_term)
-        commencement_date = policy["commencement_date"]
         flattened_item = {
             "timestamp": timestamp,
             "period_start": from_date,
             "period_end": to_date,
-            "administrator_identifier": entity,
-            "insurer": "Guardrisk Life",
+            "administrator_identifier": "Indlu",
+            "insurer": "Guardrisk",
             "client_identifier": get_client_identifier(entity),
-            "division": business_unit,
-            "risk_identifier": policy["policy_details"].get("risk_identifier", risk_identifier),
-            "sub_scheme": policy.get("sub_scheme", ""),
+            "division": data["division"],
+            "risk_identifier": data["risk_identifier_annotated"] or generate_risk_identifier(business_unit,
+                                                                                             policy_term),
+            "sub_scheme": data["scheme_sub_annotated"],
             "policy_number": policy_number,
-            "commencement_date": commencement_date,
-            "expiry_date": policy["expiry_date"],
+            "commencement_date": data["commencement_date_annotated"],
+            "expiry_date": data["expiry_date_annotated"],
             "new_business_indicator": is_new_policy(commencement_date, from_date, to_date),
-            "policy_term": policy_term,
+            "policy_term": data["policy_term_annotated"],
             "premium": premium,
             "premium_paid": premium_amount_paid,
             "commission_amount": commission,
             "binder_fee": binder_fee,
             "net_premium_paid_to_gr": nett_amount,
             "admin_fee": guardrisk_amount,
-            "premium_frequency": policy["premium_frequency"],
+            "premium_frequency": data["premium_frequency_annotated"],
             "death_indicator": "Y",
             "ptd_indicator": "Y",
             "ttd_indicator": "Y",
@@ -228,21 +223,21 @@ def populate_policies(policy_payments, from_date, to_date, entity, timestamp):
             "dread_disease_indicator": "N",
             "identity_theft_indicator": "N",
             "accidental_death_indicator": "N",
-            "sum_insured": policy["sum_insured"],
-            "current_outstanding_balance": current_loan_balance,
-            "installment_amount": policy["policy_details"].get("installment_amount", ""),
+            "sum_insured": data["sum_insured_annotated"],
+            "current_outstanding_balance": data["current_outstanding_balance_annotated"],
+            "installment_amount": data["installment_amount_annotated"],
             "last_name": last_name,
             "first_name": first_name,
             "initials": initials,
-            "primary_id_number": client.primary_id_number,
-            "gender": client.gender,
-            "date_of_birth": client.date_of_birth,
-            "date_of_death": client.date_of_death,
-            "address_street": client.address_street,
-            "address_town": client.address_town,
-            "address_province": client.address_province,
-            "postal_code": client.postal_code,
-            "phone_number": client.phone_number
+            "primary_id_number": data["primary_id_number"],
+            "gender": data["gender"],
+            "date_of_birth": data["date_of_birth"],
+            "date_of_death": data["date_of_death"],
+            "address_street": data["address_street"],
+            "address_town": data["address_town"],
+            "address_province": data["address_province"],
+            "postal_code": data["postal_code"],
+            "phone_number": data["phone_number"]
         }
         flattened_data.append(flattened_item)
     return flattened_data

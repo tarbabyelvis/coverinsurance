@@ -1,6 +1,6 @@
 from django.db import models
 from config.models import ClaimType, DocumentType, IdDocumentType
-from core.enums import ClaimStatus
+from core.enums import ClaimStatus, PaymentStatus
 from core.models import BaseModel
 from auditlog.registry import auditlog
 from policies.models import Policy
@@ -63,6 +63,20 @@ class ClaimDocument(BaseModel):
     )
 
 
+class Payment(BaseModel):
+    transaction_date = models.DateField(null=True, blank=True)
+    amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True)
+    receipt_number = models.CharField(max_length=50, null=True, blank=True, unique=True)
+    bank_account = models.CharField(max_length=50, null=True, blank=True, unique=True)
+    check_number = models.CharField(max_length=50, null=True, blank=True)
+    payment_type_id = models.IntegerField()
+    transaction_type = models.CharField(max_length=50, null=True, blank=True, unique=True)
+    notes = models.CharField(max_length=50, null=True, blank=True, unique=True)
+    status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
+
+
 # Register models for audit
 auditlog.register(Claim)
+auditlog.register(Payment)
 auditlog.register(ClaimDocument)

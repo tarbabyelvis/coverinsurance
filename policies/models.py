@@ -31,6 +31,7 @@ class Policy(BaseModel):
     )
     policy_term = models.IntegerField(null=True, blank=True)  # in months
     policy_number = models.CharField(max_length=200, null=True, blank=True, unique=True)
+    loan_id = models.IntegerField(blank=True, null=True)
     business_unit = models.CharField(max_length=200, null=True, blank=True)
     sub_scheme = models.CharField(max_length=200, null=True, blank=True)
     product_name = models.CharField(max_length=200, null=True, blank=True)

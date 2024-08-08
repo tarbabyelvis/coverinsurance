@@ -16,7 +16,6 @@ def prepare_premium_payload(
     result = []
     print("Preparing payment data")
     for payment in data:
-        print(f'payment {payment}')
         policy = payment["policy"]
         client = policy["client"]
         client = ClientDetails.objects.filter(pk=client).first()
