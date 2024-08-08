@@ -1,8 +1,10 @@
+import asyncio
 import re
 import traceback
 from datetime import datetime, date
 from typing import Final
 
+from asgiref.sync import sync_to_async
 from django.db.models import Q
 
 from claims.models import Claim
@@ -21,6 +23,7 @@ from jobs.models import TaskLog
 from policies.models import Policy, PremiumPayment
 from policies.serializers import PolicyDetailSerializer, PremiumPaymentSerializer, \
     ClientPolicyRequestSerializer
+from sms.services import warn_of_policy_lapse
 from .models import Task
 
 first_day_of_previous_month: date = first_day_of_previous_month().date()
@@ -377,18 +380,18 @@ def __fetch_premiums(start_date: datetime, end_date: datetime):
 
 
 def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
-    new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
-    closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
-    written_off_loans = __fetch_written_off_loans_from_fin_connect(start_date, end_date, fineract_org_id)
-    repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
-    # loans_past_due = __fetch_past_loans_due(fineract_org_id)
+    # new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    # closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    # written_off_loans = __fetch_written_off_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    # repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
+    loans_past_due = __fetch_past_loans_due(fineract_org_id)
     # loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
-    process_new_loans(new_loans)
-    process_closed_loans(closed_loans)
-    process_claims_from_fineract(written_off_loans)
-    process_repayments(repayments)
+    # process_new_loans(new_loans)
+    # process_closed_loans(closed_loans)
+    # process_claims_from_fineract(written_off_loans)
+    # process_repayments(repayments)
     # process_adjustments(loans)
-    # update_lapsed_loans(loans_past_due)
+    process_unpaid_and_lapsed_policies(loans_past_due)
     print(f'Done processing fineract data fetch for {start_date} to {end_date} and tenant {fineract_org_id}')
 
 
@@ -413,20 +416,21 @@ def process_adjustments(loans):
                 # policy.total_premium = round(float(loan['total_premium'] or 0), 2)
                 # policy.commission_amount = commission_amount
                 # policy.admin_fee = admin_fee
-                policy_details = policy.policy_details or {}
-                policy_details['current_outstanding_balance'] = loan['current_outstanding_balance']
-                policy.policy_details = policy_details
+                # policy_details = policy.policy_details or {}
+                # policy_details['current_outstanding_balance'] = loan['current_outstanding_balance']
+                # policy.policy_details = policy_details
                 # status = loan['loan_status_id']
                 # if status in ['400', '600', '700', 400, 600, 700]:
                 #     policy.policy_status = 'P'
                 # elif status in ['300', 300]:
                 #     policy.policy_status = 'A'
+                policy.loan_id = loan['loanid']
                 policies.append(policy)
         except Exception as e:
             print(f"Error saving new loan{loan}")
             print(e)
     Policy.objects.bulk_update(policies,
-                               fields=['policy_details'])
+                               fields=['loan_id'])
     print('done updating total_policy_premium_collected ...')
 
 
@@ -448,25 +452,43 @@ def process_claims_from_fineract(written_off_loans):
 
 
 DAYS_TO_LAPSE_POLICY_FOR_NON_PREMIUM_PAYMENT: Final = 60
+DAYS_TO_WARN_FOR_NON_PREMIUM_PAYMENT: Final = 30
 
 
-def update_lapsed_loans(lapsed):
-    db_policies = []
+def process_unpaid_and_lapsed_policies(lapsed):
+    lapsing_policies = []
+    warned_policies = []
+    client_details = []
     for loan in lapsed:
         try:
             days_past_due = float(loan['days_past_due'])
-            if days_past_due > DAYS_TO_LAPSE_POLICY_FOR_NON_PREMIUM_PAYMENT:
+            if DAYS_TO_WARN_FOR_NON_PREMIUM_PAYMENT <= days_past_due < DAYS_TO_LAPSE_POLICY_FOR_NON_PREMIUM_PAYMENT:
                 policy_number, _ = get_policy_number_and_external_id(loan)
                 policy = Policy.objects.filter(policy_number=policy_number).first()
-                if policy is not None:
-                    if policy.policy_status != 'L':
-                        policy.policy_status = 'L'
-                        policy.closed_date = date.today()
-                        db_policies.append(policy)
+                if policy is not None and not policy.is_warned_of_non_payment:
+                    policy.is_warned_of_non_payment = True
+                    warned_policies.append(policy)
+                    phone_number = policy.client.phone_number
+                    if phone_number is not None or '':
+                        business_unit = policy.business_unit
+                        client_details.append({"phone_number": phone_number, "entity": business_unit})
+            elif days_past_due > DAYS_TO_LAPSE_POLICY_FOR_NON_PREMIUM_PAYMENT:
+                policy_number, _ = get_policy_number_and_external_id(loan)
+                policy = Policy.objects.filter(policy_number=policy_number).first()
+                if policy is not None and policy.policy_status != 'L':
+                    policy.policy_status = 'L'
+                    policy.closed_date = date.today()
+                    lapsing_policies.append(policy)
         except Exception as e:
             print(f"Error lapsing loan{loan}")
             print(e)
-    Policy.objects.bulk_update(db_policies, fields=['policy_status', 'closed_date'])
+    # Policy.objects.bulk_update(lapsing_policies, fields=['policy_status', 'closed_date'])
+    # Policy.objects.bulk_update(warned_policies, fields=['is_warned_of_non_payment'])
+    try:
+        warn_of_policy_lapse(client_details)
+    except Exception as e:
+        print("Error notifying clients on unpaid loans")
+        print(e)
 
 
 def update_closed_loans(closed_loans):
@@ -744,7 +766,7 @@ def __fetch_past_loans_due(tenant_id):
     loans_past = []
     try:
         response_status, data = query_loans_past_due(tenant_id)
-        print(f'response_status: {response_status}:: data: {data}')
+        print(f'response_status: {response_status}')
         return data
     except Exception as e:
         print("Something went wrong fetching loan past due")

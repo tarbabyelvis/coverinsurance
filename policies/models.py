@@ -74,6 +74,7 @@ class Policy(BaseModel):
     entity = models.CharField(max_length=50, null=False, blank=False, default='Indlu')
     policy_provider_type = models.CharField(max_length=25, null=True, blank=True, default='Internal Credit Life')
     is_legacy = models.BooleanField(default=False)
+    is_warned_of_non_payment = models.BooleanField(default=False)
 
     def get_status_symbol(self):
         """

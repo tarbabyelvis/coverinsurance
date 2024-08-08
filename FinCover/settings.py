@@ -357,6 +357,9 @@ SUPABASE_TOKEN = os.getenv(
 SUPABASE_URL = os.getenv(
     "SUPABASE_URL", "https://xmsplibcemufhdyeyugm.functions.supabase.co"
 )
+SUPABASE_POSTGREST_URL = os.getenv(
+    "SUPABASE_URL", "https://xmsplibcemufhdyeyugm.supabase.co"
+)
 SUPABASE_PROJECTID = os.getenv("SUPABASE_PROJECTID", "xmsplibcemufhdyeyugm")
 SUPABASE_REST_URL = os.getenv(
     "SUPABASE_REST_URL", "https://xmsplibcemufhdyeyugm.supabase.co"

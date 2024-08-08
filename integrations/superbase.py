@@ -3,9 +3,9 @@ import json
 import requests
 from supabase import create_client, Client
 
-from FinCover.settings import SUPABASE_URL, SUPABASE_TOKEN
+from FinCover.settings import SUPABASE_URL, SUPABASE_POSTGREST_URL, SUPABASE_TOKEN
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_TOKEN)
+supabase: Client = create_client(SUPABASE_POSTGREST_URL, SUPABASE_TOKEN)
 
 
 def query_new_loans(tenant_id, start_date, end_date):
@@ -84,8 +84,10 @@ def query_written_off_loans(tenant_id, start_date, end_date):
     return __fetch_data(tenant_id, json_payload, "/query-report")
 
 
-def send_sms_messages(data):
-    return __insert_data(data, 'comms_templates')
+def send_sms_messages(messages):
+    # if len(messages) == 0:
+    #     return None
+    return __insert_data(data=messages, table_name='comms_logs')
 
 
 def loan_transaction(tenant_id, payload):
@@ -120,6 +122,7 @@ def __make_request(tenant_id, payload, uri):
 
 def __process_response(response):
     try:
+        print(f'response: {response}')
         response_json = response.json()
     except json.JSONDecodeError:
         print("Failed to decode JSON from response")
@@ -127,8 +130,8 @@ def __process_response(response):
 
     if isinstance(response_json, dict):
         message = response_json.get("message")
-        if isinstance(message, dict) and message.get("result") == 200:
-            return 200, message.get("data")
+        if isinstance(message, dict) and message.get("result") == 200 or message.get("result") == 201:
+            return message.get("result"), message.get("data")
         else:
             result = message.get("result") if isinstance(message, dict) else None
             return result, None
@@ -138,15 +141,11 @@ def __process_response(response):
 
 
 def __insert_data(data, table_name):
-    max_retries = 2
-    attempt = 0
     status = 0
-    while attempt < max_retries:
-        response = supabase.table(table_name).insert(data).execute()
-        status, data = __process_response(response)
-        if status == 201:
-            return status, data
-        else:
-            attempt += 1
-            print(f'attempt {attempt} of saving data to table {table_name}')
+    response = supabase.table(table_name).insert(data).execute()
+    print(f'response: {response}')
+    status, data = __process_response(response)
+    print(f'response status: {status} :: data: {data}')
+    if status == 201:
+        return status, data
     return status, None
