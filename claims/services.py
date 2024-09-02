@@ -7,6 +7,18 @@ from config.models import PaymentAccount
 from integrations.superbase import loan_transaction
 
 
+def process_retrenchment_claim(tenant_id, claim_id):
+    suspend_debicheck_for_loan(tenant_id, policy)
+
+
+def suspend_debicheck_for_loan(tenant_id, policy):
+    policy = ge
+
+def get_policy_from_claim_id(claim_id):
+    claim = __find_claim_id(claim_id)
+    return claim.policy
+
+
 def process_claim_payment(tenant_id, claim_id):
     claim = __find_claim_id(claim_id)
     policy = claim.policy

@@ -59,16 +59,20 @@ def query_closed_loans(tenant_id, start_date, end_date):
     return __fetch_data(tenant_id, json_payload, "/query-report")
 
 
-def send_sms(tenant_id, ):
+def suspend_debicheck(tenant_id, loan_id:str, product_id:int):
     json_payload = {
-        "reportName": "Loan Closure - Creation Details",
-        "payload": {
-            "R_startDate": __serialize_dates(start_date),
-            "R_endDate": __serialize_dates(end_date),
-        }
+            "loanId": loan_id,
+            "productId": product_id
     }
-    return __fetch_data(tenant_id, json_payload, "/query-report")
+    return __fetch_data(tenant_id, json_payload, "/intecon-suspend-kickoff")
 
+
+def activate_debicheck(tenant_id, loan_id:str, product_id:int):
+    json_payload = {
+            "loanId": loan_id,
+            "productId": product_id
+    }
+    return __fetch_data(tenant_id, json_payload, "/intecon-activate-kickoff")
 
 def query_written_off_loans(tenant_id, start_date, end_date):
     json_payload = {

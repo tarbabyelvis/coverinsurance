@@ -144,7 +144,7 @@ def __credit_life(
             print(f'now processing for indlu , {len(indlu_policies)} policies')
             _, status = process_credit_life(indlu_policies, indlu_configs, start_date, end_date, is_daily_submission)
             return
-        print('No Life policies to process...')
+        _, status = process_credit_life([], indlu_configs, start_date, end_date, is_daily_submission)
 
     except Exception as e:
         print(e)
@@ -194,7 +194,8 @@ def __life_funeral(
             # nifty_policies = PolicyDetailSerializer(nifty_data, many=True).data
             # process_life_funeral(nifty_policies, nifty_configs, start_date, end_date, is_daily_submission)
         else:
-            print('No funeral policies to process...')
+            pass
+        # process_life_funeral([], nifty_configs, start_date, end_date, is_daily_submission)
     except Exception as e:
         print(e)
         raise Exception(e)
@@ -249,7 +250,7 @@ def __claims(
             # process_claims(nifty_claims, nifty_configs, start_date, end_date, is_daily_submission)
             process_claims(indlu_claims, indlu_configs, start_date, end_date, is_daily_submission)
         else:
-            print('No claims to process...')
+            process_claims([], indlu_configs, start_date, end_date, is_daily_submission)
     except Exception as e:
         print(e)
         traceback.print_exc()
@@ -380,18 +381,16 @@ def __fetch_premiums(start_date: datetime, end_date: datetime):
 
 
 def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
-    # new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
-    # closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
-    # written_off_loans = __fetch_written_off_loans_from_fin_connect(start_date, end_date, fineract_org_id)
-    # repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
-    loans_past_due = __fetch_past_loans_due(fineract_org_id)
+    new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
+    # loans_past_due = __fetch_past_loans_due(fineract_org_id)
     # loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
-    # process_new_loans(new_loans)
-    # process_closed_loans(closed_loans)
-    # process_claims_from_fineract(written_off_loans)
-    # process_repayments(repayments)
+    save_new_loans(new_loans)
+    update_closed_loans(closed_loans)
+    save_repayments(repayments)
     # process_adjustments(loans)
-    process_unpaid_and_lapsed_policies(loans_past_due)
+    # process_unpaid_and_lapsed_policies(loans_past_due)
     print(f'Done processing fineract data fetch for {start_date} to {end_date} and tenant {fineract_org_id}')
 
 
@@ -432,23 +431,6 @@ def process_adjustments(loans):
     Policy.objects.bulk_update(policies,
                                fields=['loan_id'])
     print('done updating total_policy_premium_collected ...')
-
-
-def process_new_loans(new_loans):
-    save_new_loans(new_loans)
-
-
-def process_repayments(repayments):
-    save_repayments(repayments)
-    print(f'Done saving repayments')
-
-
-def process_closed_loans(closed_loans):
-    update_closed_loans(closed_loans)
-
-
-def process_claims_from_fineract(written_off_loans):
-    create_claims_for_written_off_loans(written_off_loans)
 
 
 DAYS_TO_LAPSE_POLICY_FOR_NON_PREMIUM_PAYMENT: Final = 60
@@ -503,8 +485,15 @@ def update_closed_loans(closed_loans):
             policy.policy_status = map_closure_reason(loan["closed_reason"])
             policy.closed_date = loan["closed_date"]
             policy_details = policy.policy_details or {}
-            policy_details['current_outstanding_balance'] = float(loan["current_outstanding_balance"])
-            policy_details['total_policy_premium_collected'] = float(loan["total_policy_premium_collected"])
+            print(f'db policy details, premium {policy_number}, {policy_details}')
+            outstanding_balance = float(loan["current_outstanding_balance"])
+            total_policy_premium_collected = float(loan["total_policy_premium_collected"])
+            print(f'balance Type: {type(outstanding_balance)}, policy {policy_number}')
+            print(f' premium Type: {type(total_policy_premium_collected)}, policy {policy_number}')
+            print(f'outstanding type {outstanding_balance}:: total {total_policy_premium_collected}')
+            policy_details["current_outstanding_balance"] = outstanding_balance
+            policy_details["total_policy_premium_collected"] = total_policy_premium_collected
+            print(f'details {policy_details}')
             policy.policy_details = policy_details
             db_policies.append(policy)
         except Exception as e:
@@ -536,6 +525,10 @@ def extract_policy_and_client_info(loan):
     policy_provider_type = loan["policy_type"]
     expiry_date = loan["maturityDate"]
     policy_term = loan["tenure"]
+    outstanding_balance = round(float(loan.get("total_policy_premium_collected", 0)), 2)
+    collected = round(float(loan.get("total_policy_premium_collected", 0)), 2)
+    installment = round(float(loan.get("instalment_amount", 0)))
+    schedule = round(float(loan.get("total_loan_schedule", 0)), 2)
     policy = {
         "policy_type": 1,
         "insurer": 1 if policy_provider_type == "Internal Credit Life" else 2,
@@ -562,10 +555,10 @@ def extract_policy_and_client_info(loan):
         "policy_type_id": loan.get("policy_type_id", ""),
         "policy_details": {
             "binder_fees": calculate_binder_fees_amount(premium),
-            "total_loan_schedule": loan.get("total_loan_schedule") or "0",
-            "total_policy_premium_collected": loan.get("total_policy_premium_collected"),
-            "current_outstanding_balance": loan.get("current_outstanding_balance") or 0,
-            "installment_amount": loan.get("instalment_amount") or 0,
+            "total_loan_schedule": schedule,
+            "total_policy_premium_collected": collected,
+            "current_outstanding_balance": outstanding_balance,
+            "installment_amount": installment,
         }
     }
     client = {
@@ -603,13 +596,20 @@ def create_policy(loan, is_update: bool = False, old_policy=None):
         loan["policy_type_id"] = policy_type_id
     if is_update:
         premium = round(float(loan.get("premium") or 0), 2)
+        total_policy_premium_collected = round(float(loan.get("total_policy_premium_collected") or 0), 2)
+        current_outstanding_balance = round(float(loan.get("current_outstanding_balance") or 0), 2)
+        schedule = round((float(loan.get("total_loan_schedule", "") or 0)), 2)
+        print(f'collected {total_policy_premium_collected}')
+        print(f'outstanding {current_outstanding_balance}')
+        print(f'scheduled {schedule}')
         policy_details = {
             "binder_fees": calculate_binder_fees_amount(premium),
-            "total_loan_schedule": loan.get("total_loan_schedule", ""),
-            "total_policy_premium_collected": loan.get("total_policy_premium_collected"),
-            "current_outstanding_balance": loan.get("current_outstanding_balance") or 0,
+            "total_loan_schedule": schedule,
+            "total_policy_premium_collected": total_policy_premium_collected,
+            "current_outstanding_balance": current_outstanding_balance,
             "installment_amount": loan.get("instalment_amount") or 0,
         }
+        print(f'policy details {policy_details}')
         old_policy.policy_details = policy_details
         old_policy.save()
         return
@@ -628,9 +628,14 @@ def save_repayments(repayments):
             policy = Policy.objects.filter(policy_number=policy_number).first()
             if policy is not None:
                 policy_details = policy.policy_details
-                policy_details["total_policy_premium_collected"] = repayment.get("total_policy_premium_collected"),
-                policy_details["current_outstanding_balance"] = repayment.get("current_outstanding_balance") or 0,
+                collected = round(float(repayment.get("total_policy_premium_collected")), 2)
+                outstanding = round(float(repayment.get("current_outstanding_balance") or 0), 2)
+                print(f'collected repayment {collected}')
+                print(f'outstanding  repayment {outstanding}')
+                policy_details["total_policy_premium_collected"] = collected,
+                policy_details["current_outstanding_balance"] = outstanding
                 policy.policy_details = policy_details
+                print(f'repayment policy details {policy_details}')
                 policy.save()
             repayment_details = extract_repayment_details(repayment)
             serializer = PremiumPaymentSerializer(
