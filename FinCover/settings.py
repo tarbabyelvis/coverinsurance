@@ -175,16 +175,16 @@ REST_FRAMEWORK = {
 # }
 
 # LOCAL
-DATABASES = {
-    "default": {
-        "ENGINE": "django_tenants.postgresql_backend",
-        "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
-        "USER": os.getenv("DATABASE_USER", "postgres"),
-        "PASSWORD": os.getenv("DATABASE_PASSWORD", "postgres"),
-        "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
-        "PORT": os.getenv("DATABASE_PORT", 5432),
-    },
-}
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django_tenants.postgresql_backend",
+#         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
+#         "USER": os.getenv("DATABASE_USER", "postgres"),
+#         "PASSWORD": os.getenv("DATABASE_PASSWORD", "postgres"),
+#         "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
+#         "PORT": os.getenv("DATABASE_PORT", 5432),
+#     },
+# }
 # DEV
 # DATABASES = {
 #     "default": {
@@ -197,16 +197,16 @@ DATABASES = {
 #     },
 # }
 # PROD
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django_tenants.postgresql_backend",
-#         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
-#         "USER": os.getenv("DATABASE_USER", "St6ye3_3e4T6"),
-#         "PASSWORD": os.getenv("DATABASE_PASSWORD", "TXRKjQNRJOq2WmUA"),
-#         "HOST": os.getenv("DATABASE_HOST", "prod-core-pg.cluster-clzcsbthrzqz.eu-central-1.rds.amazonaws.com"),
-#         "PORT": os.getenv("DATABASE_PORT", 5432),
-#     },
-# }
+DATABASES = {
+    "default": {
+        "ENGINE": "django_tenants.postgresql_backend",
+        "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
+        "USER": os.getenv("DATABASE_USER", "St6ye3_3e4T6"),
+        "PASSWORD": os.getenv("DATABASE_PASSWORD", "TXRKjQNRJOq2WmUA"),
+        "HOST": os.getenv("DATABASE_HOST", "prod-core-pg.cluster-clzcsbthrzqz.eu-central-1.rds.amazonaws.com"),
+        "PORT": os.getenv("DATABASE_PORT", 5432),
+    },
+}
 
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 
@@ -337,33 +337,33 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 # DEV
-# SUPABASE_TOKEN = os.getenv(
-#     "SUPABASE_TOKEN",
-#     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHlsc3hla211Ymh6bnFuYWttIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NTkzNTIyMTEsImV4cCI6MTk3NDkyODIxMX0.LDLbwoiUEs9x0pRF1bdFtxzlzTzv9qWu_j8rzro-mtk",
-# )
-# SUPABASE_URL = os.getenv(
-#     "SUPABASE_URL", "https://judylsxekmubhznqnakm.functions.supabase.co"
-# )
-# SUPABASE_POSTGREST_URL = os.getenv(
-#     "SUPABASE_URL", "https://judylsxekmubhznqnakm.supabase.co"
-# )
-# SUPABASE_PROJECTID = os.getenv("SUPABASE_PROJECTID", "judylsxekmubhznqnakm")
-# SUPABASE_REST_URL = os.getenv(
-#     "SUPABASE_REST_URL", "https://judylsxekmubhznqnakm.supabase.co"
-# )
-
-# PROD
 SUPABASE_TOKEN = os.getenv(
     "SUPABASE_TOKEN",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhtc3BsaWJjZW11ZmhkeWV5dWdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NjIxMTA1MTYsImV4cCI6MTk3NzY4NjUxNn0.zWTZ9FUUmXglACrYicbkRfhJXgvkvvPTZSQdC4MEWdo",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHlsc3hla211Ymh6bnFuYWttIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NTkzNTIyMTEsImV4cCI6MTk3NDkyODIxMX0.LDLbwoiUEs9x0pRF1bdFtxzlzTzv9qWu_j8rzro-mtk",
 )
 SUPABASE_URL = os.getenv(
-    "SUPABASE_URL", "https://xmsplibcemufhdyeyugm.functions.supabase.co"
+    "SUPABASE_URL", "https://judylsxekmubhznqnakm.functions.supabase.co"
 )
 SUPABASE_POSTGREST_URL = os.getenv(
-    "SUPABASE_URL", "https://xmsplibcemufhdyeyugm.supabase.co"
+    "SUPABASE_URL", "https://judylsxekmubhznqnakm.supabase.co"
 )
-SUPABASE_PROJECTID = os.getenv("SUPABASE_PROJECTID", "xmsplibcemufhdyeyugm")
+SUPABASE_PROJECTID = os.getenv("SUPABASE_PROJECTID", "judylsxekmubhznqnakm")
 SUPABASE_REST_URL = os.getenv(
-    "SUPABASE_REST_URL", "https://xmsplibcemufhdyeyugm.supabase.co"
+    "SUPABASE_REST_URL", "https://judylsxekmubhznqnakm.supabase.co"
 )
+
+# PROD
+# SUPABASE_TOKEN = os.getenv(
+#     "SUPABASE_TOKEN",
+#     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhtc3BsaWJjZW11ZmhkeWV5dWdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NjIxMTA1MTYsImV4cCI6MTk3NzY4NjUxNn0.zWTZ9FUUmXglACrYicbkRfhJXgvkvvPTZSQdC4MEWdo",
+# )
+# SUPABASE_URL = os.getenv(
+#     "SUPABASE_URL", "https://xmsplibcemufhdyeyugm.functions.supabase.co"
+# )
+# SUPABASE_POSTGREST_URL = os.getenv(
+#     "SUPABASE_URL", "https://xmsplibcemufhdyeyugm.supabase.co"
+# )
+# SUPABASE_PROJECTID = os.getenv("SUPABASE_PROJECTID", "xmsplibcemufhdyeyugm")
+# SUPABASE_REST_URL = os.getenv(
+#     "SUPABASE_REST_URL", "https://xmsplibcemufhdyeyugm.supabase.co"
+# )

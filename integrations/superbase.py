@@ -108,15 +108,17 @@ def loan_transaction(tenant_id, payload):
 def __fetch_data(tenant_id, payload, uri, max_retries=3):
     attempt = 0
     status = 0
+    message = "Failed"
+    data = None
     while attempt < max_retries:
         response = __make_request(tenant_id, payload, uri)
-        status, data = __process_response(response)
-        if status == 200:
-            return status, data
+        status, message, data = __process_response(response)
+        if status == 200 or status == 201:
+            return status, message, data
         else:
             attempt += 1
             print(f'attempt {attempt} for payload {json.dumps(payload)}')
-    return status, None
+    return status,message, data
 
 
 def __make_request(tenant_id, payload, uri):
@@ -140,22 +142,26 @@ def __process_response(response):
 
     if isinstance(response_json, dict):
         message = response_json.get("message")
-        if isinstance(message, dict) and message.get("result") == 200 or message.get("result") == 201:
-            return message.get("result"), message.get("data")
-        else:
-            result = message.get("result") if isinstance(message, dict) else None
-            return result, None
+        print(f'message: {message}')
+        if isinstance(message, dict) and is_successful_response(message):
+            return message.get("result"), message.get("message"), message.get("data")
+        result = message.get("result") if isinstance(message, dict) else None
+        message = message.get("message")
+        return result, message, None
     else:
         print("Response JSON is not a dictionary")
-        return 0, None
+        return 0, "Failed", None
 
 
 def __insert_data(data, table_name):
-    status = 0
     response = supabase.table(table_name).insert(data).execute()
     print(f'response: {response}')
-    status, data = __process_response(response)
+    status, message, data = __process_response(response)
     print(f'response status: {status} :: data: {data}')
     if status == 201:
-        return status, data
-    return status, None
+        return status, message, data
+    return status, "Failed", None
+
+
+def is_successful_response(message):
+    return message.get("result") in [200, 201, 100]
