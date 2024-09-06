@@ -1,24 +1,22 @@
 import logging
+from datetime import datetime
 
+from django.db.models import Q
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from core.http_response import HTTPResponse
 from rest_framework.views import APIView
-from drf_yasg import openapi
+from urllib3 import request
+
 from claims.models import Claim
-from drf_yasg.utils import swagger_auto_schema
-from core.utils import CustomPagination, is_valid_date
-from integrations.superbase import loan_transaction
+from core.http_response import HTTPResponse
+from core.utils import CustomPagination
 from .serializers import ClaimSerializer
-from rest_framework import status
-from datetime import datetime
-from django.db.models import Q
-from django.shortcuts import get_object_or_404
-from django.http import Http404
-
-from .services import receipt_claim_repayment, process_claim_payment
-
-#from .services import process_claim_repayment
+from .services import process_claim_payment, process_retrenchment_claim
 
 logger = logging.getLogger(__name__)
 
@@ -238,3 +236,22 @@ class AddRepayment(APIView):
             process_claim_payment(tenant_id, claim_id)
 
 
+class RetrenchmentClaimAPIView(APIView):
+    def get(self, request, pk):
+        try:
+            #tenant_id = str(request.tenant).replace("-", "_")
+            tenant_id = "fin_za_onlineloans"
+            number_of_months = int(request.GET.get('number_of_months'))
+            print(f'retrenchment processing ...')
+            process_retrenchment_claim(tenant_id, pk, number_of_months)
+            return HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+                data={},
+            )
+        except Exception as e:
+            print(e)
+            return HTTPResponse.error(
+                message="Request failed",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )

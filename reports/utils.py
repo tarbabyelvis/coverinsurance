@@ -105,7 +105,7 @@ def calculate_total(*amounts):
 def generate_excel_report_util(policy_payments, from_date, to_date, entity):
     wb = openpyxl.Workbook()
     ws_front_sheet = wb.active
-    ws_front_sheet.title = "Borderaux Report"
+    ws_front_sheet.title = "CPI Template"
     ws_policies_sheet = wb.create_sheet(title="Data")
     timestamp = date.today().strftime("%Y%m%d")
     client_identifier = get_client_identifier(entity)

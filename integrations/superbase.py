@@ -59,20 +59,27 @@ def query_closed_loans(tenant_id, start_date, end_date):
     return __fetch_data(tenant_id, json_payload, "/query-report")
 
 
-def suspend_debicheck(tenant_id, loan_id:str, product_id:int):
+def query_loan(tenant_id, loan_id: str):
     json_payload = {
-            "loanId": loan_id,
-            "productId": product_id
+        "loan_id": loan_id
+    }
+    return __fetch_data(tenant_id, json_payload, "/query-loan")
+
+
+def suspend_debicheck(tenant_id, loan_id: str):
+    print('requesting to suspend debicheck...')
+    json_payload = {
+        "loanId": loan_id
     }
     return __fetch_data(tenant_id, json_payload, "/intecon-suspend-kickoff")
 
 
-def activate_debicheck(tenant_id, loan_id:str, product_id:int):
+def activate_debicheck(tenant_id, loan_id: str):
     json_payload = {
-            "loanId": loan_id,
-            "productId": product_id
+        "loanId": loan_id
     }
     return __fetch_data(tenant_id, json_payload, "/intecon-activate-kickoff")
+
 
 def query_written_off_loans(tenant_id, start_date, end_date):
     json_payload = {
@@ -89,8 +96,8 @@ def query_written_off_loans(tenant_id, start_date, end_date):
 
 
 def send_sms_messages(messages):
-    # if len(messages) == 0:
-    #     return None
+    if len(messages) == 0:
+        return None
     return __insert_data(data=messages, table_name='comms_logs')
 
 
@@ -98,8 +105,7 @@ def loan_transaction(tenant_id, payload):
     return __fetch_data(tenant_id, payload, "/loan-transaction")
 
 
-def __fetch_data(tenant_id, payload, uri):
-    max_retries = 3
+def __fetch_data(tenant_id, payload, uri, max_retries=3):
     attempt = 0
     status = 0
     while attempt < max_retries:

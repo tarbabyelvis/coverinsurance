@@ -630,12 +630,9 @@ def save_repayments(repayments):
                 policy_details = policy.policy_details
                 collected = round(float(repayment.get("total_policy_premium_collected")), 2)
                 outstanding = round(float(repayment.get("current_outstanding_balance") or 0), 2)
-                print(f'collected repayment {collected}')
-                print(f'outstanding  repayment {outstanding}')
                 policy_details["total_policy_premium_collected"] = collected,
                 policy_details["current_outstanding_balance"] = outstanding
                 policy.policy_details = policy_details
-                print(f'repayment policy details {policy_details}')
                 policy.save()
             repayment_details = extract_repayment_details(repayment)
             serializer = PremiumPaymentSerializer(

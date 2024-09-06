@@ -344,6 +344,9 @@ CELERY_BEAT_SCHEDULE = {
 # SUPABASE_URL = os.getenv(
 #     "SUPABASE_URL", "https://judylsxekmubhznqnakm.functions.supabase.co"
 # )
+# SUPABASE_POSTGREST_URL = os.getenv(
+#     "SUPABASE_URL", "https://judylsxekmubhznqnakm.supabase.co"
+# )
 # SUPABASE_PROJECTID = os.getenv("SUPABASE_PROJECTID", "judylsxekmubhznqnakm")
 # SUPABASE_REST_URL = os.getenv(
 #     "SUPABASE_REST_URL", "https://judylsxekmubhznqnakm.supabase.co"
