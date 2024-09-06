@@ -674,7 +674,7 @@ def __fetch_new_policies_from_fin_connect(start_date: date, end_date: date, tena
     print("Fetching new loans")
     new_loans = []
     try:
-        response_status, data = query_new_loans(tenant_id, start_date, end_date)
+        response_status, _, data = query_new_loans(tenant_id, start_date, end_date)
         print(f'response_status: {response_status}:: data: {data}')
         return data
     except Exception as e:
@@ -687,7 +687,7 @@ def __fetch_loan_repayments_from_fin_connect(start_date: date, end_date: date, t
     print("Fetching loan repayments")
     collections = []
     try:
-        response_status, data = query_repayments(tenant_id, start_date, end_date)
+        response_status, _, data = query_repayments(tenant_id, start_date, end_date)
         print(f'response_status: {response_status}:: data: {data}')
         return data
     except Exception as e:
@@ -700,7 +700,7 @@ def __fetch_closed_loans_from_fin_connect(start_date: date, end_date: date, tena
     print("Fetching closed loans")
     closed_loans = []
     try:
-        response_status, data = query_closed_loans(tenant_id, start_date, end_date)
+        response_status, _, data = query_closed_loans(tenant_id, start_date, end_date)
         print(f'response_status: {response_status}:: data: {data}')
         return data
     except Exception as e:
@@ -713,7 +713,7 @@ def __fetch_premium_adjustments_from_fin_connect(tenant_id):
     print("Fetching premium loans")
     loans = []
     try:
-        response_status, data = query_premium_adjustments(tenant_id)
+        response_status, _, data = query_premium_adjustments(tenant_id)
         print(f'response_status: {response_status}:: data: {data}')
         return data
     except Exception as e:
@@ -754,7 +754,7 @@ def __fetch_written_off_loans_from_fin_connect(start_date: date, end_date: date,
     print("Fetching written off loans")
     written_off_loans = []
     try:
-        response_status, data = query_written_off_loans(tenant_id, start_date, end_date)
+        response_status, _, data = query_written_off_loans(tenant_id, start_date, end_date)
         print(f'response_status: {response_status}:: data: {data}')
         return data
     except Exception as e:
@@ -767,7 +767,7 @@ def __fetch_past_loans_due(tenant_id):
     print("Fetching loans past due")
     loans_past = []
     try:
-        response_status, data = query_loans_past_due(tenant_id)
+        response_status, _, data = query_loans_past_due(tenant_id)
         print(f'response_status: {response_status}')
         return data
     except Exception as e:
