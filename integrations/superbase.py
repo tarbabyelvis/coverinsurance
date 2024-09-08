@@ -105,7 +105,7 @@ def loan_transaction(tenant_id, payload):
     return __fetch_data(tenant_id, payload, "/loan-transaction")
 
 
-def __fetch_data(tenant_id, payload, uri, max_retries=3):
+def __fetch_data(tenant_id, payload, uri, max_retries=2):
     attempt = 0
     status = 0
     message = "Failed"
@@ -142,7 +142,6 @@ def __process_response(response):
 
     if isinstance(response_json, dict):
         message = response_json.get("message")
-        print(f'message: {message}')
         if isinstance(message, dict) and is_successful_response(message):
             return message.get("result"), message.get("message"), message.get("data")
         result = message.get("result") if isinstance(message, dict) else None
