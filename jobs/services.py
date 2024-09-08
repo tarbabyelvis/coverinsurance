@@ -394,7 +394,7 @@ def fetch_and_process_fin_connect_data(start_date: date, end_date: date, finerac
     print(f'Done processing fineract data fetch for {start_date} to {end_date} and tenant {fineract_org_id}')
 
 
-def process_adjustments(loans):
+def process_adjustments(loans: list):
     policies = []
     for loan in loans:
         try:
@@ -553,6 +553,7 @@ def extract_policy_and_client_info(loan):
         "is_legacy": loan.get("is_legacy"),
         "sub_scheme": loan.get("sub_scheme") or "",
         "policy_type_id": loan.get("policy_type_id", ""),
+        "loan_id": loan.get("loanId", ""),
         "policy_details": {
             "binder_fees": calculate_binder_fees_amount(premium),
             "total_loan_schedule": schedule,
@@ -599,9 +600,6 @@ def create_policy(loan, is_update: bool = False, old_policy=None):
         total_policy_premium_collected = round(float(loan.get("total_policy_premium_collected") or 0), 2)
         current_outstanding_balance = round(float(loan.get("current_outstanding_balance") or 0), 2)
         schedule = round((float(loan.get("total_loan_schedule", "") or 0)), 2)
-        print(f'collected {total_policy_premium_collected}')
-        print(f'outstanding {current_outstanding_balance}')
-        print(f'scheduled {schedule}')
         policy_details = {
             "binder_fees": calculate_binder_fees_amount(premium),
             "total_loan_schedule": schedule,
@@ -609,7 +607,6 @@ def create_policy(loan, is_update: bool = False, old_policy=None):
             "current_outstanding_balance": current_outstanding_balance,
             "installment_amount": loan.get("instalment_amount") or 0,
         }
-        print(f'policy details {policy_details}')
         old_policy.policy_details = policy_details
         old_policy.save()
         return
@@ -714,7 +711,7 @@ def __fetch_premium_adjustments_from_fin_connect(tenant_id):
     loans = []
     try:
         response_status, _, data = query_premium_adjustments(tenant_id)
-        print(f'response_status: {response_status}:: data: {data}')
+        print(f'response_status: {response_status}')
         return data
     except Exception as e:
         print("Something went wrong fetching adjustments loans, retrying")

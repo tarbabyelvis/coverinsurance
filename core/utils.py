@@ -144,7 +144,7 @@ def get_initial_letter(word: str):
 
 
 def get_loan_id_from_legacy_loan(loan_external_id: str):
-    legacy_loan_id = loan_external_id.split('_')[1]
+    legacy_loan_id = loan_external_id.split('_')[1] if loan_external_id is not None and '_' in loan_external_id else loan_external_id
     return legacy_loan_id
 
 
