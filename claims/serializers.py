@@ -3,6 +3,7 @@ from datetime import datetime
 from rest_framework import serializers
 
 from config.models import ClaimType, DocumentType, IdDocumentType
+from core.enums import ClaimStatus
 from policies.models import Policy
 from policies.serializers import PolicySerializer
 from .models import Claim, ClaimDocument
@@ -28,9 +29,9 @@ class ClaimDocumentSerializer(serializers.ModelSerializer):
 
 
 class ClaimSerializer(serializers.ModelSerializer):
-    claim_type = ClaimTypeSerializer()
+    claim_type = serializers.PrimaryKeyRelatedField(queryset=ClaimType.objects.all())
     claim_document = ClaimDocumentSerializer(many=True, required=False)
-    policy = PolicySerializer(required=False)
+    policy = serializers.PrimaryKeyRelatedField(queryset=Policy.objects.all())
 
     class Meta:
         model = Claim
@@ -67,6 +68,26 @@ class ClaimSerializer(serializers.ModelSerializer):
                 )
         if 'rejected_date' in data and not data['rejected_date']:
             data['rejected_date'] = None
+        if 'claim_assessment_date' in data and not data['claim_assessment_date']:
+            data['claim_assessment_date'] = None
+        if 'claim_paid_date' in data and not data['claim_paid_date']:
+            data['claim_paid_date'] = None
+        if 'repudiated_date' in data and not data['repudiated_date']:
+            data['repudiated_date'] = None
+        if "claim_status" in data:
+            if "claim_status" in data:
+                claim_status = data["claim_status"]
+                if isinstance(claim_status, str):
+                    valid_status = next(
+                        (key for key, label in ClaimStatus.choices if label == claim_status),
+                        None
+                    )
+                    if valid_status:
+                        data["claim_status"] = valid_status
+                else:
+                    raise serializers.ValidationError(
+                        {"claim_status": "Invalid claim status"})
+
         return super().to_internal_value(data)
 
     def create(self, validated_data):
