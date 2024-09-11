@@ -7,16 +7,15 @@ from django.shortcuts import get_object_or_404
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.views import APIView
-from urllib3 import request
 
 from claims.models import Claim
 from core.http_response import HTTPResponse
 from core.utils import CustomPagination
+from policies.models import Policy
+from policies.serializers import PolicySerializer
 from .serializers import ClaimSerializer
-from .services import process_claim_payment, process_retrenchment_claim
+from .services import process_claim_payment, process_claim
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +32,9 @@ class ClaimCreateAPIView(APIView):
         },
     )
     def post(self, request):
+        data = request.data
         print(f'request: {request.data}')
-        serializer = ClaimSerializer(data=request.data)
+        serializer = ClaimSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return HTTPResponse.success(
@@ -112,11 +112,12 @@ class ClaimCreateAPIView(APIView):
         serializer = ClaimSerializer(result_page, many=True)
         claims_list = []
         for claim in serializer.data:
+            print(f'claim {claim}')
             claims_list.append({
                 "id": claim["id"],
                 "name": claim["name"],
-                "policy": claim["policy"]["id"],
-                "claim_type": claim["claim_type"]["id"],
+                "policy": claim["policy"],
+                "claim_type": claim["claim_type"],
                 "claim_document": claim["claim_document"],
                 "claim_status": claim['claim_status'],
                 "claim_assessed_by": claim['claim_assessed_by'],
@@ -186,8 +187,10 @@ class ClaimDetailAPIView(APIView):
             return HTTPResponse.error(
                 message="Claim not found", status_code=status.HTTP_404_NOT_FOUND
             )
-
-        serializer = ClaimSerializer(claim, data=request.data)
+        data = request.data
+        policy = get_object_or_404(Policy, pk=data["policy"])
+        # data["policy"] = policy
+        serializer = ClaimSerializer(claim, data=data)
         if serializer.is_valid():
             serializer.save()
             return HTTPResponse.success(
@@ -221,29 +224,13 @@ class ClaimDetailAPIView(APIView):
         )
 
 
-class AddRepayment(APIView):
-    permission_classes = (IsAuthenticated,)
-
-    def post(self, request, *args, **kwargs):
-        if not request.data:
-            return Response(
-                {"error": "missing parameters"}, status=status.HTTP_400_BAD_REQUEST
-            )
-        else:
-            tenant_id = str(request.tenant).replace("-", "_")
-            data = request.data
-            claim_id = data["claim_id"]
-            process_claim_payment(tenant_id, claim_id)
-
-
-class RetrenchmentClaimAPIView(APIView):
+class ProcessClaimAPIView(APIView):
     def get(self, request, pk):
         try:
-            #tenant_id = str(request.tenant).replace("-", "_")
+            # tenant_id = str(request.tenant).replace("-", "_")
             tenant_id = "fin_za_onlineloans"
-            number_of_months = int(request.GET.get('number_of_months'))
-            print(f'retrenchment processing ...')
-            process_retrenchment_claim(tenant_id, pk, number_of_months)
+            print(f'claim processing ...')
+            process_claim(tenant_id, pk)
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
@@ -253,5 +240,25 @@ class RetrenchmentClaimAPIView(APIView):
             print(e)
             return HTTPResponse.error(
                 message="Request failed",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class ApproveClaimAPIView(APIView):
+    def get(self, request, pk):
+        try:
+            # tenant_id = str(request.tenant).replace("-", "_")
+            tenant_id = "fin_za_onlineloans"
+            print(f'claim approval ...')
+            process_claim_payment(tenant_id, pk)
+            return HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+                data={},
+            )
+        except Exception as e:
+            print(e)
+            return HTTPResponse.error(
+                message="Request failed:: {}".format(e),
                 status_code=status.HTTP_400_BAD_REQUEST
             )

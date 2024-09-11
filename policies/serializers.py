@@ -94,7 +94,8 @@ class PolicySerializer(serializers.ModelSerializer):
 
     def to_internal_value(self, data):
         # Convert QueryDict to a mutable dictionary
-        mutable_data = data.copy()
+        print(f'policy data coming {data}')
+        mutable_data = data
         if "client" in mutable_data and isinstance(
                 mutable_data["client"], ClientDetails
         ):

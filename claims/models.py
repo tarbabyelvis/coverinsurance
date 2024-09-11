@@ -4,6 +4,9 @@ from core.enums import ClaimStatus, PaymentStatus
 from core.models import BaseModel
 from auditlog.registry import auditlog
 from policies.models import Policy
+from django.utils import timezone
+
+from users.models import User
 
 
 class Claim(BaseModel):
@@ -64,19 +67,45 @@ class ClaimDocument(BaseModel):
 
 
 class Payment(BaseModel):
-    transaction_date = models.DateField(null=True, blank=True)
+    transaction_date = models.DateTimeField(null=True, blank=True)
     amount = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True)
-    receipt_number = models.CharField(max_length=50, null=True, blank=True, unique=True)
-    bank_account = models.CharField(max_length=50, null=True, blank=True, unique=True)
-    check_number = models.CharField(max_length=50, null=True, blank=True)
-    payment_type_id = models.IntegerField()
-    transaction_type = models.CharField(max_length=50, null=True, blank=True, unique=True)
-    notes = models.CharField(max_length=50, null=True, blank=True, unique=True)
+    transaction_type = models.CharField(max_length=50, null=True, blank=True)
+    notes = models.CharField(max_length=50, null=True, blank=True)
     status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
+
+
+class ClaimTracker(models.Model):
+    claim = models.ForeignKey(
+        Claim, on_delete=models.CASCADE, related_name="claim"
+    )
+    notes = models.TextField(null=True, blank=True)
+    status = models.IntegerField(default=5)
+    picked_by = models.ForeignKey(
+        User,
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="fin_cover_user",
+    )
+    picked_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(default=timezone.now)
+    submission_date = models.DateTimeField(null=True, blank=True)
+    assessment_date = models.DateTimeField(null=True, blank=True)
+    changes_made = models.TextField(null=True, blank=True)
+    objects = models.Manager()
+
+    class Meta:
+        verbose_name = "Claim Tracker"
+        verbose_name_plural = "Claim Tracker"
+
+    def __str__(self):
+        return "{}".format(self.claim.id)
 
 
 # Register models for audit
 auditlog.register(Claim)
 auditlog.register(Payment)
 auditlog.register(ClaimDocument)
+auditlog.register(ClaimTracker)

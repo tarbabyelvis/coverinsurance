@@ -1,45 +1,65 @@
 from datetime import datetime, date, timedelta
-from pyexpat.errors import messages
 
 from rest_framework.exceptions import NotFound
 
 from claims.models import Claim, Payment
 from claims.serializers import ClaimSerializer
 from config.models import PaymentAccount
+from core.enums import ClaimStatus
 from core.utils import serialize_dates
 from integrations.superbase import loan_transaction, suspend_debicheck, query_loan
+from policies.models import Policy
 
 
-def process_retrenchment_claim(tenant_id, claim_id, number_of_months):
+DEATH = 1
+RETRENCHMENT = 34
+DISABILITY = 35
+
+def process_claim(tenant_id, claim_id):
     try:
         claim = __find_claim_by_id(claim_id)
         claim_serializer = ClaimSerializer(claim)
         claim_data = claim_serializer.data
-        policy = get_policy_from_claim_id(claim_data)
-        loan_id: str = f"{policy['loan_id']}"
+        print(f'claim :: {claim_data}')
+        claim_type = claim_data['claim_type']
+        loan_id = get_loan_id_from_claim_id(claim_data)
         start_date = claim_data['submitted_date']
-        status, repayment_schedule = find_next_n_months_installments(tenant_id, loan_id, start_date, number_of_months)
+        number_of_months_to_claim = -1 if claim_type == DEATH else 6  # Claim for all the months that were left for death claim otherwise take the months passed
+        print(f'fetching repayment schedule for loan id {loan_id} for claim {claim_id}')
+        status, repayment_schedule = find_next_n_months_installments(tenant_id, loan_id, start_date,
+                                                                     number_of_months_to_claim)
+        print(f'schedule status: {status} :: {repayment_schedule}')
         if status == 200:
-            status, message, data = suspend_debicheck(tenant_id=tenant_id, loan_id=loan_id)
-            print(f'suspension status {status}, message {message}, suspend data {data}')
-            if status == 200 or message == 'Intecon Contract already suspended':
+            print('successful schedule fetch')
+            if claim_type == RETRENCHMENT:
+                status, message, data = suspend_debicheck(tenant_id=tenant_id, loan_id=loan_id)
+                print(f'suspension status {status}, message {message}, suspend data {data}')
+                if status == 200 or message == 'Intecon Contract already suspended':
+                    total_amount = calculate_total_installment_amount(repayment_schedule)
+                    update_claim_suspension_details(claim, start_date, number_of_months_to_claim, total_amount,
+                                                    repayment_schedule, claim_type)
+            elif claim_type == DEATH:
                 total_amount = calculate_total_installment_amount(repayment_schedule)
-                update_claim_suspension_details(claim, start_date, number_of_months, total_amount)
+                update_claim_suspension_details(claim, start_date, number_of_months_to_claim, total_amount,
+                                                repayment_schedule, claim_type)
         else:
             print('no installments found')
     except Exception as e:
         print(e)
 
 
-def update_claim_suspension_details(claim, start_date, number_of_months, total_amount):
+def update_claim_suspension_details(claim, start_date, number_of_months, total_amount, repayment_schedule, claim_type):
     claim_details = claim.claim_details or {}
     claim_details['debicheck_suspended'] = True
     claim_details['debicheck_suspension_from'] = start_date
-    debicheck_expiry_date = calculate_debicheck_expiry_date(start_date, number_of_months)
-    claim_details['debicheck_suspension_to'] = debicheck_expiry_date
+    if claim_type == 'Retrenchment':
+        debicheck_expiry_date = calculate_debicheck_expiry_date(start_date, number_of_months)
+        claim_details['debicheck_suspension_to'] = debicheck_expiry_date
     claim_details['retrenchment_amount_claimed'] = total_amount
+    claim_details['repayment_schedule_claimed'] = repayment_schedule
     claim.claim_details = claim_details
     try:
+        claim.claim_status = ClaimStatus.ON_ASSESSMENT
         claim.save()
     except Exception as e:
         print(e)
@@ -48,18 +68,22 @@ def update_claim_suspension_details(claim, start_date, number_of_months, total_a
 def find_next_n_months_installments(tenant_id, loan_id, start_date, number_of_months: int = 6):
     try:
         response_status, message, data = query_loan(tenant_id, loan_id)
+        print(f'response status: {response_status}, message: {message}, data: {data}')
         if response_status == 200:
             periods = data['repaymentSchedule']['periods']
             start_date = parse_date(start_date)
             next_periods = sorted(
                 (p for p in periods if parse_date(p["dueDate"]) > start_date),
                 key=lambda p: parse_date(p["dueDate"])
-            )[:number_of_months]
+            )
+            if number_of_months != -1:
+                next_periods = next_periods[:number_of_months]
             return 200, next_periods
     except Exception as e:
         print("Something went wrong fetching repayment schedule")
         print(e)
-        return 0, []
+
+    return 0, []
 
 
 def calculate_total_installment_amount(repayment_schedule):
@@ -90,83 +114,86 @@ def parse_date_array(date_array):
     return date(year, month, day)
 
 
-def get_policy_from_claim_id(claim):
-    return claim['policy']
+def get_loan_id_from_claim_id(claim):
+    policy_id = claim['policy']
+    policy = Policy.objects.get(id=policy_id)
+    return policy.loan_id
 
 
 def process_claim_payment(tenant_id, claim_id):
     claim = __find_claim_by_id(claim_id)
-    policy = claim.policy
-    loan_id = policy.loan_id
-    claim_amount = claim.claim_amount
+    claim_serializer = ClaimSerializer(claim)
+    claim_data = claim_serializer.data
+    loan_id = get_loan_id_from_claim_id(claim_data)
+    payment_account = get_payment_account_details()
+    claim_amount = claim_data['claim_amount']
     transaction_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    notes = f"Refinance of loan {loan_id} FinCover claim {claim_id}"
     claim_payment = Payment(
         transaction_date=transaction_date,
         amount=claim_amount,
-        receipt_number='',
-        bank_account='',
-        check_number='',
-        payment_type_id='',
-        transaction_type='',
-        notes=''
+        transaction_type='repayment',
+        notes=notes
     )
-    receipt_claim_repayment(tenant_id, loan_id, claim_amount, transaction_date)
+    try:
+        status, message, data = receipt_claim_repayment(
+            tenant_id=tenant_id,
+            loan_id=loan_id,
+            transaction_amount=claim_amount,
+            note=notes,
+            payment_account=payment_account,
+            transaction_date=transaction_date
+        )
+        print(f'receipting status {status}, message {message}, data {data}')
+        if __is_successful(status):
+            claim_payment.status = "SUCCESSFUL"
+            claim_payment.save()
+            return
+        claim_payment.status = "FAILED"
+        claim_payment.save()
+        print(f'failed to make repayment!')
+    except Exception as e:
+        print(e)
+        raise e
+
+
+def __is_successful(response_code):
+    return response_code in [200, 201]
+
+
+def get_payment_account_details():
+    payment_account = PaymentAccount.objects.filter(name='INSURANCE').first()
+    if payment_account is None:
+        raise PaymentAccount.DoesNotExist("Payment account not configured")
+    return payment_account
+
+
+def generate_receipt_number(claim_id, policy_number, transaction_date):
+    return f'{claim_id}_{policy_number}_{transaction_date}'
 
 
 def __find_claim_by_id(claim_id: int):
     claim = Claim.objects.filter(id=claim_id).first()
-    print(f'claim:: {claim}')
     if not claim:
         raise NotFound("Claim with id {} not found".format(claim_id))
     return claim
 
 
-def receipt_claim_repayment(tenant_id, loan_id, transaction_amount, check_number, receipt_number, note):
-    transaction_date = datetime.now().strftime('%Y-%m-%d')
-    payment_account = PaymentAccount.objects.filter(name='INSURANCE').first()
-    if payment_account is None:
-        raise PaymentAccount.DoesNotExist
+def receipt_claim_repayment(tenant_id, loan_id, transaction_amount, note,
+                            payment_account, transaction_date):
+    transaction_date = datetime.strptime(transaction_date, '%Y-%m-%d %H:%M:%S').date().strftime('%Y-%m-%d')
     payment_type_id = payment_account.payment_type_id
-    account_number = payment_account.account_number
-    bank_number = payment_account.bank_number
-    routing_code = payment_account.routing_code
-
-    if (
-            transaction_amount is None
-            or (
-            (
-                    type(transaction_amount) != float
-                    and type(transaction_amount) != int
-            )
-    )
-    ):
-        print("Missing parameters")
-        raise Exception("Missing parameters")
 
     payload = {
         "loanId": loan_id,
-        "paymentTypeId": payment_type_id,
-        "transactionAmount": transaction_amount,
         "transactionDate": transaction_date,
-        "accountNumber": account_number,
-        "checkNumber": check_number,
-        "routingCode": routing_code,
-        "receiptNumber": receipt_number,
-        "bankNumber": bank_number,
         "note": note,
         "transactionType": "repayment",
+        "paymentTypeId": payment_type_id,
+        "transactionAmount": transaction_amount,
+
     }
-    try:
-        status, data = loan_transaction(
-            tenant_id, payload
-        )
-        if status == 200:
-            print(f"Claim Recept response data: {data}")
-            return data
-        return None
-    except Exception as e:
-        print("Something went wrong receipting claim repayment")
-        print(e)
+    return loan_transaction(tenant_id, payload)
 
 
 def create_claim_payment(payment):

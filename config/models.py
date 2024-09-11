@@ -215,10 +215,6 @@ class LoanProduct(models.Model):
 class PaymentAccount(models.Model):
     name = models.CharField(max_length=60)
     payment_type_id = models.IntegerField()
-    account_number = models.CharField(max_length=60)
-    check_number = models.CharField(max_length=60)
-    routing_code = models.CharField(max_length=60)
-    bank_number = models.CharField(max_length=60)
 
 
 class Sms(models.Model):

@@ -102,6 +102,7 @@ def send_sms_messages(messages):
 
 
 def loan_transaction(tenant_id, payload):
+    print(f'sending loan transaction details:: {payload}')
     return __fetch_data(tenant_id, payload, "/loan-transaction")
 
 
