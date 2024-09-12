@@ -15,7 +15,7 @@ from core.utils import CustomPagination
 from policies.models import Policy
 from policies.serializers import PolicySerializer
 from .serializers import ClaimSerializer
-from .services import process_claim_payment, process_claim
+from .services import process_claim_payment, process_claim, receipt_claim_repayment, approve_claim
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +250,26 @@ class ApproveClaimAPIView(APIView):
             # tenant_id = str(request.tenant).replace("-", "_")
             tenant_id = "fin_za_onlineloans"
             print(f'claim approval ...')
+            approve_claim(tenant_id, pk)
+            return HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+                data={},
+            )
+        except Exception as e:
+            print(e)
+            return HTTPResponse.error(
+                message="Request failed:: {}".format(e),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class ReceiptClaimAPIView(APIView):
+    def get(self, request, pk):
+        try:
+            # tenant_id = str(request.tenant).replace("-", "_")
+            tenant_id = "fin_za_onlineloans"
+            print(f'receipt claim ...')
             process_claim_payment(tenant_id, pk)
             return HTTPResponse.success(
                 message="Request Successful",

@@ -6,8 +6,6 @@ from auditlog.registry import auditlog
 from policies.models import Policy
 from django.utils import timezone
 
-from users.models import User
-
 
 class Claim(BaseModel):
     policy = models.ForeignKey(
@@ -81,13 +79,13 @@ class ClaimTracker(models.Model):
     )
     notes = models.TextField(null=True, blank=True)
     status = models.IntegerField(default=5)
-    picked_by = models.ForeignKey(
-        User,
-        on_delete=models.RESTRICT,
-        null=True,
-        blank=True,
-        related_name="fin_cover_user",
-    )
+    # picked_by = models.ForeignKey(
+    #     User,
+    #     on_delete=models.RESTRICT,
+    #     null=True,
+    #     blank=True,
+    #     related_name="fin_cover_user",
+    # )
     picked_at = models.DateTimeField(auto_now=True)
     updated_at = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(default=timezone.now)

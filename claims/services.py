@@ -5,7 +5,7 @@ from rest_framework.exceptions import NotFound
 from claims.models import Claim, Payment
 from claims.serializers import ClaimSerializer
 from config.models import PaymentAccount
-from core.enums import ClaimStatus
+from core.enums import ClaimStatus, PaymentStatus
 from core.utils import serialize_dates
 from integrations.superbase import loan_transaction, suspend_debicheck, query_loan
 from policies.models import Policy
@@ -36,25 +36,18 @@ def process_claim(tenant_id, claim_id):
                 print(f'suspension status {status}, message {message}, suspend data {data}')
                 if status == 200 or message == 'Intecon Contract already suspended':
                     total_amount = calculate_total_installment_amount(repayment_schedule)
-                    update_claim_suspension_details(claim, start_date, number_of_months_to_claim, total_amount,
-                                                    repayment_schedule, claim_type)
+                    update_claim_repayment_schedule_details(claim, total_amount,repayment_schedule)
             elif claim_type == DEATH:
                 total_amount = calculate_total_installment_amount(repayment_schedule)
-                update_claim_suspension_details(claim, start_date, number_of_months_to_claim, total_amount,
-                                                repayment_schedule, claim_type)
+                update_claim_suspension_details(claim, start_date, number_of_months_to_claim, total_amount,claim_type)
         else:
             print('no installments found')
     except Exception as e:
         print(e)
 
 
-def update_claim_suspension_details(claim, start_date, number_of_months, total_amount, repayment_schedule, claim_type):
+def update_claim_repayment_schedule_details(claim, total_amount, repayment_schedule):
     claim_details = claim.claim_details or {}
-    claim_details['debicheck_suspended'] = True
-    claim_details['debicheck_suspension_from'] = start_date
-    if claim_type == 'Retrenchment':
-        debicheck_expiry_date = calculate_debicheck_expiry_date(start_date, number_of_months)
-        claim_details['debicheck_suspension_to'] = debicheck_expiry_date
     claim_details['retrenchment_amount_claimed'] = total_amount
     claim_details['repayment_schedule_claimed'] = repayment_schedule
     claim.claim_details = claim_details
@@ -64,6 +57,20 @@ def update_claim_suspension_details(claim, start_date, number_of_months, total_a
     except Exception as e:
         print(e)
 
+def update_claim_suspension_details(claim, start_date, number_of_months, total_amount, claim_type):
+    claim_details = claim.claim_details or {}
+    claim_details['debicheck_suspended'] = True
+    claim_details['debicheck_suspension_from'] = start_date
+    if claim_type == 'Retrenchment':
+        debicheck_expiry_date = calculate_debicheck_expiry_date(start_date, number_of_months)
+        claim_details['debicheck_suspension_to'] = debicheck_expiry_date
+    claim_details['retrenchment_amount_claimed'] = total_amount
+    claim.claim_details = claim_details
+    try:
+        claim.claim_status = ClaimStatus.APPROVED
+        claim.save()
+    except Exception as e:
+        print(e)
 
 def find_next_n_months_installments(tenant_id, loan_id, start_date, number_of_months: int = 6):
     try:
@@ -95,10 +102,6 @@ def calculate_debicheck_expiry_date(start_date, number_of_months):
     start_date = parse_date(start_date)
     expiry_date = start_date + timedelta(days=number_of_months)
     return serialize_dates(expiry_date)
-
-
-def calculate_total_installments_to_claim(repayment_schedule: list):
-    repayment_schedule = repayment_schedule or []
 
 
 def parse_date(date_passed):
@@ -146,10 +149,10 @@ def process_claim_payment(tenant_id, claim_id):
         )
         print(f'receipting status {status}, message {message}, data {data}')
         if __is_successful(status):
-            claim_payment.status = "SUCCESSFUL"
+            claim_payment.status = PaymentStatus.SUCCESSFUL
             claim_payment.save()
             return
-        claim_payment.status = "FAILED"
+        claim_payment.status = PaymentStatus.FAILED
         claim_payment.save()
         print(f'failed to make repayment!')
     except Exception as e:
@@ -198,3 +201,8 @@ def receipt_claim_repayment(tenant_id, loan_id, transaction_amount, note,
 
 def create_claim_payment(payment):
     payment.save()
+
+def approve_claim(tenant_id, claim_id):
+    claim = __find_claim_by_id(claim_id)
+    claim.claim_status= ClaimStatus.APPROVED
+    claim.save()

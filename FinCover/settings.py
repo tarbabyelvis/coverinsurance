@@ -55,6 +55,7 @@ SHARED_APPS = [
     "django_tenants",
     "corsheaders",
     "rest_framework",
+    # "users",
     "tenants",
     "auditlog",
     "drf_yasg",
@@ -66,8 +67,7 @@ SHARED_APPS = [
     "complaints",
     "config",
     "authentication",
-    "rest_framework.authtoken",
-    "users"
+    "rest_framework.authtoken"
 ]
 
 TENANT_APPS = [
