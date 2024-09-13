@@ -1,4 +1,8 @@
+from dateutil.utils import today
 from django.db.models import Q
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Cast
+from django.forms import DateField
 
 from FinCover.settings import AWS_DOCUMENT_TENANT
 from core import s3storage
@@ -11,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_document_types():
-    return list(DocumentType.objects.filter().values("id","document_type"))
+    return list(DocumentType.objects.filter().values("id", "document_type"))
 
 
 async def save_claim_document(
@@ -91,7 +95,7 @@ def save_claim_document_blocking(claim, filename, doc_type, loan_file, content_t
     if collection_date is not None:
         collection_date = datetime.strptime(collection_date, "%Y-%m-%d").date()
 
-    claim_doc = ClientDocuments.objects.create(
+    claim_doc = ClaimDocument.objects.create(
         client_number=claim.client_id_number,
         doc_type_id=doc_type,
         document=filename,
@@ -132,7 +136,7 @@ def get_claim_documents(claim_id, filter_params=None, client_number=None):
             filters &= ~Q(doc_type__category="kyc_document")
         filters &= Q(id=doc["client_documents"], deleted_at__isnull=True)
         documents = (
-            ClientDocuments.objects.order_by("doc_type__name", "-created")
+            ClaimDocument.objects.order_by("doc_type__name", "-created")
             .filter(filters)
             .values(
                 "id",
@@ -214,3 +218,10 @@ def get_kyc_documents(client_id_number):
         )
     )
     return previous_documents
+
+
+def fetch_claims_needing_review():
+    date_today = datetime.today().date()
+    return Claim.objects.annotate(
+        check_date=Cast(KeyTextTransform('debicheck_suspension_from', 'claim_details'), DateField())
+    ).filter(claim_status='PAID', debicheck_suspension_from=date_today)

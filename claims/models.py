@@ -47,6 +47,7 @@ class Claim(BaseModel):
     claim_repudiated = models.BooleanField(default=False)
     repudiated_date = models.DateField(null=True, blank=True)
     repudiated_reason = models.CharField(max_length=255, null=True, blank=True)
+    repudiated_by = models.CharField(max_length=255, null=True, blank=True)
     submitted_to_insurer = models.BooleanField(default=False)
 
 
@@ -94,6 +95,9 @@ class Payment(BaseModel):
     transaction_type = models.CharField(max_length=50, null=True, blank=True)
     notes = models.CharField(max_length=50, null=True, blank=True)
     status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
+    receipt_number = models.CharField(max_length=50, null=True, blank=True)
+    payment_method = models.CharField(max_length=50, null=True, blank=True)
+    receipted_by = models.CharField(max_length=50, null=True, blank=True)
 
 
 class ClaimTracker(models.Model):

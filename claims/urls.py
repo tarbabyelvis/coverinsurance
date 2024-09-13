@@ -2,7 +2,7 @@ from django.urls import path
 
 from django.conf import settings
 from .views import ClaimCreateAPIView, ClaimDetailAPIView, ProcessClaimAPIView, ApproveClaimAPIView, \
-    ReceiptClaimAPIView, AddDocuments, AddDocTemplates, GetClaimDocumentsView
+    ReceiptClaimAPIView, AddDocuments, AddDocTemplates, GetClaimDocumentsView, ReactivateDebicheckAPIView
 from django.conf.urls.static import static
 app_name = "claim"
 
@@ -12,7 +12,9 @@ urlpatterns = [
     #path("<int:pk>", ClaimDetailAPIView.as_view(), name="claim-detail"),
     path("process_claim/<int:pk>/", ProcessClaimAPIView.as_view(), name="process claim"),
     path("approve_claim/<int:pk>/", ApproveClaimAPIView.as_view(), name="approve claim"),
+    path("repudiate_claim/<int:pk>/", ApproveClaimAPIView.as_view(), name="repudiate claim"),
     path("receipt_claim/<int:pk>/", ReceiptClaimAPIView.as_view(), name="receipt claim"),
+    path("reactivate_debicheck/<int:pk>/", ReactivateDebicheckAPIView.as_view(), name="reactivate debicheck"),
     path("add_documents/", AddDocuments.as_view(), name="add-new-document"),
     path("add_templates/", AddDocTemplates.as_view(), name="add-new-template"),
     path("get_claim_files/<int:pk>", GetClaimDocumentsView.as_view(), name="get_claim_files"),

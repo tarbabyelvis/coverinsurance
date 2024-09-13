@@ -176,16 +176,16 @@ REST_FRAMEWORK = {
 # }
 
 # LOCAL
-DATABASES = {
-    "default": {
-        "ENGINE": "django_tenants.postgresql_backend",
-        "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
-        "USER": os.getenv("DATABASE_USER", "postgres"),
-        "PASSWORD": os.getenv("DATABASE_PASSWORD", "postgres"),
-        "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
-        "PORT": os.getenv("DATABASE_PORT", 5432),
-    },
-}
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django_tenants.postgresql_backend",
+#         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
+#         "USER": os.getenv("DATABASE_USER", "postgres"),
+#         "PASSWORD": os.getenv("DATABASE_PASSWORD", "postgres"),
+#         "HOST": os.getenv("DATABASE_HOST", "0.0.0.0"),
+#         "PORT": os.getenv("DATABASE_PORT", 5432),
+#     },
+# }
 # DEV
 # DATABASES = {
 #     "default": {
@@ -198,16 +198,16 @@ DATABASES = {
 #     },
 # }
 # PROD
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django_tenants.postgresql_backend",
-#         "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
-#         "USER": os.getenv("DATABASE_USER", "St6ye3_3e4T6"),
-#         "PASSWORD": os.getenv("DATABASE_PASSWORD", "TXRKjQNRJOq2WmUA"),
-#         "HOST": os.getenv("DATABASE_HOST", "prod-core-pg.cluster-clzcsbthrzqz.eu-central-1.rds.amazonaws.com"),
-#         "PORT": os.getenv("DATABASE_PORT", 5432),
-#     },
-# }
+DATABASES = {
+    "default": {
+        "ENGINE": "django_tenants.postgresql_backend",
+        "NAME": os.getenv("DATABASE_NAME", "fin_cover"),
+        "USER": os.getenv("DATABASE_USER", "St6ye3_3e4T6"),
+        "PASSWORD": os.getenv("DATABASE_PASSWORD", "TXRKjQNRJOq2WmUA"),
+        "HOST": os.getenv("DATABASE_HOST", "prod-core-pg.cluster-clzcsbthrzqz.eu-central-1.rds.amazonaws.com"),
+        "PORT": os.getenv("DATABASE_PORT", 5432),
+    },
+}
 
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 

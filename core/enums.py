@@ -40,6 +40,7 @@ class ClaimStatus(models.TextChoices):
     SUBMITTED = "SUBMITTED", "Submitted"
     REVIEW = "REVIEW", "Review"
     APPROVED = "APPROVED", "Approved"
+    PAID = "PAID", "Paid"
     REPUDIATED = "REPUDIATED", "Repudiated"
 
 

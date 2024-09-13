@@ -7,13 +7,13 @@ from claims.serializers import ClaimSerializer
 from config.models import PaymentAccount
 from core.enums import ClaimStatus, PaymentStatus
 from core.utils import serialize_dates
-from integrations.superbase import loan_transaction, suspend_debicheck, query_loan
+from integrations.superbase import loan_transaction, suspend_debicheck, query_loan, activate_debicheck
 from policies.models import Policy
-
 
 DEATH = 1
 RETRENCHMENT = 34
 DISABILITY = 35
+
 
 def process_claim(tenant_id, claim_id):
     try:
@@ -36,10 +36,10 @@ def process_claim(tenant_id, claim_id):
                 print(f'suspension status {status}, message {message}, suspend data {data}')
                 if status == 200 or message == 'Intecon Contract already suspended':
                     total_amount = calculate_total_installment_amount(repayment_schedule)
-                    update_claim_repayment_schedule_details(claim, total_amount,repayment_schedule)
+                    update_claim_repayment_schedule_details(claim, total_amount, repayment_schedule)
             elif claim_type == DEATH:
                 total_amount = calculate_total_installment_amount(repayment_schedule)
-                update_claim_suspension_details(claim, start_date, number_of_months_to_claim, total_amount,claim_type)
+                update_claim_suspension_details(claim, start_date, number_of_months_to_claim, total_amount, claim_type)
         else:
             print('no installments found')
     except Exception as e:
@@ -57,6 +57,7 @@ def update_claim_repayment_schedule_details(claim, total_amount, repayment_sched
     except Exception as e:
         print(e)
 
+
 def update_claim_suspension_details(claim, start_date, number_of_months, total_amount, claim_type):
     claim_details = claim.claim_details or {}
     claim_details['debicheck_suspended'] = True
@@ -71,6 +72,7 @@ def update_claim_suspension_details(claim, start_date, number_of_months, total_a
         claim.save()
     except Exception as e:
         print(e)
+
 
 def find_next_n_months_installments(tenant_id, loan_id, start_date, number_of_months: int = 6):
     try:
@@ -123,20 +125,31 @@ def get_loan_id_from_claim_id(claim):
     return policy.claim_id
 
 
-def process_claim_payment(tenant_id, claim_id):
+def process_claim_payment(
+        tenant_id,
+        claim_id,
+        claim_amount,
+        payment_date,
+        notes,
+        receipt_number,
+        receipted_by,
+        payment_method
+):
     claim = __find_claim_by_id(claim_id)
     claim_serializer = ClaimSerializer(claim)
     claim_data = claim_serializer.data
     loan_id = get_loan_id_from_claim_id(claim_data)
     payment_account = get_payment_account_details()
-    claim_amount = claim_data['claim_amount']
-    transaction_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    notes = f"Refinance of loan {loan_id} FinCover claim {claim_id}"
+    claim_amount = claim_amount
+    # notes = f"Refinance of loan {loan_id} FinCover claim {claim_id}"
     claim_payment = Payment(
-        transaction_date=transaction_date,
+        transaction_date=payment_date,
         amount=claim_amount,
         transaction_type='repayment',
-        notes=notes
+        notes=notes,
+        receipt_number=receipt_number,
+        receipted_by=receipted_by,
+        payment_method=payment_method,
     )
     try:
         status, message, data = receipt_claim_repayment(
@@ -145,7 +158,7 @@ def process_claim_payment(tenant_id, claim_id):
             transaction_amount=claim_amount,
             note=notes,
             payment_account=payment_account,
-            transaction_date=transaction_date
+            transaction_date=payment_date
         )
         print(f'receipting status {status}, message {message}, data {data}')
         if __is_successful(status):
@@ -202,7 +215,37 @@ def receipt_claim_repayment(tenant_id, loan_id, transaction_amount, note,
 def create_claim_payment(payment):
     payment.save()
 
+
 def approve_claim(tenant_id, claim_id):
     claim = __find_claim_by_id(claim_id)
-    claim.claim_status= ClaimStatus.APPROVED
+    claim.claim_status = ClaimStatus.APPROVED
     claim.save()
+
+
+def repudiate_claim(tenant_id, claim_id, repudiation_reason, repudiated_by):
+    claim = __find_claim_by_id(claim_id)
+    claim.claim_status = ClaimStatus.REPUDIATED
+    claim.repudiated_reason = repudiation_reason
+    claim.repudiated_date = datetime.today().date()
+    claim.repudiated_by = repudiated_by
+    claim.save()
+
+
+def reactivate_debicheck(tenant_id, claim_id):
+    claim = __find_claim_by_id(claim_id)
+    claim_serializer = ClaimSerializer(claim)
+    claim_data = claim_serializer.data
+    loan_id = get_loan_id_from_claim_id(claim_data)
+    try:
+        status, message, data = activate_debicheck(tenant_id, loan_id)
+        if status == 200:
+            claim_details = claim.claim_details or {}
+            claim_details['debicheck_suspended'] = False
+            claim_details['debicheck_suspension_from'] = None
+            claim_details['debicheck_suspension_to'] = None
+            claim.claim_details = claim_details
+            claim.save()
+            return 200
+    except Exception as e:
+        print(e)
+    return 0
