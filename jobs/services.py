@@ -423,7 +423,7 @@ def process_adjustments(loans: list):
                 #     policy.policy_status = 'P'
                 # elif status in ['300', 300]:
                 #     policy.policy_status = 'A'
-                policy.loan_id = loan['loanid']
+                policy.claim_id = loan['loanid']
                 policies.append(policy)
         except Exception as e:
             print(f"Error saving new loan{loan}")

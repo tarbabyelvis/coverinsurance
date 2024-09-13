@@ -368,3 +368,18 @@ SUPABASE_REST_URL = os.getenv(
 # SUPABASE_REST_URL = os.getenv(
 #     "SUPABASE_REST_URL", "https://xmsplibcemufhdyeyugm.supabase.co"
 # )
+
+
+DEFAULT_FILE_STORAGE = os.getenv(
+    "DEFAULT_FILE_STORAGE", "core.s3storage.S3MediaStorage"
+)
+AWS_S3_ACCESS_KEY_ID = os.getenv("AWS_S3_ACCESS_KEY_ID", "AWS_S3_ACCESS_KEY_ID")
+AWS_S3_SECRET_ACCESS_KEY = os.getenv(
+    "AWS_S3_SECRET_ACCESS_KEY", "AWS_S3_SECRET_ACCESS_KEY"
+)
+FINCOVER_AWS_S3_STORAGE_BUCKET_NAME = os.getenv(
+    "FINCOVER_AWS_S3_STORAGE_BUCKET_NAME", "FINCOVER_AWS_S3_STORAGE_BUCKET_NAME"
+)
+AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "eu-central-1")
+
+AWS_DOCUMENT_TENANT = "trustgro"

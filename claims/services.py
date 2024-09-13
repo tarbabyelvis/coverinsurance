@@ -120,7 +120,7 @@ def parse_date_array(date_array):
 def get_loan_id_from_claim_id(claim):
     policy_id = claim['policy']
     policy = Policy.objects.get(id=policy_id)
-    return policy.loan_id
+    return policy.claim_id
 
 
 def process_claim_payment(tenant_id, claim_id):

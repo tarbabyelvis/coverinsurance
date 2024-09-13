@@ -144,10 +144,18 @@ def get_initial_letter(word: str):
 
 
 def get_loan_id_from_legacy_loan(loan_external_id: str):
-    legacy_loan_id = loan_external_id.split('_')[1] if loan_external_id is not None and '_' in loan_external_id else loan_external_id
+    legacy_loan_id = loan_external_id.split('_')[
+        1] if loan_external_id is not None and '_' in loan_external_id else loan_external_id
     return legacy_loan_id
 
 
 def generate_policy_number() -> str:
     now = datetime.now()
     return now.strftime("%Y%m%d%H%M%S")
+
+
+def standard_http_response() -> dict:
+    return {
+        "message": "",
+        "data": [],
+    }

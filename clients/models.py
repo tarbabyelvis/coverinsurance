@@ -1,5 +1,6 @@
 from django.db import models
 from auditlog.registry import auditlog
+
 from clients.enums import EntityType, MaritalStatus
 from config.models import BusinessSector, IdDocumentType
 from core.enums import Gender

@@ -3,13 +3,12 @@ from config.models import ClaimType, DocumentType, IdDocumentType
 from core.enums import ClaimStatus, PaymentStatus
 from core.models import BaseModel
 from auditlog.registry import auditlog
-from policies.models import Policy
 from django.utils import timezone
 
 
 class Claim(BaseModel):
     policy = models.ForeignKey(
-        Policy,
+        'policies.Policy',
         on_delete=models.RESTRICT,
         related_name="claim_policy",
     )
@@ -62,7 +61,31 @@ class ClaimDocument(BaseModel):
         on_delete=models.RESTRICT,
         related_name="claim_document_type",
     )
+    password = models.CharField(max_length=50, null=True, blank=True)
+    document = models.FileField(upload_to="", null=True, blank=True)
+    actual_name = models.TextField(null=True, blank=True)
+    content_type = models.CharField(max_length=100, null=True, blank=True)
+    created = models.DateTimeField(default=timezone.now)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    external_verification = models.BooleanField(default=False, null=True, blank=True)
+    internally_verified = models.BooleanField(default=False, null=True, blank=True)
+    expiration_date = models.DateTimeField(null=True, blank=True)
+    collection_date = models.DateTimeField(null=True, blank=True)
+    trust_level = models.IntegerField(null=True, blank=True)
+    updated_at = models.DateTimeField(default=timezone.now, null=True, blank=True)
+    is_rejected = models.BooleanField(default=False, null=True, blank=True)
+    old_doc_id = models.IntegerField(null=True, blank=True)
 
+
+
+class ClientClaimDocuments(models.Model):
+    client_documents = models.ForeignKey(ClaimDocument, on_delete=models.RESTRICT,
+                                         related_name="client_claim_documents")
+    claim = models.ForeignKey(Claim, on_delete=models.RESTRICT, related_name="claim_client_documents")
+
+    class Meta:
+        verbose_name = "Client Claim Document"
+        verbose_name_plural = "Client Claim Documents"
 
 class Payment(BaseModel):
     transaction_date = models.DateTimeField(null=True, blank=True)
