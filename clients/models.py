@@ -1,5 +1,4 @@
 from django.db import models
-from auditlog.registry import auditlog
 
 from clients.enums import EntityType, MaritalStatus
 from config.models import BusinessSector, IdDocumentType
@@ -87,5 +86,5 @@ class ClientEmploymentDetails(BaseModel):
 
 
 # Register models for Audit
-auditlog.register(ClientDetails)
-auditlog.register(ClientEmploymentDetails)
+# auditlog.register(ClientDetails)
+# auditlog.register(ClientEmploymentDetails)

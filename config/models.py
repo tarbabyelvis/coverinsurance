@@ -4,7 +4,6 @@ from django.db import models
 from clients.enums import EntityType
 from config.enums import DocumentCategories, PolicyType
 from core.models import BaseModel
-from auditlog.registry import auditlog
 
 
 class OrganisationConfig(BaseModel):
@@ -223,20 +222,3 @@ class Sms(models.Model):
     service_name = models.TextField(null=True, default=None, blank=True)
     sms_from = models.CharField(max_length=500, null=True, blank=True)
     linked_organization = models.CharField(max_length=20)
-
-
-# register the class for Audit
-auditlog.register(PolicyName)
-auditlog.register(InsuranceCompany)
-auditlog.register(ClaimFields)
-auditlog.register(DocumentType)
-auditlog.register(Relationships)
-auditlog.register(IdDocumentType)
-auditlog.register(BusinessSector)
-auditlog.register(Agent)
-auditlog.register(OrganisationConfig)
-auditlog.register(PolicyTypeFields)
-auditlog.register(ClaimantDetails)
-auditlog.register(LoanProduct)
-auditlog.register(PaymentAccount)
-auditlog.register(Sms)

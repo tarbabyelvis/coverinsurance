@@ -1,19 +1,12 @@
-import asyncio
-
-from asgiref.sync import sync_to_async
 from django.contrib.auth import authenticate
-from django.contrib.auth.models import Permission, Group
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from loans.supabase import send_to_comms_log
-from loans.tasks import send_emails, sendEmailTask
-from supabase_util.utils import get_organization_by_org_id
 from .models import *
-from .serializers import UserSerializer, BranchSerializer, SatelliteSerializer, PermissionRequest, GroupSerializer, \
+from .serializers import UserSerializer, PermissionRequest, GroupSerializer, \
     ContentTypeSerializer, PermissionSerializer, convert_to_name
 from .utils import normalize_email, BaseResponse, PaginationHandlerMixin, Pagination, PaginationResponse
 
@@ -24,28 +17,7 @@ class UserCreateView(APIView):
     serializer_class = UserSerializer
 
     def post(self, request):
-        branchId = request.data['branch']
-        try:
-            branch = SatelliteBranch.objects.get(id=branchId)
-            branch_dict = {
-                "id": branch.id,
-                "name": branch.name,
-                "email": branch.email,
-                "is_active": branch.is_active,
-                "town": branch.town,
-                "branch": {
-                    "id": branch.branch.id,
-                    "name": branch.branch.name,
-                    "email": branch.branch.email,
-                    "is_active": branch.branch.is_active,
-                    "town": branch.branch.town,
-                },
-            }
-        except SatelliteBranch.DoesNotExist:
-            message = "Branch not found %s" % branchId
-            return Response(BaseResponse(message=message, status=404).to_dict(), status=status.HTTP_400_BAD_REQUEST)
 
-        request.data['branch'] = branch_dict
         request.data['permissions'] = PermissionRequest(request.data['permissions'], request.data["groups"]).to_dict()
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
@@ -68,8 +40,6 @@ class UserCreateView(APIView):
                         ]
                     }
                 }
-                organisation = get_organization_by_org_id(tenant_id)
-                send_to_comms_log(28, request.data['email'], message, organisation.get("id"))
             except Exception as e:
                 print("Error sending email", e)
                 pass
@@ -103,114 +73,6 @@ class LoginView(APIView):
             )
 
 
-class AgentAuth(APIView):
-    def post(self, request):
-        mobile = request.data.get("mobile", "")
-        agent_code = request.data.get("agent_code", "")
-
-        # make sure certain field are not blank
-        formatted_phone = ""
-        try:
-            # if mobile[0] == '0':
-            #     formatted_phone = '254'+mobile[1:]
-            # elif mobile[0] == '+':
-            #     formatted_phone = mobile[1:]
-            # else:
-            #     formatted_phone = mobile
-            formatted_phone = mobile
-
-        except Exception as e:
-            print(e)
-            return Response("Invalid phone number", status=status.HTTP_401_UNAUTHORIZED)
-
-        if formatted_phone == "" or agent_code == "":
-            print("parameters not correct")
-            return Response(
-                "Incorrect credentials", status=status.HTTP_401_UNAUTHORIZED
-            )
-
-        else:
-            user = Profile.objects.filter(
-                user__phone=formatted_phone, access_code__iexact=agent_code
-            )
-            # user = Profile.objects.filter(access_code__iexact=agent_code)
-            # user = Profile.objects.filter(user__phone=formatted_phone, access_code=agent_code)
-            if user.exists():  # user is authenticated
-                print(
-                    "User exists: ",
-                    user.values("id", "user__first_name", "code", "access_code"),
-                )
-                return Response(
-                    user.values(
-                        "user__id",
-                        "user__first_name",
-                        "code",
-                        "access_code",
-                        "user__last_name",
-                        "user__phone",
-                    )[0],
-                    status=status.HTTP_202_ACCEPTED,
-                )
-            else:
-                print("login failed, user was not found")
-                print("Failed to fetch the client")
-                return Response({}, status=status.HTTP_401_UNAUTHORIZED)
-
-
-class getAgentDetails(APIView):
-    def post(self, request):
-        agent_id = request.data.get("tg_agent_code", "")
-
-        if agent_id == "":
-            print("parameters not correct")
-            return Response("error", status=status.HTTP_400_BAD_REQUEST)
-
-        else:
-            user = Profile.objects.filter(access_code=agent_id)
-            if user.exists():  # user is authenticated
-                print("User exists: ", user.values("id", "access_code"))
-                return Response(
-                    user.values(
-                        "user__id",
-                        "access_code",
-                        "user__first_name",
-                        "user__last_name",
-                        "user__phone",
-                    )[0],
-                    status=status.HTTP_202_ACCEPTED,
-                )
-            else:
-                print("login failed, user was not found")
-                return Response({}, status=status.HTTP_401_UNAUTHORIZED)
-
-
-class GetCreditUsers(APIView):
-    permission_classes = (IsAuthenticated,)
-
-    def get(self, request, *args, **kwargs):
-        users = (
-            User.objects.filter(
-                Q(user_type="admin")
-                | Q(user_type="credit_team_leader")
-                | Q(user_type="credit_analysis")
-                | Q(user_type="credit_admin")
-                | Q(user_type="credit_manager")
-            )
-            .filter(is_active__icontains=True)
-            .order_by("first_name")
-            .values(
-                "id",
-                "is_teamleader",
-                "is_supervisor",
-                "first_name",
-                "last_name",
-                "email",
-                "user_type",
-            )
-        )
-        return Response(users, status=status.HTTP_202_ACCEPTED)
-
-
 class GetUserDetails(APIView):
     permission_classes = (IsAuthenticated,)
 
@@ -231,21 +93,18 @@ class GetAllUsers(APIView, PaginationHandlerMixin):
     pagination_class = Pagination
 
     def get(self, request, *args, **kwargs):
-        isActive = request.query_params.get('is_active')
+        is_active = request.query_params.get('is_active')
         email = request.query_params.get('email')
-        branch = request.query_params.get('branch')
-        userType = request.query_params.get("user_type")
+        user_type = request.query_params.get("user_type")
         query = request.query_params.get("query")
 
         filters = Q()
-        if isActive is not None:
-            filters &= Q(is_active=isActive)
+        if is_active is not None:
+            filters &= Q(is_active=is_active)
         if email:
             filters &= Q(email=email)
-        if branch:
-            filters &= Q(branch=branch)
-        if userType:
-            filters &= Q(user_type=userType)
+        if user_type:
+            filters &= Q(user_type=user_type)
 
         if query:
             filters &= (
@@ -274,10 +133,10 @@ class GetAllUsers(APIView, PaginationHandlerMixin):
             )
             page = int(self.request.query_params.get("page", 1))
             count = users.count()
-            finalList = self.paginate_queryset(users)
-            pageSize = len(finalList)
-            return Response(BaseResponse(data=finalList, message="Success", status=200,
-                                         pagination=PaginationResponse(page_size=pageSize, count=count,
+            final_list = self.paginate_queryset(users)
+            page_size = len(final_list)
+            return Response(BaseResponse(data=final_list, message="Success", status=200,
+                                         pagination=PaginationResponse(page_size=page_size, count=count,
                                                                        page=page).to_dict()
                                          ).to_dict(),
                             status=status.HTTP_200_OK)
@@ -286,229 +145,15 @@ class GetAllUsers(APIView, PaginationHandlerMixin):
             return Response(BaseResponse(message=message, status=404).to_dict(), status=status.HTTP_404_NOT_FOUND)
 
 
-class BranchCreateView(APIView):
-    permission_classes = (IsAuthenticated,)
-
-    def post(self, request):
-        serializer = BranchSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(BaseResponse(data=serializer.data,
-                                         message="Branch created successfully", status=201).to_dict(),
-                            status=status.HTTP_201_CREATED)
-        return Response(BaseResponse(data=serializer.errors, message="Failed to create a branch", status=400).to_dict(),
-                        status=status.HTTP_400_BAD_REQUEST)
-
-
-class GetBranchDetailsView(APIView):
-    permission_classes = (IsAuthenticated,)
-
-    def get(self, request, *args, **kwargs):
-        name = kwargs.get("branch_name")
-        try:
-            data = Branch.objects.get(name=name)
-            serializer = BranchSerializer(data)
-            return Response(BaseResponse(data=serializer.data, message="Success", status=200).to_dict(),
-                            status=status.HTTP_200_OK)
-        except Branch.DoesNotExist:
-            message = "Branch does not exist: %s" % name
-            return Response(BaseResponse(message=message, status=404).to_dict(), status=status.HTTP_404_NOT_FOUND)
-
-
-class GetBranchView(APIView):
-    permission_classes = (IsAuthenticated,)
-
-    def get(self, request, *args, **kwargs):
-        branchId = kwargs.get("id")
-        try:
-            data = Branch.objects.get(id=branchId)
-            serializer = BranchSerializer(data)
-            return Response(BaseResponse(data=serializer.data, message="Success", status=200).to_dict(),
-                            status=status.HTTP_200_OK)
-        except Branch.DoesNotExist:
-            message = "Branch does not exist: %s" % branchId
-            return Response(BaseResponse(message=message, status=404).to_dict(), status=status.HTTP_404_NOT_FOUND)
-
-
-class BranchListView(APIView, PaginationHandlerMixin):
-    permission_classes = (IsAuthenticated,)
-    pagination_class = Pagination
-
-    def get(self, request, *args, **kwargs):
-        town = request.query_params.get("town")
-        isActive = request.query_params.get("is_active")
-        filters = Q()
-        if town is not None:
-            filters &= Q(town=town)
-        if isActive:
-            filters &= Q(is_active=isActive)
-        try:
-            branches = (
-                Branch.objects.all()
-                .filter(filters)
-                .order_by("-created")
-                .values(
-                    "id",
-                    "town",
-                    "name",
-                    "email",
-                    "is_active",
-                    "created",
-                )
-            )
-            page = int(self.request.query_params.get("page", 1))
-            count = branches.count()
-            finalList = self.paginate_queryset(branches)
-            pageSize = len(finalList)
-            return Response(
-                BaseResponse(
-                    data=finalList,
-                    message="Success",
-                    status=200,
-                    pagination=PaginationResponse(
-                        page_size=pageSize, count=count, page=page
-                    ).to_dict(),
-                ).to_dict(),
-                status=status.HTTP_200_OK,
-            )
-        except Exception as e:
-            message = "Branches not found, error: %s" % e
-            return Response(
-                BaseResponse(message=message, status=404).to_dict(),
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-
-class CreateSatelliteBranchView(APIView):
-    permission_classes = (IsAuthenticated,)
-
-    def post(self, request):
-        branchId = request.data["branch"]
-        try:
-            branch = Branch.objects.get(id=branchId)
-
-        except Branch.DoesNotExist:
-            message = "Branch does not exist: %s" % branchId
-            return Response(
-                BaseResponse(message=message, status=404).to_dict(),
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        branch_dict = {
-            "name": branch.name,
-            "email": branch.email,
-            "is_active": branch.is_active,
-            "town": branch.town,
-            "id": branch.id,
-        }
-        request.data["branch"] = branch_dict
-        serializer = SatelliteSerializer(data=request.data)
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                BaseResponse(
-                    data=serializer.data,
-                    message="Satellite Branch created successfully",
-                    status=201,
-                ).to_dict(),
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(
-            BaseResponse(data=serializer.errors, message="Failed to create a satellite branch", status=400).to_dict(),
-            status=status.HTTP_400_BAD_REQUEST)
-
-
-class GetSatelliteBranchView(APIView):
-    permission_classes = (IsAuthenticated,)
-
-    def get(self, request, *args, **kwargs):
-        branchId = kwargs.get("id")
-        try:
-            data = SatelliteBranch.objects.get(id=branchId)
-            serializer = SatelliteSerializer(data)
-            return Response(BaseResponse(data=serializer.data, message="Success", status=200).to_dict(),
-                            status=status.HTTP_200_OK)
-        except SatelliteBranch.DoesNotExist:
-            message = "Satellite Branch does not exist: %s" % branchId
-            return Response(BaseResponse(message=message, status=404).to_dict(), status=status.HTTP_404_NOT_FOUND)
-
-
-class GetSatelliteBranchDetailsView(APIView):
-    permission_classes = (IsAuthenticated,)
-
-    def get(self, request, *args, **kwargs):
-        name = kwargs.get("name")
-        try:
-            data = SatelliteBranch.objects.get(name=name)
-            serializer = SatelliteSerializer(data)
-            return Response(BaseResponse(data=serializer.data, message="Success", status=200).to_dict(),
-                            status=status.HTTP_200_OK)
-        except SatelliteBranch.DoesNotExist:
-            message = "Satellite Branch does not exist: %s" % name
-            return Response(BaseResponse(message=message, status=404).to_dict(), status=status.HTTP_404_NOT_FOUND)
-
-
-class SatelliteBranchListView(APIView, PaginationHandlerMixin):
-    permission_classes = (IsAuthenticated,)
-    pagination_class = Pagination
-
-    def get(self, request, *args, **kwargs):
-        town = request.query_params.get("town")
-        isActive = request.query_params.get("is_active")
-        filters = Q()
-        if town is not None:
-            filters &= Q(town=town)
-        if isActive:
-            filters &= Q(is_active=isActive)
-        try:
-            branches = (
-                SatelliteBranch.objects.all()
-                .filter(filters)
-                .order_by("-created")
-                .values(
-                    "id",
-                    "town",
-                    "name",
-                    "email",
-                    "branch__id",
-                    "branch__name",
-                    "is_active",
-                    "created",
-                )
-            )
-
-            page = int(self.request.query_params.get("page", 1))
-            count = branches.count()
-            finalList = self.paginate_queryset(branches)
-            pageSize = len(finalList)
-            return Response(
-                BaseResponse(
-                    data=finalList,
-                    message="Success",
-                    status=200,
-                    pagination=PaginationResponse(
-                        page_size=pageSize, count=count, page=page
-                    ).to_dict(),
-                ).to_dict(),
-                status=status.HTTP_200_OK,
-            )
-        except Exception as e:
-            message = "Satellite branches not found, error: %s" % e
-            return Response(
-                BaseResponse(message=message, status=404).to_dict(),
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-
 class GetPermissionsView(APIView, PaginationHandlerMixin):
     permission_classes = (IsAuthenticated,)
     pagination_class = Pagination
 
     def get(self, request):
-        userType = request.query_params.get("content_type", "custom")
+        user_type = request.query_params.get("content_type", "custom")
         filters = Q()
-        if userType is not None:
-            filters &= Q(content_type__app_label__icontains=userType)
+        if user_type is not None:
+            filters &= Q(content_type__app_label__icontains=user_type)
         try:
             permissions = (
                 Permission.objects.all()
@@ -524,15 +169,15 @@ class GetPermissionsView(APIView, PaginationHandlerMixin):
 
             page = int(self.request.query_params.get("page", 1))
             count = permissions.count()
-            finalList = self.paginate_queryset(permissions)
-            pageSize = len(finalList)
+            final_list = self.paginate_queryset(permissions)
+            page_size = len(final_list)
             return Response(
                 BaseResponse(
-                    data=finalList,
+                    data=final_list,
                     message="Success",
                     status=200,
                     pagination=PaginationResponse(
-                        page_size=pageSize, count=count, page=page
+                        page_size=page_size, count=count, page=page
                     ).to_dict(),
                 ).to_dict(),
                 status=status.HTTP_200_OK,
@@ -549,7 +194,7 @@ class AddOrRemovePermissionsToUserView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, *args, **kwargs):
-        userId = kwargs.pop("userId", None)
+        user_id = kwargs.pop("userId", None)
         action = request.query_params.get("action", None)
         if action not in ["add", "remove"] or action is None:
             return Response(
@@ -559,17 +204,17 @@ class AddOrRemovePermissionsToUserView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            user = User.objects.get(id=userId)
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
-            message = "User does not exist: %s" % userId
+            message = "User does not exist: %s" % user_id
             return Response(
                 BaseResponse(message=message, status=404).to_dict(),
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        codeNameList = request.data["permissions"]
-        if codeNameList:
-            permissions = Permission.objects.filter(codename__in=codeNameList)
+        code_names = request.data["permissions"]
+        if code_names:
+            permissions = Permission.objects.filter(codename__in=code_names)
             if action == "add":
                 user.user_permissions.set(permissions)
             elif action == "remove":
@@ -634,15 +279,15 @@ class GetGroupsView(APIView, PaginationHandlerMixin):
 
             page = int(self.request.query_params.get("page", 1))
             count = len(list(grouped_groups))
-            finalList = self.paginate_queryset(list(grouped_groups))
-            pageSize = len(finalList)
+            final_list = self.paginate_queryset(list(grouped_groups))
+            page_size = len(final_list)
             return Response(
                 BaseResponse(
-                    data=finalList,
+                    data=final_list,
                     message="Success",
                     status=200,
                     pagination=PaginationResponse(
-                        page_size=pageSize, count=count, page=page
+                        page_size=page_size, count=count, page=page
                     ).to_dict(),
                 ).to_dict(),
                 status=status.HTTP_200_OK,
@@ -659,9 +304,9 @@ class GetGroupDetailsView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request, *args, **kwargs):
-        groupId = kwargs.pop("groupId", None)
+        group_id = kwargs.pop("groupId", None)
         try:
-            group = Group.objects.get(id=groupId)
+            group = Group.objects.get(id=group_id)
             serializer = GroupSerializer(group)
             return Response(
                 BaseResponse(
@@ -670,7 +315,7 @@ class GetGroupDetailsView(APIView):
                 status=status.HTTP_200_OK,
             )
         except Group.DoesNotExist:
-            message = "Group does not exist: %s" % groupId
+            message = "Group does not exist: %s" % group_id
             return Response(
                 BaseResponse(message=message, status=404).to_dict(),
                 status=status.HTTP_404_NOT_FOUND,
@@ -681,7 +326,7 @@ class AddOrRemoveGroupsView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, *args, **kwargs):
-        userId = kwargs.get("userId")
+        user_id = kwargs.get("userId")
         action = request.query_params.get("action", None)
         if action not in ["add", "remove"] or action is None:
             return Response(
@@ -691,17 +336,17 @@ class AddOrRemoveGroupsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            user = User.objects.get(id=userId)
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
-            message = "User does not exist: %s" % userId
+            message = "User does not exist: %s" % user_id
             return Response(
                 BaseResponse(message=message, status=404).to_dict(),
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        groupNameList = request.data["groups"]
-        if groupNameList:
-            groups = Group.objects.filter(name__in=groupNameList)
+        group_names = request.data["groups"]
+        if group_names:
+            groups = Group.objects.filter(name__in=group_names)
             if action == "add":
                 user.groups.set(groups)
             elif action == "remove":
@@ -720,19 +365,19 @@ class AddOrRemoveGroupsView(APIView):
 
 class ResetPasswordView(APIView):
     def post(self, request, *args, **kwargs):
-        userId = kwargs.get("userId")
+        user_id = kwargs.get("userId")
 
-        newpassword = request.data["new_password"]
+        new_password = request.data["new_password"]
         try:
-            user = User.objects.get(id=userId)
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
-            message = "User does not exist: %s" % userId
+            message = "User does not exist: %s" % user_id
             return Response(
                 BaseResponse(message=message, status=404).to_dict(),
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        user.set_password(newpassword)
+        user.set_password(new_password)
         user.save()
         message1 = "Password changed successfully"
         # send email to user
@@ -747,12 +392,10 @@ class ResetPasswordView(APIView):
                 "variables": [
                     f"{url}",
                     f"{email}",
-                    f"{newpassword}",
+                    f"{new_password}",
                 ]
             }
         }
-        organisation = get_organization_by_org_id(tenant_id)
-        send_to_comms_log(29, request.data['email'], message, organisation.get("id"))
         return Response(BaseResponse(message=message1, status=200).to_dict(), status=status.HTTP_200_OK)
 
 
@@ -762,16 +405,16 @@ class CreatePermissionView(APIView):
 
         name = request.data['name']
         model = request.data['model']
-        codeName = request.data['code_name']
+        code_name = request.data['code_name']
         try:
-            contentType = ContentType.objects.get(model=model)
+            content_type = ContentType.objects.get(model=model)
         except ContentType.DoesNotExist:
             return Response(BaseResponse(message="Content type does not exist", status=400).to_dict(),
                             status=status.HTTP_400_BAD_REQUEST)
         perm = Permission.objects.create(
             name=name,
-            content_type=contentType,
-            codename=codeName,
+            content_type=content_type,
+            codename=code_name,
         )
 
         serializer = PermissionSerializer(perm)
@@ -782,7 +425,7 @@ class CreatePermissionView(APIView):
 class CreateContentTypeView(APIView):
 
     def post(self, request):
-        appLabel = request.data['app_label']
+        app_label = request.data['app_label']
         model = request.data['model']
         try:
             exists = ContentType.objects.get(model=model)
@@ -792,7 +435,7 @@ class CreateContentTypeView(APIView):
         except ContentType.DoesNotExist:
             pass
         ct = ContentType.objects.create(
-            app_label=appLabel,
+            app_label=app_label,
             model=model,
         )
         serializer = ContentTypeSerializer(ct)
@@ -805,10 +448,10 @@ class ListContentTypeView(APIView, PaginationHandlerMixin):
     pagination_class = Pagination
 
     def get(self, request, *args, **kwargs):
-        appLabel = request.query_params.get("app_label")
+        app_label = request.query_params.get("app_label")
         filters = Q()
-        if appLabel is not None:
-            filters &= Q(app_label=appLabel)
+        if app_label is not None:
+            filters &= Q(app_label=app_label)
         try:
             types = (
                 ContentType.objects.all()
@@ -821,10 +464,10 @@ class ListContentTypeView(APIView, PaginationHandlerMixin):
 
             page = int(self.request.query_params.get("page", 1))
             count = types.count()
-            finalList = self.paginate_queryset(types)
-            pageSize = len(finalList)
-            return Response(BaseResponse(data=finalList, message="Success", status=200,
-                                         pagination=PaginationResponse(page_size=pageSize, count=count,
+            final_list = self.paginate_queryset(types)
+            page_size = len(final_list)
+            return Response(BaseResponse(data=final_list, message="Success", status=200,
+                                         pagination=PaginationResponse(page_size=page_size, count=count,
                                                                        page=page).to_dict()
                                          ).to_dict(),
                             status=status.HTTP_200_OK)
@@ -839,7 +482,7 @@ class CreateGroupView(APIView):
     def post(self, request, *args, **kwargs):
         group = {}
         name = request.data['name']
-        permissionList = request.data['permissions']
+        permissions = request.data['permissions']
 
         try:
             group = Group.objects.get(name=name)
@@ -853,8 +496,8 @@ class CreateGroupView(APIView):
             name=name,
         )
 
-        if permissionList:
-            for permission in permissionList:
+        if permissions:
+            for permission in permissions:
                 try:
                     perm, _ = Permission.objects.get_or_create(
                         codename=permission,
@@ -878,16 +521,16 @@ class UpdateGroupView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def put(self, request, *args, **kwargs):
-        groupId = kwargs.pop('groupId', None)
+        group_id = kwargs.pop('groupId', None)
         name = request.data['name']
         permissions = request.data['permissions']
         try:
-            groupToUpdate = Group.objects.get(id=groupId)
+            group_to_update = Group.objects.get(id=group_id)
         except Group.DoesNotExist:
             return Response(BaseResponse(message="Group does not exist", status=400).to_dict(),
                             status=status.HTTP_400_BAD_REQUEST)
-        groupToUpdate.name = name
-        groupToUpdate.permissions.clear()
+        group_to_update.name = name
+        group_to_update.permissions.clear()
         if permissions:
             for permission in permissions:
                 try:
@@ -897,11 +540,11 @@ class UpdateGroupView(APIView):
                             "content_type": ContentType.objects.get(model="custom"),
                             "name": convert_to_name(permission),
                         })
-                    groupToUpdate.permissions.add(perm)
+                    group_to_update.permissions.add(perm)
                 except Exception:
                     return Response(BaseResponse(message="Could not find permission", status=400).to_dict(),
                                     status=status.HTTP_400_BAD_REQUEST)
-            serializer = GroupSerializer(groupToUpdate)
+            serializer = GroupSerializer(group_to_update)
             return Response(BaseResponse(data=serializer.data, message="Success", status=200).to_dict(),
                             status=status.HTTP_200_OK)
         else:

@@ -26,7 +26,7 @@ from drfasyncview.authentication_class import AsyncAuthentication, AsyncIsAuthen
 from policies.models import Policy
 from .orm_queries import get_claim_documents, get_document_types, save_claim_document, save_claim_document_blocking
 from .serializers import ClaimSerializer
-from .services import process_claim_payment, process_claim, approve_claim
+from .services import process_claim_payment, process_claim, approve_claim, reactivate_debicheck, repudiate_claim
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,6 @@ class ClaimCreateAPIView(APIView):
             data=serializer.data,
             status_code=status.HTTP_201_CREATED,
         )
-
 
     @swagger_auto_schema(
         operation_description="Get all claims",
@@ -348,6 +347,29 @@ class ApproveClaimAPIView(APIView):
             )
 
 
+class RepudiateClaimAPIView(APIView):
+    def post(self, request, pk):
+        try:
+            # tenant_id = str(request.tenant).replace("-", "_")
+            tenant_id = "fin_za_onlineloans"
+            print(f'claim repudiation ...')
+            data = request.data
+            repudiation_reason = data['repudiation_reason']
+            repudiated_by = data['repudiated_by']
+            repudiate_claim(tenant_id, pk, repudiation_reason, repudiated_by)
+            return HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+                data={},
+            )
+        except Exception as e:
+            print(e)
+            return HTTPResponse.error(
+                message="Request failed:: {}".format(e),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+
 class ReceiptClaimAPIView(APIView):
     def post(self, request, pk):
         try:
@@ -355,7 +377,41 @@ class ReceiptClaimAPIView(APIView):
             tenant_id = "fin_za_onlineloans"
             data = request.data
             print(f'receipt claim ...{data}')
-            process_claim_payment(tenant_id, pk)
+            claim_amount = data['amount']
+            payment_date = data['paymentDate']
+            notes = data['notes']
+            receipt_number = data['receiptNumber']
+            receipted_by = data['receiptedBy']
+            payment_method = data['paymentMethod']
+            process_claim_payment(tenant_id=tenant_id,
+                                  claim_id=pk,
+                                  claim_amount=claim_amount,
+                                  payment_date=payment_date,
+                                  notes=notes,
+                                  receipt_number=receipt_number,
+                                  receipted_by=receipted_by,
+                                  payment_method=payment_method)
+            return HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+                data={},
+            )
+        except Exception as e:
+            print(e)
+            return HTTPResponse.error(
+                message="Request failed:: {}".format(e),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class ReactivateDebicheckAPIView(APIView):
+    def post(self, request, pk):
+        try:
+            # tenant_id = str(request.tenant).replace("-", "_")
+            tenant_id = "fin_za_onlineloans"
+            data = request.data
+            print(f'reactivate debicheck ...{data}')
+            reactivate_debicheck(tenant_id, pk)
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,

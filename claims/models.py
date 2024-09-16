@@ -2,7 +2,6 @@ from django.db import models
 from config.models import ClaimType, DocumentType, IdDocumentType
 from core.enums import ClaimStatus, PaymentStatus
 from core.models import BaseModel
-from auditlog.registry import auditlog
 from django.utils import timezone
 
 
@@ -47,6 +46,7 @@ class Claim(BaseModel):
     claim_repudiated = models.BooleanField(default=False)
     repudiated_date = models.DateField(null=True, blank=True)
     repudiated_reason = models.CharField(max_length=255, null=True, blank=True)
+    repudiated_by = models.CharField(max_length=255, null=True, blank=True)
     submitted_to_insurer = models.BooleanField(default=False)
 
 
@@ -94,6 +94,9 @@ class Payment(BaseModel):
     transaction_type = models.CharField(max_length=50, null=True, blank=True)
     notes = models.CharField(max_length=50, null=True, blank=True)
     status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
+    receipt_number = models.CharField(max_length=50, null=True, blank=True)
+    payment_method = models.CharField(max_length=50, null=True, blank=True)
+    receipted_by = models.CharField(max_length=50, null=True, blank=True)
 
 
 class ClaimTracker(models.Model):
@@ -123,10 +126,3 @@ class ClaimTracker(models.Model):
 
     def __str__(self):
         return "{}".format(self.claim.id)
-
-
-# Register models for audit
-auditlog.register(Claim)
-auditlog.register(Payment)
-auditlog.register(ClaimDocument)
-auditlog.register(ClaimTracker)
