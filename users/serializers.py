@@ -2,7 +2,10 @@ from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import Permission, Group
-from .models import User, Profile, SatelliteBranch, Branch
+
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .models import User, Profile
 from .utils import normalize_email
 
 
@@ -11,45 +14,11 @@ class ProfileCreateSerializer(serializers.ModelSerializer):
         model = Profile
         exclude = ("user",)
 
-
-class BranchSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Branch
-        fields = (
-            "id",
-            "name",
-            "email",
-            "town",
-            "is_active",
-        )
-
-
-class SatelliteSerializer(serializers.ModelSerializer):
-    branch = BranchSerializer()
-
-    class Meta:
-        model = SatelliteBranch
-        fields = (
-            "id",
-            "name",
-            "branch",
-            "email",
-            "town",
-            "is_active",
-        )
-
     def create(self, validated_data):
-        branch = Branch.objects.get(name=validated_data["branch"]["name"])
-        email = normalize_email(validated_data["email"])
-        satellite = SatelliteBranch(
-            name=validated_data["name"],
-            branch=branch,
-            email=email,
-            town=validated_data["town"],
-            is_active=validated_data["is_active"]
-        )
-        satellite.save()
-        return satellite
+        normalized_email = normalize_email(validated_data["email"])
+        validated_data["email"] = normalized_email
+        profile = Profile.objects.create(**validated_data)
+        return profile
 
     def update(self, instance, validated_data):
         instance.name = validated_data.get("name", instance.name)
@@ -88,8 +57,6 @@ class PermissionRequestSerializer(serializers.Serializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    # profile = ProfileCreateSerializer(required=True)
-    branch = SatelliteSerializer()
     user_permissions = serializers.SerializerMethodField()
     permissions = PermissionRequestSerializer(write_only=True)
     user_groups = serializers.SerializerMethodField()
@@ -106,12 +73,9 @@ class UserSerializer(serializers.ModelSerializer):
             "phone",
             "is_supervisor",
             "is_teamleader",
-            "is_collections_user",
             "is_superuser",
             "is_staff",
-            "is_staff",
             "is_active",
-            "branch",
             "permissions",
             "user_permissions",
             "user_groups",
@@ -124,21 +88,19 @@ class UserSerializer(serializers.ModelSerializer):
         first_name = validated_data["first_name"]
         last_name = validated_data["last_name"]
         phone = validated_data["phone"]
-        branch = SatelliteBranch.objects.get(name=validated_data["branch"]["name"])
-        isSupervisor = validated_data["is_supervisor"]
-        isTeamLeader = validated_data["is_teamleader"]
-        isCollectionsUser = validated_data["is_collections_user"]
-        isSuperuser = validated_data["is_superuser"]
-        isStaff = validated_data["is_staff"]
-        isActive = validated_data["is_active"]
-        userType = validated_data["user_type"]
-        user = User(email=email, first_name=first_name, last_name=last_name, phone=phone, is_superuser=isSuperuser,
-                    is_supervisor=isSupervisor, is_teamleader=isTeamLeader, is_collections_user=isCollectionsUser,
-                    is_staff=isStaff, is_active=isActive, user_type=userType, branch=branch)
+        is_supervisor = validated_data["is_supervisor"]
+        is_team_leader = validated_data["is_teamleader"]
+        is_superuser = validated_data["is_superuser"]
+        is_staff = validated_data["is_staff"]
+        is_active = validated_data["is_active"]
+        user_type = validated_data["user_type"]
+        user = User(email=email, first_name=first_name, last_name=last_name, phone=phone, is_superuser=is_superuser,
+                    is_supervisor=is_supervisor, is_teamleader=is_team_leader,
+                    is_staff=is_staff, is_active=is_active, user_type=user_type)
         user.set_password(password)
         user.save()
-        codeNameList = validated_data["permissions"]["permissions"]
-        for permission in codeNameList:
+        code_name_list = validated_data["permissions"]["permissions"]
+        for permission in code_name_list:
             try:
                 perm, _ = Permission.objects.get_or_create(
                     codename=permission,
@@ -149,9 +111,9 @@ class UserSerializer(serializers.ModelSerializer):
                 user.user_permissions.add(perm)
             except Exception:
                 pass
-        groupNameList = validated_data["permissions"]["groups"]
-        if groupNameList:
-            groups = Group.objects.filter(name__in=groupNameList)
+        group_names = validated_data["permissions"]["groups"]
+        if group_names:
+            groups = Group.objects.filter(name__in=group_names)
             user.groups.set(groups)
         Token.objects.create(user=user)
         # profile = validated_data["profile"]
@@ -200,3 +162,34 @@ def convert_to_name(code_name):
     parts = code_name.split('_')
     capitalized_parts = [part.capitalize() for part in parts]
     return 'Can ' + ' '.join(capitalized_parts)
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        print(f'user: {user}')
+        token = super().get_token(user)
+        # Add custom claims
+        token['email'] = user.email
+        token['user_type'] = user.user_type
+        token['is_supervisor'] = user.is_supervisor
+        token['is_teamleader'] = user.is_teamleader
+        token['phone'] = user.phone
+        token['permissions'] = user.phone
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # Add additional information to the response data
+        data['email'] = self.user.email
+        data['email'] = self.user.email
+        data['user_type'] = self.user.user_type
+        data['is_supervisor'] = self.user.is_supervisor
+        data['is_teamleader'] = self.user.is_teamleader
+        data['phone'] = self.user.phone
+        data['permissions'] = [perm.codename for perm in self.user.user_permissions.all()]
+        return data
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer

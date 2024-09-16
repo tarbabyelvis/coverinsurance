@@ -2,7 +2,6 @@ from django.db import models
 from config.models import ClaimType, DocumentType, IdDocumentType
 from core.enums import ClaimStatus, PaymentStatus
 from core.models import BaseModel
-from auditlog.registry import auditlog
 from django.utils import timezone
 
 
@@ -127,10 +126,3 @@ class ClaimTracker(models.Model):
 
     def __str__(self):
         return "{}".format(self.claim.id)
-
-
-# Register models for audit
-auditlog.register(Claim)
-auditlog.register(Payment)
-auditlog.register(ClaimDocument)
-auditlog.register(ClaimTracker)

@@ -6,6 +6,7 @@ from .models import *
 
 admin.site.site_header = "FinCover Administration"
 
+
 class CustomUserAdmin(UserAdmin):
     add_form = CustomUserCreationForm
     form = CustomUserChangeForm
@@ -58,7 +59,6 @@ class CustomUserAdmin(UserAdmin):
     def save_model(self, request, obj, form, change):
         if not change:
             obj.save()
-            Token.objects.create(user=obj)
         super(CustomUserAdmin, self).save_model(request, obj, form, change)
 
 
@@ -73,13 +73,5 @@ class ProfileAdmin(admin.ModelAdmin):
     )
     search_fields = ("user__email", "code", "access_code")
 
+
 admin.site.register(Profile, ProfileAdmin)
-
-class UserTypeAdmin(admin.ModelAdmin):
-    list_display = ("code", "description")
-    list_editable = (
-        "description",
-    )
-    search_fields = ("code", "description")
-
-admin.site.register(UserType, UserTypeAdmin)

@@ -1,6 +1,5 @@
 from django.db import models
 from integrations.enums import Integrations
-from auditlog.registry import auditlog
 
 
 class IntegrationConfigs(models.Model):
@@ -34,6 +33,3 @@ class IntegrationLogs(models.Model):
         verbose_name = "Integration Request"
         verbose_name_plural = "Integration Requests"
 
-
-auditlog.register(IntegrationConfigs)
-auditlog.register(IntegrationLogs)

@@ -3,7 +3,7 @@ from clients.models import ClientDetails
 from config.models import Agent, InsuranceCompany, PolicyName, Relationships
 from core.enums import Gender, PolicyStatus, PremiumFrequency
 from core.models import BaseModel
-from auditlog.registry import auditlog
+# from auditlog.registry import auditlog
 
 
 class Policy(BaseModel):
@@ -216,8 +216,8 @@ class Beneficiary(BaseModel):
         return f"{self.id} - {self.policy}"
 
 
-auditlog.register(Policy)
-auditlog.register(PolicyPaymentSchedule)
-auditlog.register(PremiumPayment)
-auditlog.register(Dependant)
-auditlog.register(Beneficiary)
+# auditlog.register(Policy)
+# auditlog.register(PolicyPaymentSchedule)
+# auditlog.register(PremiumPayment)
+# auditlog.register(Dependant)
+# auditlog.register(Beneficiary)
