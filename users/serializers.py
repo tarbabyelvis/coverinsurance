@@ -99,8 +99,8 @@ class UserSerializer(serializers.ModelSerializer):
                     is_staff=is_staff, is_active=is_active, user_type=user_type)
         user.set_password(password)
         user.save()
-        code_name_list = validated_data["permissions"]["permissions"]
-        for permission in code_name_list:
+        code_names = validated_data["permissions"]["permissions"]
+        for permission in code_names:
             try:
                 perm, _ = Permission.objects.get_or_create(
                     codename=permission,
@@ -167,7 +167,6 @@ def convert_to_name(code_name):
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
-        print(f'user: {user}')
         token = super().get_token(user)
         # Add custom claims
         token['user_id'] = user.pk
