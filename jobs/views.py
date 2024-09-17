@@ -1,11 +1,9 @@
 from drf_yasg.utils import swagger_auto_schema
 from marshmallow import ValidationError
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from core.http_response import HTTPResponse
-from core.utils import get_current_schema
 from jobs.serializers import JobsSerializer
 from jobs.services import daily_job_postings, monthly_job_postings, fetch_and_process_fin_connect_data
 
@@ -26,8 +24,6 @@ class DailyJobPostingAPIView(APIView):
         :return: HTTP response indicating success or failure
         """
         try:
-            current_schema = get_current_schema()
-            print(f'current_schema: {current_schema}')
             serializer = JobsSerializer(data=request.data)
             if serializer.is_valid(raise_exception=True):
                 daily_job_postings(**serializer.validated_data)
@@ -99,7 +95,6 @@ class MonthlyJobPostingsAPIView(APIView):
 
 
 class FetchFinConnectDataAPIView(APIView):
-    permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
         operation_description="Fetch Finconnect data job",
         request_body=JobsSerializer,
