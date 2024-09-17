@@ -25,10 +25,10 @@ def audit_create_or_update(sender, instance, created, **kwargs):
     if sender in [Claim]:  # List models to audit
         action = 'Created' if created else 'Updated'
         AuditTrail.objects.create(
-            user=instance.user,
-            action=action,
+            user=getattr(instance, 'user', None),
+            action_type=action,
             model_name=sender.__name__,
-            object_id=instance.pk,
+            model_id=instance.pk,
             changes=str(instance.__dict__)
         )
 
@@ -37,10 +37,10 @@ def audit_create_or_update(sender, instance, created, **kwargs):
 def audit_create_profile(sender, instance, created, **kwargs):
     if created:
         AuditTrail.objects.create(
-            user=instance.user,
-            action='CREATE',
+            user=getattr(instance, 'user', None),
+            action_type='CREATE',
             model_name=sender.__name__,
-            object_id=instance.pk,
+            model_id=instance.pk,
             details=f'User created by {sender.__name__} ',
             changes=str(instance.__dict__)
         )
