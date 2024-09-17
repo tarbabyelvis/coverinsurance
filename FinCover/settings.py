@@ -61,7 +61,6 @@ SHARED_APPS = [
     "rest_framework",
     "users",
     "tenants",
-    #"auditlog",
     "drf_yasg",
     "policies",
     "claims",
@@ -157,13 +156,12 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
     'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
 
-    #'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
 
     'JTI_CLAIM': 'jti',
 
     'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),   #update here for access token
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=1440),   #update here for access token
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1), # update here for refresh token
 }
 
