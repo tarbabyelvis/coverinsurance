@@ -39,9 +39,11 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
     "https://dev-cover-workflow.fin-connect.net",
     "https://*.dev-cover-workflow.fin-connect.net",
-    "https://*.dev-cover.fin-connect.net",
-    "https://*.fin-cover.fin-connect.net",
-    "https://*.fin-cover-workflow.fin-connect.net",
+    "https://dev-cover.fin-connect.net",
+    # "https://*.dev-cover.fin-connect.net",
+    "https://fin-cover.fin-connect.net",
+    # "https://*.fin-cover.fin-connect.net",
+    "https://*.fin-cover-workflow.fin-connect.net"
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
