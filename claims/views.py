@@ -10,7 +10,6 @@ from django.core.files.storage import FileSystemStorage
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
-from django.views.generic.base import ContextMixin
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
@@ -23,7 +22,6 @@ from core.http_response import HTTPResponse
 from core.utils import CustomPagination, standard_http_response
 from drfasyncview import AsyncAPIView
 from drfasyncview.authentication_class import AsyncAuthentication, AsyncIsAuthenticated
-from policies.models import Policy
 from .orm_queries import get_claim_documents, get_document_types, save_claim_document, save_claim_document_blocking
 from .serializers import ClaimSerializer
 from .services import process_claim_payment, process_claim, approve_claim, reactivate_debicheck, repudiate_claim
@@ -271,8 +269,6 @@ class ClaimDetailAPIView(APIView):
                 message="Claim not found", status_code=status.HTTP_404_NOT_FOUND
             )
         data = request.data
-        policy = get_object_or_404(Policy, pk=data["policy"])
-        # data["policy"] = policy
         serializer = ClaimSerializer(claim, data=data)
         if serializer.is_valid():
             serializer.save()
@@ -310,8 +306,8 @@ class ClaimDetailAPIView(APIView):
 class ProcessClaimAPIView(APIView):
     def get(self, request, pk):
         try:
-            # tenant_id = str(request.tenant).replace("-", "_")
-            tenant_id = "fin_za_onlineloans"
+            tenant_id = str(request.tenant).replace("-", "_")
+            # tenant_id = "fin_za_onlineloans"
             print(f'claim processing ...')
             process_claim(tenant_id, pk)
             return HTTPResponse.success(
@@ -330,8 +326,8 @@ class ProcessClaimAPIView(APIView):
 class ApproveClaimAPIView(APIView):
     def get(self, request, pk):
         try:
-            # tenant_id = str(request.tenant).replace("-", "_")
-            tenant_id = "fin_za_onlineloans"
+            tenant_id = str(request.tenant).replace("-", "_")
+            #tenant_id = "fin_za_onlineloans"
             print(f'claim approval ...')
             approve_claim(tenant_id, pk)
             return HTTPResponse.success(
@@ -350,10 +346,10 @@ class ApproveClaimAPIView(APIView):
 class RepudiateClaimAPIView(APIView):
     def post(self, request, pk):
         try:
-            # tenant_id = str(request.tenant).replace("-", "_")
-            tenant_id = "fin_za_onlineloans"
-            print(f'claim repudiation ...')
+            tenant_id = str(request.tenant).replace("-", "_")
+            # tenant_id = "fin_za_onlineloans"
             data = request.data
+            print(f'claim repudiation ...{data}')
             repudiation_reason = data['repudiation_reason']
             repudiated_by = data['repudiated_by']
             repudiate_claim(tenant_id, pk, repudiation_reason, repudiated_by)
@@ -373,8 +369,8 @@ class RepudiateClaimAPIView(APIView):
 class ReceiptClaimAPIView(APIView):
     def post(self, request, pk):
         try:
-            # tenant_id = str(request.tenant).replace("-", "_")
-            tenant_id = "fin_za_onlineloans"
+            tenant_id = str(request.tenant).replace("-", "_")
+            # tenant_id = "fin_za_onlineloans"
             data = request.data
             print(f'receipt claim ...{data}')
             claim_amount = data['amount']
@@ -407,8 +403,8 @@ class ReceiptClaimAPIView(APIView):
 class ReactivateDebicheckAPIView(APIView):
     def post(self, request, pk):
         try:
-            # tenant_id = str(request.tenant).replace("-", "_")
-            tenant_id = "fin_za_onlineloans"
+            tenant_id = str(request.tenant).replace("-", "_")
+            # tenant_id = "fin_za_onlineloans"
             data = request.data
             print(f'reactivate debicheck ...{data}')
             reactivate_debicheck(tenant_id, pk)
@@ -426,10 +422,10 @@ class ReactivateDebicheckAPIView(APIView):
 
 
 class AddDocuments(AsyncAPIView):
-    # authentication_classes = [AsyncAuthentication]
-    # permission_classes = [
-    #     AsyncIsAuthenticated,
-    # ]
+    authentication_classes = [AsyncAuthentication]
+    permission_classes = [
+        AsyncIsAuthenticated,
+    ]
 
     async def post(self, request, *args, **kwargs):
         if not request.data:

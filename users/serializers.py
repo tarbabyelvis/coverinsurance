@@ -170,18 +170,21 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         print(f'user: {user}')
         token = super().get_token(user)
         # Add custom claims
+        token['user_id'] = user.pk
         token['email'] = user.email
+        token['name'] = f'{user.first_name} {user.last_name}'
         token['user_type'] = user.user_type
         token['is_supervisor'] = user.is_supervisor
         token['is_teamleader'] = user.is_teamleader
         token['phone'] = user.phone
-        token['permissions'] = user.phone
+        token['permissions'] = [perm.codename for perm in user.user_permissions.all()]
         return token
 
     def validate(self, attrs):
         data = super().validate(attrs)
         # Add additional information to the response data
-        data['email'] = self.user.email
+        data['user_id'] = self.user.pk
+        data['name'] = f'{self.user.first_name} {self.user.last_name}'
         data['email'] = self.user.email
         data['user_type'] = self.user.user_type
         data['is_supervisor'] = self.user.is_supervisor
