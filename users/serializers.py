@@ -1,7 +1,7 @@
+from django.contrib.auth.models import Permission, Group
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
-from django.contrib.auth.models import Permission, Group
 
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
