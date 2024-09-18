@@ -248,8 +248,9 @@ class ClaimDetailAPIView(APIView):
     )
     def get(self, request, pk):
         try:
-            policy = get_object_or_404(Claim, pk=pk)
-            serializer = ClaimSerializer(policy)
+            claim = get_object_or_404(Claim, pk=pk)
+            print(f'claim obtained {claim}')
+            serializer = ClaimSerializer(claim)
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
