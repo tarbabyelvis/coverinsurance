@@ -174,28 +174,23 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['name'] = f'{user.first_name} {user.last_name}'
         token['user_type'] = user.user_type
         token['is_supervisor'] = user.is_supervisor
-        token['is_teamleader'] = user.is_teamleader
+        token['is_team_leader'] = user.is_teamleader
         token['phone'] = user.phone
         token['permissions'] = [perm.codename for perm in user.user_permissions.all()]
         return token
 
     def validate(self, attrs):
-        print('validating user now')
         try:
             data = super().validate(attrs)
         except Exception as e:
             print(f"Validation error: {e}")
             raise e
-
-        print(f'data found {data}')
-        print(f"Validating user...{self.user} ")
-        # Add additional information to the response data
         data['user_id'] = self.user.pk
         data['name'] = f'{self.user.first_name} {self.user.last_name}'
         data['email'] = self.user.email
         data['user_type'] = self.user.user_type
         data['is_supervisor'] = self.user.is_supervisor
-        data['is_teamleader'] = self.user.is_teamleader
+        data['is_team_leader'] = self.user.is_teamleader
         data['phone'] = self.user.phone
         data['permissions'] = [perm.codename for perm in self.user.user_permissions.all()]
         return data
