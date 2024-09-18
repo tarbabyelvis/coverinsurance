@@ -79,11 +79,11 @@ async def save_claim_document(
     )
 
 
-def save_claim_document_blocking(claim, filename, doc_type, loan_file, content_type):
+def save_claim_document_blocking(claim, filename, doc_type, claim_file, content_type):
     relative_path = "{tenant_name}/claims/{file_name}".format(
         tenant_name=AWS_DOCUMENT_TENANT, file_name=filename.replace(" ", "_")
     )
-    actual_file_name = loan_file.name
+    actual_file_name = claim_file.name
     external_verification = None
     internally_verified = None
     expiration_date = None
@@ -107,13 +107,14 @@ def save_claim_document_blocking(claim, filename, doc_type, loan_file, content_t
         collection_date=collection_date,
         trust_level=trust_level,
     )
+    print('saved claim doc {}'.format(claim_doc))
+    claim_doc.document.save(relative_path, claim_file)
     ClientClaimDocuments.objects.create(
         claim_id=claim.id,
         client_documents_id=claim_doc.id
     )
-    claim_doc.document.save(relative_path, loan_file)
     logger.info(
-        "Loan document added :: {relative_path}".format(relative_path=claim_doc.document)
+        "Claim document added :: {relative_path}".format(relative_path=claim_doc.document)
     )
 
 
