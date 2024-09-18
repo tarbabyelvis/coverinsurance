@@ -1,3 +1,5 @@
+from sys import audit
+
 from django.conf import settings
 from django.urls import path, include
 from django.conf.urls.static import static
@@ -37,6 +39,7 @@ urlpatterns = [
     path("v1/auth/", include("users.urls"), name="authentication-app"),
     path('v1/auth/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('v1/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('v1/audits/', include("audit.urls"), name='audit-app'),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

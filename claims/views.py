@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class ClaimCreateAPIView(APIView):
+   # permission_classes = (IsAuthenticated,
     pagination_class = CustomPagination
 
     @swagger_auto_schema(
@@ -234,6 +236,7 @@ class ClaimCreateAPIView(APIView):
 
 
 class ClaimDetailAPIView(APIView):
+   # permission_classes = (IsAuthenticated,
 
     @swagger_auto_schema(
         operation_description="Retrieve a specific Claim by ID",
@@ -304,6 +307,8 @@ class ClaimDetailAPIView(APIView):
 
 
 class ProcessClaimAPIView(APIView):
+   # permission_classes = (IsAuthenticated,
+
     def get(self, request, pk):
         try:
             tenant_id = str(request.tenant).replace("-", "_")
@@ -324,10 +329,12 @@ class ProcessClaimAPIView(APIView):
 
 
 class ApproveClaimAPIView(APIView):
+   # permission_classes = (IsAuthenticated,
+
     def get(self, request, pk):
         try:
             tenant_id = str(request.tenant).replace("-", "_")
-            #tenant_id = "fin_za_onlineloans"
+            # tenant_id = "fin_za_onlineloans"
             print(f'claim approval ...')
             approve_claim(tenant_id, pk)
             return HTTPResponse.success(
@@ -344,6 +351,8 @@ class ApproveClaimAPIView(APIView):
 
 
 class RepudiateClaimAPIView(APIView):
+   # permission_classes = (IsAuthenticated,
+
     def post(self, request, pk):
         try:
             tenant_id = str(request.tenant).replace("-", "_")
@@ -367,6 +376,8 @@ class RepudiateClaimAPIView(APIView):
 
 
 class ReceiptClaimAPIView(APIView):
+   # permission_classes = (IsAuthenticated,
+
     def post(self, request, pk):
         try:
             tenant_id = str(request.tenant).replace("-", "_")
@@ -401,6 +412,8 @@ class ReceiptClaimAPIView(APIView):
 
 
 class ReactivateDebicheckAPIView(APIView):
+   # permission_classes = (IsAuthenticated,
+
     def post(self, request, pk):
         try:
             tenant_id = str(request.tenant).replace("-", "_")
@@ -483,7 +496,7 @@ class AddDocuments(AsyncAPIView):
 
 
 class GetClaimDocumentsView(APIView):
-    # permission_classes = (IsAuthenticated,)
+   # permission_classes = (IsAuthenticated,
 
     def get(self, request, *args, **kwargs):
         claim_id = self.kwargs["pk"]
@@ -500,10 +513,10 @@ class GetClaimDocumentsView(APIView):
 
 
 class AddDocTemplates(AsyncAPIView):
-    authentication_classes = [AsyncAuthentication]
-    permission_classes = [
-        AsyncIsAuthenticated,
-    ]
+    # authentication_classes = [AsyncAuthentication]
+    # permission_classes = [
+    #     AsyncIsAuthenticated,
+    # ]
 
     async def post(self, request, *args, **kwargs):
         if not request.data:
