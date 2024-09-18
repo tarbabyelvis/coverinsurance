@@ -5,7 +5,6 @@ from rest_framework import serializers
 from config.models import ClaimType, DocumentType, IdDocumentType
 from core.enums import ClaimStatus
 from policies.models import Policy
-from policies.serializers import PolicySerializer
 from .models import Claim, ClaimDocument
 
 
