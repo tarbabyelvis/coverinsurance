@@ -180,8 +180,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
+        print('validating user now')
         data = super().validate(attrs)
-        print(f"Validating user...{self.user}")
+        print(f'data found {data}')
+        print(f"Validating user...{self.user} ")
         # Add additional information to the response data
         data['user_id'] = self.user.pk
         data['name'] = f'{self.user.first_name} {self.user.last_name}'
