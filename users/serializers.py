@@ -181,6 +181,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
+        print(f"Validating user...{self.user}")
         # Add additional information to the response data
         data['user_id'] = self.user.pk
         data['name'] = f'{self.user.first_name} {self.user.last_name}'
