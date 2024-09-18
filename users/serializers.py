@@ -181,7 +181,12 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         print('validating user now')
-        data = super().validate(attrs)
+        try:
+            data = super().validate(attrs)
+        except Exception as e:
+            print(f"Validation error: {e}")
+            raise e
+
         print(f'data found {data}')
         print(f"Validating user...{self.user} ")
         # Add additional information to the response data
