@@ -29,6 +29,7 @@ def audit_create_or_update(sender, instance, created, **kwargs):
             action_type=action,
             model_name=sender.__name__,
             model_id=instance.pk,
+            details=f'Claim {action} by {sender.__name__}',
             changes=str(instance.__dict__)
         )
 
