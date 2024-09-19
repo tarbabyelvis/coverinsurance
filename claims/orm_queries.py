@@ -1,4 +1,7 @@
-from dateutil.utils import today
+import logging
+from datetime import datetime
+
+from asgiref.sync import sync_to_async
 from django.db.models import Q
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast
@@ -7,9 +10,6 @@ from django.forms import DateField
 from FinCover.settings import AWS_DOCUMENT_TENANT
 from core import s3storage
 from .models import *
-from datetime import datetime
-import logging
-from asgiref.sync import sync_to_async
 
 logger = logging.getLogger(__name__)
 

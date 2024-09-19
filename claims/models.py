@@ -55,14 +55,13 @@ class ClaimDocument(BaseModel):
         Claim, on_delete=models.RESTRICT, related_name="claim_document"
     )
     document_name = models.CharField(max_length=200, null=True, blank=True)
-    document_file = models.FileField(upload_to="claims/")
+    document = models.FileField(upload_to="claims/", null=True, blank=True)
     document_type = models.ForeignKey(
         DocumentType,
         on_delete=models.RESTRICT,
         related_name="claim_document_type",
     )
     password = models.CharField(max_length=50, null=True, blank=True)
-    document = models.FileField(upload_to="", null=True, blank=True)
     actual_name = models.TextField(null=True, blank=True)
     content_type = models.CharField(max_length=100, null=True, blank=True)
     created = models.DateTimeField(default=timezone.now)
