@@ -24,7 +24,7 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
 class ClaimDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClaimDocument
-        fields = ["id", "claim", "document_name", "document_file", "document_type"]
+        fields = ["id", "claim", "document_name", "document", "document_type"]
 
 
 class ClaimSerializer(serializers.ModelSerializer):
@@ -106,8 +106,8 @@ class ClaimSerializer(serializers.ModelSerializer):
             claim_document.document_name = claim_document_data.get(
                 "document_name", claim_document.document_name
             )
-            claim_document.document_file = claim_document_data.get(
-                "document_file", claim_document.document_file
+            claim_document.document = claim_document_data.get(
+                "document_file", claim_document.document
             )
             claim_document.document_type = claim_document_data.get(
                 "document_type", claim_document.document_type
