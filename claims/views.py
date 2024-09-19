@@ -207,7 +207,7 @@ class ClaimCreateAPIView(APIView):
                 "claim_assessed_by": claim['claim_assessed_by'],
                 "claim_assessment_date": claim['claim_assessment_date'],
                 "claim_amount": claim['claim_amount'],
-                "claims_details": "",
+                "claims_details": claim['claims_details'],
                 "submitted_date": claim['submitted_date'],
                 "claim_paid_date": claim['claim_paid_date'],
                 "claimant_name": claim['claimant_name'],
