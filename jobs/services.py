@@ -1,7 +1,7 @@
 import asyncio
 import re
 import traceback
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Final
 
 from asgiref.sync import sync_to_async
@@ -11,7 +11,8 @@ from claims.models import Claim
 from claims.serializers import ClaimSerializer
 from config.enums import PolicyType
 from config.models import ClaimantDetails, LoanProduct
-from core.utils import first_day_of_previous_month, last_day_of_previous_month, get_loan_id_from_legacy_loan
+from core.utils import first_day_of_previous_month, last_day_of_previous_month, get_loan_id_from_legacy_loan, \
+    first_day_of_month_for_yesterday
 from integrations.enums import Integrations
 from integrations.guardrisk.guardrisk import GuardRisk
 from integrations.models import IntegrationConfigs
@@ -26,13 +27,13 @@ from policies.serializers import PolicyDetailSerializer, PremiumPaymentSerialize
 from sms.services import warn_of_policy_lapse
 from .models import Task
 
-first_day_of_previous_month: date = first_day_of_previous_month().date()
+first_day_of_month_for_yesterday: date = first_day_of_month_for_yesterday()
 last_day_of_previous_month: date = last_day_of_previous_month().date()
 today_start_date: date = datetime.today().date()
-today_end_date: date = datetime.today().date()
+yesterday: date = datetime.today().date() - timedelta(days=1)
 
 
-def daily_job_postings(start_date=today_start_date, end_date=today_end_date):
+def daily_job_postings(start_date=first_day_of_month_for_yesterday, end_date=yesterday):
     print("Running daily job postings")
     nifty_configs = fetch_configs(identifier='Nifty Cover')
     indlu_configs = fetch_configs(identifier='Indlu')
@@ -118,7 +119,7 @@ def __get_start_and_end_dates_with_time(start_date, end_date):
 
 
 def credit_life_daily(credit_life_policies, nifty_configs, indlu_configs, start_date=today_start_date,
-                      end_date=today_end_date):
+                      end_date=yesterday):
     return __credit_life(credit_life_policies, nifty_configs, indlu_configs, start_date, end_date)
 
 
@@ -176,7 +177,7 @@ def process_credit_life(data, integration_configs, start_date, end_date, is_dail
     return data, response_status
 
 
-def life_funeral_daily(funeral_policies, nifty_configs, start_date=today_start_date, end_date=today_end_date):
+def life_funeral_daily(funeral_policies, nifty_configs, start_date=today_start_date, end_date=yesterday):
     __life_funeral(funeral_policies, nifty_configs, start_date, end_date)
 
 
@@ -227,7 +228,7 @@ def process_life_funeral(data, integration_configs, start_date, end_date, is_dai
     return data, response_status
 
 
-def claims_daily(claims_fetched, nifty_configs, indlu_configs, start_date=today_start_date, end_date=today_end_date):
+def claims_daily(claims_fetched, nifty_configs, indlu_configs, start_date=today_start_date, end_date=yesterday):
     return __claims(claims_fetched, nifty_configs, indlu_configs, start_date, end_date)
 
 
@@ -284,7 +285,7 @@ def process_claims(data, integration_configs, start_date, end_date, is_daily_sub
 
 
 def premiums_daily(premiums_fetched, nifty_configs, indlu_configs, start_date=today_start_date,
-                   end_date=today_end_date):
+                   end_date=yesterday):
     return __premiums(premiums_fetched, nifty_configs, indlu_configs, start_date, end_date)
 
 

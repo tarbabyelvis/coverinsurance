@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from drf_yasg.utils import swagger_auto_schema
 from marshmallow import ValidationError
 from rest_framework import status
@@ -24,9 +26,7 @@ class DailyJobPostingAPIView(APIView):
         :return: HTTP response indicating success or failure
         """
         try:
-            serializer = JobsSerializer(data=request.data)
-            if serializer.is_valid(raise_exception=True):
-                daily_job_postings(**serializer.validated_data)
+            daily_job_postings()
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
@@ -110,15 +110,18 @@ class FetchFinConnectDataAPIView(APIView):
         :return: HTTP response indicating success or failure
         """
         try:
-            request_data = request.data
-            serializer = JobsSerializer(data=request_data)
-            if serializer.is_valid(raise_exception=True):
-                fin_organization_id = str(request.GET.get('fin_organization_id')).replace("-", "_")
-                fetch_and_process_fin_connect_data(**serializer.validated_data, fineract_org_id=fin_organization_id)
-                return HTTPResponse.success(
-                    message="Request Successful",
-                    status_code=status.HTTP_200_OK,
-                )
+            tenant_id = str(request.tenant).replace("-", "_")
+            today = datetime.today()
+            yesterday = today - timedelta(days=1)
+            fin_organization_id = str(request.GET.get('fin_organization_id')).replace("-", "_")
+            fetch_and_process_fin_connect_data(
+                start_date=yesterday,
+                end_date=yesterday,
+                fineract_org_id=fin_organization_id)
+            return HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+            )
         except ValidationError as e:
             print("Validation Error: ", e)
             return HTTPResponse.error(

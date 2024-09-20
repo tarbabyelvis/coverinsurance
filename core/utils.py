@@ -136,6 +136,13 @@ def last_day_of_previous_month():
     first_day_of_current_month = today.replace(day=1)
     return first_day_of_current_month - timedelta(days=1)
 
+def first_day_of_month_for_yesterday():
+    today = datetime.now()
+    yesterday = today - timedelta(days=1)
+    first_day_of_month = yesterday.replace(day=1)
+    return first_day_of_month
+
+
 
 def get_initial_letter(word: str):
     if word:

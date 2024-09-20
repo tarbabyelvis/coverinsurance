@@ -16,9 +16,12 @@ class GetTenants(APIView):
         result = []
         for tenant in tenants:
             domain = list(filter(lambda d: d["tenant_id"] == tenant["id"], domains))
-            tenant["domain"] = f"https://{domain[0]['domain']}"
+            host = domain[0]['domain'].split('.')[1]
+            protocol = "http" if host == "localhost" else "https"
+            tenant["domain"] = f"{protocol}://{domain[0]['domain']}"
             if tenant["name"] != "public":
-                result.append(tenant)
+                result.append({'shortName': tenant["short_name"], 'domain': tenant["domain"]})
+            print(result)
         return HTTPResponse.success(
             data=result,
             message="Resource retrieved successfully",
