@@ -17,10 +17,10 @@ class GetTenants(APIView):
         for tenant in tenants:
             domain = list(filter(lambda d: d["tenant_id"] == tenant["id"], domains))
             host = domain[0]['domain'].split('.')[1]
-            protocol = "http" if host == "localhost" else "https"
+            protocol = "http" if "localhost" in host else "https"
             tenant["domain"] = f"{protocol}://{domain[0]['domain']}"
             if tenant["name"] != "public":
-                result.append({'shortName': tenant["short_name"], 'domain': tenant["domain"]})
+                result.append({'shortName': tenant["short_name"], 'domain': tenant["name"]})
             print(result)
         return HTTPResponse.success(
             data=result,

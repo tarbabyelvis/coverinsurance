@@ -26,11 +26,26 @@ class DailyJobPostingAPIView(APIView):
         :return: HTTP response indicating success or failure
         """
         try:
-            daily_job_postings()
-            return HTTPResponse.success(
-                message="Request Successful",
-                status_code=status.HTTP_200_OK,
-            )
+            tenant_id = str(request.tenant).replace("-", "_")
+            if tenant_id == 'fin-za':
+                data = request.data
+                if data is not None:
+                    serializer = JobsSerializer(data=request.data)
+                    if serializer.is_valid(raise_exception=True):
+                        daily_job_postings(**serializer.validated_data)
+                        return HTTPResponse.success(
+                            message="Request Successful",
+                            status_code=status.HTTP_200_OK,
+                        )
+                    return HTTPResponse.error(
+                        message="Invalid request data",
+                        status_code=status.HTTP_409_CONFLICT,
+                    )
+                daily_job_postings()
+                return HTTPResponse.success(
+                    message="Request Successful",
+                    status_code=status.HTTP_200_OK,
+                )
         except ValidationError as e:
             print("Validation Error: ", e)
             return HTTPResponse.error(
@@ -111,15 +126,31 @@ class FetchFinConnectDataAPIView(APIView):
         """
         try:
             tenant_id = str(request.tenant).replace("-", "_")
+            fin_organization_id = str(request.GET.get('fin_organization_id')).replace("-", "_")
+            print(f'tenant {tenant_id} fetching from fin organization {fin_organization_id}')
+            data = request.data
+            if data is not None:
+                serializer = JobsSerializer(data=request.data)
+                if serializer.is_valid(raise_exception=True):
+                    fetch_and_process_fin_connect_data(
+                        **serializer.validated_data,
+                        fineract_org_id=fin_organization_id)
+                    return HTTPResponse.success(
+                        message="Fineract fetch data request Successful",
+                        status_code=status.HTTP_200_OK,
+                    )
+                return HTTPResponse.error(
+                    message="Invalid request data",
+                    status_code=status.HTTP_409_CONFLICT,
+                )
             today = datetime.today()
             yesterday = today - timedelta(days=1)
-            fin_organization_id = str(request.GET.get('fin_organization_id')).replace("-", "_")
             fetch_and_process_fin_connect_data(
                 start_date=yesterday,
                 end_date=yesterday,
                 fineract_org_id=fin_organization_id)
             return HTTPResponse.success(
-                message="Request Successful",
+                message="Fineract fetch data request Successful",
                 status_code=status.HTTP_200_OK,
             )
         except ValidationError as e:
