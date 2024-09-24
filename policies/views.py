@@ -9,7 +9,7 @@ from policies.constants import (
     POLICY_COLUMNS_BORDREX, REPAYMENT_COLUMNS, CLIENT_COLUMNS_BORDREX, REPAYMENT_COLUMNS_INDLU,
     REPAYMENT_COLUMNS_MEDIFIN,
 )
-from policies.models import Beneficiary, Dependant, Policy, PremiumPayment
+from policies.models import Beneficiary, Dependant, Policy, PremiumPayment, CoverCharges
 from rest_framework.views import APIView
 from core.http_response import HTTPResponse
 from rest_framework.views import APIView
@@ -25,7 +25,7 @@ from .serializers import (
     PolicyDetailSerializer,
     PolicyListSerializer,
     PolicySerializer,
-    PremiumPaymentSerializer,
+    PremiumPaymentSerializer, CoverChargesSerializer,
 )
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -499,3 +499,33 @@ class UploadPaymentFileView(APIView):
         except Exception as e:
             logger.error(e)
             return HTTPResponse.error(message=str(e))
+
+
+class CalculateChargesView(APIView):
+
+    def get(self, request):
+        """
+        Get all policy payments.
+        """
+        charges = CoverCharges.objects.all()
+        serializer = CoverChargesSerializer(charges, many=True)
+        return HTTPResponse.success(
+            data=serializer.data, status_code=status.HTTP_200_OK
+        )
+
+    def post(self, request):
+        data = request.data
+
+        policy_type = data['policy_type']
+        package = data['package_name']
+        benefit_amount = data['benefit_amount']
+        charge = CoverCharges.objects.filter(policy_type=policy_type, package=package,
+                                             benefit_amount=benefit_amount).first()
+        if charge is None:
+            print(
+                f'Charges for policy type {policy_type}, package {package} and benefit amount {benefit_amount} does not exist')
+            return HTTPResponse.error(message="Charge not found")
+        serializer = CoverChargesSerializer(charge)
+        return HTTPResponse.success(
+            data=serializer.data, status_code=status.HTTP_200_OK
+        )

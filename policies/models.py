@@ -1,8 +1,11 @@
 from django.db import models
 from clients.models import ClientDetails
+from config.enums import PolicyType
 from config.models import Agent, InsuranceCompany, PolicyName, Relationships
 from core.enums import Gender, PolicyStatus, PremiumFrequency
 from core.models import BaseModel
+
+
 # from auditlog.registry import auditlog
 
 
@@ -216,8 +219,8 @@ class Beneficiary(BaseModel):
         return f"{self.id} - {self.policy}"
 
 
-# auditlog.register(Policy)
-# auditlog.register(PolicyPaymentSchedule)
-# auditlog.register(PremiumPayment)
-# auditlog.register(Dependant)
-# auditlog.register(Beneficiary)
+class CoverCharges(BaseModel):
+    policy_type = models.CharField(max_length=20, choices=PolicyType.choices)
+    package_name = models.CharField(max_length=50, null=True)
+    benefit_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    premium = models.DecimalField(max_digits=10, decimal_places=2)

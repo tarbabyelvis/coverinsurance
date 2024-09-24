@@ -36,4 +36,14 @@ urlpatterns = [
         UploadPaymentFileView.as_view(),
         name="policy-payments-file",
     ),
+    path(
+        "calculate-charges/",
+        CalculateChargesView.as_view(),
+        name="policy-charges-calculation",
+    ),
+    path(
+        "charges/",
+        CalculateChargesView.as_view(),
+        name="policy-charges-calculation",
+    )
 ]

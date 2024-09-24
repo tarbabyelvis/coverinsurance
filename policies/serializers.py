@@ -19,7 +19,7 @@ from policies.models import (
     Dependant,
     PolicyPaymentSchedule,
     PremiumPayment,
-    PremiumPaymentScheduleLink,
+    PremiumPaymentScheduleLink, CoverCharges,
 )
 
 
@@ -545,3 +545,10 @@ def update_policy_balances(policy, amount_paid):
     policy_details = policy.policy_details
     outstanding_balance = float(policy_details.get('current_outstanding_balance'))
     policy.policy_details['current_outstanding_balance'] = outstanding_balance - float(amount_paid)
+
+
+
+class CoverChargesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CoverCharges
+        fields = ['policy_type', 'package_name', 'benefit_amount', 'premium']
