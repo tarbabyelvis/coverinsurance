@@ -27,9 +27,12 @@ class DailyJobPostingAPIView(APIView):
         """
         try:
             tenant_id = str(request.tenant).replace("-", "_")
-            if tenant_id == 'fin-za':
+            print('tenant_id', tenant_id)
+            if tenant_id == 'fin_za':
                 data = request.data
+                print(f'data {data}')
                 if data:
+                    print('in data avail')
                     serializer = JobsSerializer(data=request.data)
                     if serializer.is_valid(raise_exception=True):
                         daily_job_postings(**serializer.validated_data)
@@ -41,17 +44,18 @@ class DailyJobPostingAPIView(APIView):
                         message="Invalid request data",
                         status_code=status.HTTP_409_CONFLICT,
                     )
+                print('in data not availaavail')
                 daily_job_postings()
                 return HTTPResponse.success(
                     message="Request Successful",
                     status_code=status.HTTP_200_OK,
                 )
-        except ValidationError as e:
-            print("Validation Error: ", e)
-            return HTTPResponse.error(
-                message=e.messages,
-                status_code=status.HTTP_409_CONFLICT,
-            )
+            else:
+                print('in wrong tenant')
+                return HTTPResponse.error(
+                    message="Invalid request tenant",
+                    status_code=status.HTTP_409_CONFLICT,
+                )
         except KeyError as e:
             print("Key Error: ", e)
             return HTTPResponse.error(
