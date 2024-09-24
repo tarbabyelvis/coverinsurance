@@ -29,7 +29,7 @@ class DailyJobPostingAPIView(APIView):
             tenant_id = str(request.tenant).replace("-", "_")
             if tenant_id == 'fin-za':
                 data = request.data
-                if data is not None:
+                if data:
                     serializer = JobsSerializer(data=request.data)
                     if serializer.is_valid(raise_exception=True):
                         daily_job_postings(**serializer.validated_data)
