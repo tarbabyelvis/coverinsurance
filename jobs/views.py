@@ -129,7 +129,7 @@ class FetchFinConnectDataAPIView(APIView):
             fin_organization_id = str(request.GET.get('fin_organization_id')).replace("-", "_")
             print(f'tenant {tenant_id} fetching from fin organization {fin_organization_id}')
             data = request.data
-            if data is not None:
+            if data:
                 serializer = JobsSerializer(data=request.data)
                 if serializer.is_valid(raise_exception=True):
                     fetch_and_process_fin_connect_data(
