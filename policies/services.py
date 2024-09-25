@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, date, time
 from typing import Any, Dict, List
@@ -16,9 +17,9 @@ from core.enums import PremiumFrequency
 from core.utils import get_dict_values, merge_dict_into_another, replace_keys, get_current_schema
 from integrations.utils import calculate_binder_fees_amount, calculate_commission_amount, \
     calculate_guard_risk_admin_amount
-from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, POLICY_CLIENTS_COLUMNS_THF_UPDATE
-from policies.constants import FUNERAL_POLICY_BENEFICIARY_COLUMNS, \
-    FUNERAL_POLICY_CLIENT_COLUMNS
+from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, POLICY_CLIENTS_COLUMNS_THF_UPDATE, \
+    DEFAULT_BENEFICIARY_FIELDS, CLIENT_COLUMNS_INDLU
+from policies.constants import FUNERAL_POLICY_CLIENT_COLUMNS
 from policies.models import Policy
 from policies.serializers import BeneficiarySerializer
 from policies.serializers import ClientPolicyRequestSerializer, PremiumPaymentSerializer
@@ -152,18 +153,36 @@ def upload_funeral_clients_and_policies(
     #     client_policy_data = client_policy_future.result()
     #
     #     policy_beneficiary_data = policy_beneficiary_future.result()
-    client_policy_data = process_worksheet(wb, "Funeral All", FUNERAL_POLICY_CLIENT_COLUMNS, "client_policy")
+    client_policy_data = process_worksheet(wb, "Funeral", FUNERAL_POLICY_CLIENT_COLUMNS, "client_policy")
 
-    policy_beneficiary_data = process_worksheet(wb, "Beneficiary Details", FUNERAL_POLICY_BENEFICIARY_COLUMNS,
-                                                "beneficiary")
+    # policy_beneficiary_data = process_worksheet(wb, "Beneficiary Details", FUNERAL_POLICY_BENEFICIARY_COLUMNS,
+    #                                             "beneficiary")
 
-    client_policy_beneficiary_data = match_beneficiaries_to_policies(policy_beneficiary_data, client_policy_data)
+    # client_policy_beneficiary_data = match_beneficiaries_to_policies(policy_beneficiary_data, client_policy_data)
+    #
+    # client_policy_beneficiary_dependents_data = extract_funeral_dependant_fields(client_policy_beneficiary_data)
 
-    client_policy_beneficiary_dependents_data = extract_funeral_dependant_fields(client_policy_beneficiary_data)
-
-    save_client_policy_beneficiary_dependents_data(client_policy_beneficiary_dependents_data)
+    # save_client_policy_beneficiary_dependents_data(client_policy_beneficiary_dependents_data)
+    save_client_policy_beneficiary_dependents_data(client_policy_data)
 
     # save_policy_beneficiary_data(policy_beneficiary_data)
+    # client_columns = {
+    #     "first_name": "principal_firstname",
+    #     "last_name": "principal_surname",
+    #     "primary_id_number": "principal_id",
+    #     "gender": "principal_gender",
+    #     "date_of_birth": "principal_date_of_birth",
+    #     "email": "principal_email",
+    #     "phone_number": "principal_phone_number",
+    #     "address_street": "principal_physical_address",
+    #     "postal_code": "principal_postal_code",
+    #     "marital_status": "spouse_indicator",
+    #     "primary_id_document_type": 1,
+    #     "entity_type": "Individual"
+    # }
+    # dump_policies, dump_clients = extract_from_dump(client_policy_data, client_columns)
+    # updated_clients = extract_employment_info_from_client(dump_clients)
+    # save_client_policy_members_data(dump_policies, updated_clients)
 
 
 def extract_funeral_json_fields(dictionary):
@@ -252,26 +271,6 @@ def process_worksheet(
         raise ValidationError(f"{data_type.capitalize()} headers not matching the ones on the excel sheet")
 
     processed_data = []
-    for row in worksheet.iter_rows(min_row=2, values_only=True):
-        if any(cell is not None for cell in row):
-            row_dict = dict(zip(headers, row))
-            if row_dict is not None:
-                row_dict = replace_keys(columns, row_dict)
-                if row_dict is not None:
-                    data = {k: row_dict[k] for k in columns if k in row_dict}
-                    if data is not None:
-                        print(f'data {data}')
-                        policy_number = data["loanId"]
-                        print(f'policy number: {policy_number}')
-                        policy = Policy.objects.filter(policy_number=policy_number).first()
-                        if policy is not None:
-                            if policy.premium is None:
-                                print(f'policy {policy}')
-                                premium = policy.total_premium
-                                total_premium = data["total_premium"]
-                                policy.premium = premium
-                                policy.total_premium = total_premium
-                                policy.save()
     # for row in worksheet.iter_rows(min_row=2, values_only=True):
     #     if any(cell is not None for cell in row):
     #         row_dict = dict(zip(headers, row))
@@ -281,7 +280,28 @@ def process_worksheet(
     #                 data = {k: row_dict[k] for k in columns if k in row_dict}
     #                 if data is not None:
     #                     print(f'data {data}')
-    #                     policy_number, _ = get_policy_number_and_external_id(data)
+    #                     policy_number = data["loanId"]
+    #                     print(f'policy number: {policy_number}')
+    #                     policy = Policy.objects.filter(policy_number=policy_number).first()
+    #                     if policy is not None:
+    #                         if policy.premium is None:
+    #                             print(f'policy {policy}')
+    #                             premium = policy.total_premium
+    #                             total_premium = data["total_premium"]
+    #                             policy.premium = premium
+    #                             policy.total_premium = total_premium
+    #                             policy.save()
+    # for row in worksheet.iter_rows(min_row=2, values_only=True):
+    #     if any(cell is not None for cell in row):
+    #         row_dict = dict(zip(headers, row))
+    #         if row_dict is not None:
+    #             row_dict = replace_keys(columns, row_dict)
+    #             if row_dict is not None:
+    #                 data = {k: row_dict[k] for k in columns if k in row_dict}
+    #                 if data is not None:
+    #                     print(f'data {data}')
+    #                     #policy_number, _ = get_policy_number_and_external_id(data)
+    #                     policy_number= data['policy_number']
     #                     print(f'policy number: {policy_number}')
     #                     policy = Policy.objects.filter(policy_number=policy_number).first()
     #                     if policy is not None:
@@ -289,38 +309,44 @@ def process_worksheet(
     #                         policy.policy_status = map_closure_reason(data["closed_reason"])
     #                         policy.closed_date = data["expiry_date"]
     #                         policy.save()
-    # for row in worksheet.iter_rows(min_row=2, values_only=True):
-    #     if any(cell is not None for cell in row):
-    #         row_dict = dict(zip(headers, row))
-    #         row_dict = replace_keys(columns, row_dict)
-    #         data = {k: row_dict[k] for k in columns if k in row_dict}
-    #         if data_type == "client_policy":
-    #             default_columns = {**DEFAULT_CLIENT_FIELDS, **DEFAULT_POLICY_FIELDS}
-    #         elif data_type == "policy":
-    #             default_columns = {**DEFAULT_POLICY_FIELDS, "entity": "Indlu",
-    #                                "sub_scheme": "Credit Life",
-    #                                "commission_frequency": "Monthly",
-    #                                "premium_frequency": "Monthly",
-    #                                }
-    #         elif data_type == "client":
-    #             default_columns = {**DEFAULT_CLIENT_FIELDS}
-    #         elif data_type == "repayment":
-    #             default_columns = {}
-    #         elif data_type == "policy_client_dump" or data_type == 'cfsa' or data_type == 'cfsacorrect':
-    #             default_columns = {**DEFAULT_POLICY_FIELDS, **DEFAULT_CLIENT_FIELDS,
-    #                                "entity": "Indlu",
-    #                                "policy_type_id": 1,
-    #                                "sub_scheme": "Credit Life",
-    #                                "commission_frequency": "Monthly",
-    #                                "premium_frequency": "Monthly",
-    #                                "commission_percentage": 7.50
-    #                                }
-    #         else:
-    #             default_columns = DEFAULT_BENEFICIARY_FIELDS
-    #
-    #         data = merge_dict_into_another(data, default_columns)
-    #         processed_data.append(process_data(data, data_type))
-    # return processed_data
+    for row in worksheet.iter_rows(min_row=2, values_only=True):
+        if any(cell is not None for cell in row):
+            row_dict = dict(zip(headers, row))
+            row_dict = replace_keys(columns, row_dict)
+            data = {k: row_dict[k] for k in columns if k in row_dict}
+            if data_type == "client_policy":
+                default_columns = {**DEFAULT_CLIENT_FIELDS, **DEFAULT_POLICY_FIELDS,
+                                   "entity": "Indlu",
+                                   "commission_frequency": "Monthly",
+                                   "premium_frequency": "Monthly",
+                                   "policy_type_id": 2,
+                                   "commission_percentage": 7.50
+                                   }
+            elif data_type == "policy":
+                default_columns = {**DEFAULT_POLICY_FIELDS, "entity": "Indlu",
+                                   "sub_scheme": "Credit Life",
+                                   "commission_frequency": "Monthly",
+                                   "premium_frequency": "Monthly",
+                                   }
+            elif data_type == "client":
+                default_columns = {**DEFAULT_CLIENT_FIELDS}
+            elif data_type == "repayment":
+                default_columns = {}
+            elif data_type == "policy_client_dump" or data_type == 'cfsa' or data_type == 'cfsacorrect':
+                default_columns = {**DEFAULT_POLICY_FIELDS, **DEFAULT_CLIENT_FIELDS,
+                                   "entity": "Indlu",
+                                   "policy_type_id": 1,
+                                   "sub_scheme": "Credit Life",
+                                   "commission_frequency": "Monthly",
+                                   "premium_frequency": "Monthly",
+                                   "commission_percentage": 7.50
+                                   }
+            else:
+                default_columns = DEFAULT_BENEFICIARY_FIELDS
+
+            data = merge_dict_into_another(data, default_columns)
+            processed_data.append(process_data(data, data_type))
+    return processed_data
 
 
 def process_data(data: Dict[str, Any], data_type: str) -> Dict[str, Any]:
@@ -516,7 +542,12 @@ def process_beneficiary_data(beneficiary_data: Dict[str, Any]) -> Dict[str, Any]
 
 
 def process_client_policy_data(client_policy_data: Dict[str, Any]) -> Dict[str, Any]:
-    # Further processing if needed
+    print(f'funeral policy data {client_policy_data}')
+    if 'business_unit' not in client_policy_data:
+        client_policy_data['business_unit'] = 'NiftyCover'
+    if "gender" in client_policy_data:
+        gender_mapping = {"U": "Unknown", "M": "Male", "F": "Female", "Male": "Male", "Female": "Female"}
+        client_policy_data["gender"] = gender_mapping.get(client_policy_data["gender"], "Unknown")
     frequency_map = {
         1: PremiumFrequency.MONTHLY,
         3: PremiumFrequency.QUARTERLY,
@@ -530,20 +561,6 @@ def process_client_policy_data(client_policy_data: Dict[str, Any]) -> Dict[str, 
         "N": MaritalStatus.SINGLE,
         "Y": MaritalStatus.MARRIED
     }
-
-    dependants = []
-
-    client_address = client_policy_data["address_street"].split(";")
-
-    client_policy_data["address_street"] = client_address[0]
-
-    client_policy_data["address_suburb"] = client_address[1]
-
-    client_policy_data["address_town"] = client_address[2]
-
-    client_policy_data["policy_term"] = 1 if client_policy_data["policy_term"] == 0 else client_policy_data[
-        "policy_term"]
-
     client_policy_data["premium_frequency"] = frequency_map.get(client_policy_data["premium_frequency"],
                                                                 PremiumFrequency.ONCE_OFF).value
 
@@ -555,17 +572,68 @@ def process_client_policy_data(client_policy_data: Dict[str, Any]) -> Dict[str, 
     gender_mapping = {"U": "Unknown", "M": "Male", "F": "Female"}
 
     client_policy_data["gender"] = gender_mapping.get(client_policy_data.get("gender"), "Unknown")
+    if 'policy_status' in client_policy_data:
+        status = clean_string(client_policy_data['policy_status'])
+        client_policy_data['policy_status'] = status
+        if status in ['F']:
+            client_policy_data['policy_status'] = 'P'
+        if status in ['P,', 'L', 'X']:
+            status_date = client_policy_data['json_policy_status_date']
+            print(f'status date {status_date}')
+            client_policy_data['expiry_date'] = status_date
+    if 'date_of_birth' in client_policy_data:
+        expiry_date = client_policy_data['date_of_birth']
+        if isinstance(expiry_date, str):
+            if expiry_date == 'NULL':
+                client_policy_data['date_of_birth'] = None
+            else:
+                try:
+                    client_policy_data['date_of_birth'] = parser.parse(expiry_date).date()
+                except ValueError:
+                    client_policy_data['date_of_birth'] = date.today().strftime('%d/%m/%Y')
+        if expiry_date is None:
+            client_policy_data['date_of_birth'] = date.today().strftime('%d/%m/%Y')
+    if 'commencement_date' in client_policy_data:
+        commencement_date = client_policy_data['commencement_date']
+        if isinstance(commencement_date, str):
+            if commencement_date == 'NULL':
+                client_policy_data['commencement_date'] = None
+            else:
+                client_policy_data['commencement_date'] = parser.parse(commencement_date)
+    if 'expiry_date' in client_policy_data:
+        expiry_date = client_policy_data['expiry_date']
+        if isinstance(expiry_date, str):
+            if expiry_date == 'NULL':
+                client_policy_data['expiry_date'] = None
+            else:
+                client_policy_data['expiry_date'] = parser.parse(expiry_date)
+    if 'address_street' in client_policy_data:
+        address = client_policy_data['address_street']
+        if address is not None:
+            address_parts = address.split(';')
+            street = address_parts[0].strip()
+            city = address_parts[2].strip()
+            client_policy_data['address_street'] = street
+            client_policy_data['address_town'] = city
+    if 'sum_insured' in client_policy_data:
+        sum_insured = client_policy_data['sum_insured']
+        if isinstance(sum_insured, str):
+            client_policy_data['sum_insured'] = round(float(sum_insured.replace(',', '')), 2)
 
-    for detail in client_policy_data:
-        if detail == "policy_details":
-            for policy_detail in client_policy_data[detail]:
-                if isinstance(client_policy_data[detail][policy_detail], datetime):
-                    client_policy_data[detail][policy_detail] = client_policy_data[detail][policy_detail].strftime(
-                        '%Y-%m-%d')
-        if isinstance(client_policy_data[detail], datetime):
-            client_policy_data[detail] = client_policy_data[detail].strftime('%Y-%m-%d')
+    __calculate_and_set_expiry_date(client_policy_data)
+    extract_json_fields(client_policy_data)
 
+    total_premium = client_policy_data.get("total_premium", 0)
+    total_premium = 0 if total_premium == 'NULL' else total_premium
+    client_policy_data["commission_amount"] = calculate_commission_amount(total_premium)
+    client_policy_data["admin_fee"] = calculate_guard_risk_admin_amount(total_premium)
+    client_policy_data["policy_details"]["binder_fees"] = calculate_binder_fees_amount(total_premium)
     return client_policy_data
+
+
+def clean_string(input_str):
+    # Replace all occurrences of [, ], and ' in one go
+    return re.sub(r"[\[\]']", '', input_str).strip()
 
 
 def save_policy_beneficiary(policy_beneficiary_data: Dict[str, Any]):
@@ -780,6 +848,7 @@ def save_client_policy_members_receipts_cli_charges_data(client_policy_data: Lis
 
 
 def save_client_policy(client_policy_data):
+    print(f'funeral data {client_policy_data}')
     client = {key: client_policy_data.pop(key) for key in ["first_name",
                                                            "last_name",
                                                            "primary_id_number",
@@ -788,7 +857,6 @@ def save_client_policy(client_policy_data):
                                                            "email",
                                                            "phone_number",
                                                            "address_street",
-                                                           "address_suburb",
                                                            "address_town",
                                                            "postal_code",
                                                            "marital_status",

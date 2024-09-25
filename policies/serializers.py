@@ -359,19 +359,21 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
                 if created:
                     terms = policy_data.get("policy_term", 1)
-                    amount_due_per_term = policy_data["total_premium"] / terms
+                    print(f'terms {terms}')
+                    amount_due_per_term = policy_data["premium"]
                     # create payment schedule
-                    for term in range(1, terms + 1):
-                        PolicyPaymentSchedule.objects.create(
-                            term=term,
-                            policy=policy_instance,
-                            payment_date=payment_due_date,
-                            payment_due_date=payment_due_date,
-                            amount_due=amount_due_per_term,
-                        )
+                    if terms > 0:
+                        for term in range(1, terms + 1):
+                            PolicyPaymentSchedule.objects.create(
+                                term=term,
+                                policy=policy_instance,
+                                payment_date=payment_due_date,
+                                payment_due_date=payment_due_date,
+                                amount_due=amount_due_per_term,
+                            )
 
-                        # Increment payment due date by one month
-                        payment_due_date += timedelta(days=30)
+                            # Increment payment due date by one month
+                            payment_due_date += timedelta(days=30)
 
             else:
                 policy_instance = Policy.objects.create(
@@ -545,7 +547,6 @@ def update_policy_balances(policy, amount_paid):
     policy_details = policy.policy_details
     outstanding_balance = float(policy_details.get('current_outstanding_balance'))
     policy.policy_details['current_outstanding_balance'] = outstanding_balance - float(amount_paid)
-
 
 
 class CoverChargesSerializer(serializers.ModelSerializer):

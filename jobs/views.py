@@ -136,6 +136,7 @@ class FetchFinConnectDataAPIView(APIView):
             if data:
                 serializer = JobsSerializer(data=request.data)
                 if serializer.is_valid(raise_exception=True):
+                    pass
                     fetch_and_process_fin_connect_data(
                         **serializer.validated_data,
                         fineract_org_id=fin_organization_id)
@@ -149,6 +150,7 @@ class FetchFinConnectDataAPIView(APIView):
                 )
             today = datetime.today()
             yesterday = today - timedelta(days=1)
+            print(f'fetching from fineract data from {yesterday}  to {yesterday}')
             fetch_and_process_fin_connect_data(
                 start_date=yesterday,
                 end_date=yesterday,

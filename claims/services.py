@@ -41,7 +41,8 @@ def process_claim(tenant_id, claim_id):
                 total_amount = calculate_total_installment_amount(repayment_schedule)
                 update_claim_suspension_details(claim, start_date, number_of_months_to_claim, total_amount, claim_type)
         else:
-            print('no installments found')
+            claim.claim_status = ClaimStatus.ON_ASSESSMENT
+            claim.save()
     except Exception as e:
         print(e)
 
