@@ -1,3 +1,4 @@
+import random
 from typing import List
 from django.db import connection
 from datetime import date, datetime, timedelta
@@ -157,9 +158,10 @@ def get_loan_id_from_legacy_loan(loan_external_id: str):
 
 
 def generate_policy_number() -> str:
-    now = datetime.now()
-    return now.strftime("%Y%m%d%H%M%S")
+    return generate_reference_number()
 
+def generate_reference_number():
+    return f"FIN{random.randint(100000, 999999)}"
 
 def standard_http_response() -> dict:
     return {

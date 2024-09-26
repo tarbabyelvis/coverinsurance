@@ -10,6 +10,7 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
 from django.forms import ValidationError
+from inflection import dasherize
 
 from clients.enums import MaritalStatus
 from config.models import BusinessSector
@@ -163,8 +164,19 @@ def upload_funeral_clients_and_policies(
     # client_policy_beneficiary_dependents_data = extract_funeral_dependant_fields(client_policy_beneficiary_data)
 
     # save_client_policy_beneficiary_dependents_data(client_policy_beneficiary_dependents_data)
-    save_client_policy_beneficiary_dependents_data(client_policy_data)
+    # save_client_policy_beneficiary_dependents_data(client_policy_data)
+    policies = []
+    for data in client_policy_data:
+        print(f' data coming {data}')
 
+        policy_number = data["policy_number"].strip() if isinstance(data["policy_number"],str) else data["policy_number"]
+        print(f'policy')
+        policy = Policy.objects.get(policy_number=policy_number, policy_type_id=2)
+        if policy.policy_status in ['L', 'X', ]:
+            date_obj = datetime.strptime(data['policy_details']['policy_status_date'], '%Y-%m-%dT%H:%M:%S')
+            policy.closed_date = date_obj.strftime('%Y-%m-%d')
+            policies.append(policy)
+    Policy.objects.bulk_update(policies, ['closed_date'])
     # save_policy_beneficiary_data(policy_beneficiary_data)
     # client_columns = {
     #     "first_name": "principal_firstname",
@@ -580,7 +592,7 @@ def process_client_policy_data(client_policy_data: Dict[str, Any]) -> Dict[str, 
         if status in ['P,', 'L', 'X']:
             status_date = client_policy_data['json_policy_status_date']
             print(f'status date {status_date}')
-            client_policy_data['expiry_date'] = status_date
+            client_policy_data['closed_date'] = status_date
     if 'date_of_birth' in client_policy_data:
         expiry_date = client_policy_data['date_of_birth']
         if isinstance(expiry_date, str):
@@ -849,31 +861,31 @@ def save_client_policy_members_receipts_cli_charges_data(client_policy_data: Lis
 
 def save_client_policy(client_policy_data):
     print(f'funeral data {client_policy_data}')
-    client = {key: client_policy_data.pop(key) for key in ["first_name",
-                                                           "last_name",
-                                                           "primary_id_number",
-                                                           "gender",
-                                                           "date_of_birth",
-                                                           "email",
-                                                           "phone_number",
-                                                           "address_street",
-                                                           "address_town",
-                                                           "postal_code",
-                                                           "marital_status",
-                                                           "primary_id_document_type",
-                                                           "entity_type"]}
-    policy_details = client_policy_data["policy_details"]
-    for key, value in policy_details.items():
-        if isinstance(value, time):
-            policy_details[key] = value.strftime("%H:%M:%S")
-    # Serialize to JSON
-    client_policy_data["policy_details"] = json.dumps(policy_details)
-
-    serializer = ClientPolicyRequestSerializer(
-        data={"client": client, "policy": client_policy_data},
-    )
-    serializer.is_valid(raise_exception=True)
-    serializer.save()
+    # client = {key: client_policy_data.pop(key) for key in ["first_name",
+    #                                                        "last_name",
+    #                                                        "primary_id_number",
+    #                                                        "gender",
+    #                                                        "date_of_birth",
+    #                                                        "email",
+    #                                                        "phone_number",
+    #                                                        "address_street",
+    #                                                        "address_town",
+    #                                                        "postal_code",
+    #                                                        "marital_status",
+    #                                                        "primary_id_document_type",
+    #                                                        "entity_type"]}
+    # policy_details = client_policy_data["policy_details"]
+    # for key, value in policy_details.items():
+    #     if isinstance(value, time):
+    #         policy_details[key] = value.strftime("%H:%M:%S")
+    # # Serialize to JSON
+    # client_policy_data["policy_details"] = json.dumps(policy_details)
+    #
+    # serializer = ClientPolicyRequestSerializer(
+    #     data={"client": client, "policy": client_policy_data},
+    # )
+    # serializer.is_valid(raise_exception=True)
+    # serializer.save()
     logger.info(f"Saved Client and Policy {client} {client_policy_data}")
 
 

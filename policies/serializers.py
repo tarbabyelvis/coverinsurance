@@ -88,9 +88,6 @@ class PolicySerializer(serializers.ModelSerializer):
     dependants = DependantSerializer(required=False, many=True)
     insurer = serializers.PrimaryKeyRelatedField(queryset=InsuranceCompany.objects.all())
 
-    def validate_policy_number(self, value):
-        print("Validating policy number")
-        return value
 
     def to_internal_value(self, data):
         # Convert QueryDict to a mutable dictionary
@@ -273,6 +270,8 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
     def to_internal_value(self, data):
         # Deep copy the data to avoid modifying the original object
         mutable_data = data.copy()
+        if 'policy_number' in mutable_data and mutable_data['policy_number'] is None:
+            mutable_data['policy_number'] = ''
         # Convert datetime to date for specified fields if needed
         for field in ["commencement_date", "expiry_date"]:
             if field in mutable_data.get("policy", {}) and isinstance(mutable_data["policy"][field], str):

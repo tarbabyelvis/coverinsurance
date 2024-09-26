@@ -10,7 +10,6 @@ class GetTenants(APIView):
     def get(self, request, *args, **kwargs):
         print("Getting the hostname: {}".format(request.META.get("HTTP_HOST", "")))
         url = request.build_absolute_uri("/")
-        print(f"Domain url is {url}")
         tenants = Tenant.objects.filter().values()
         domains = list(Domain.objects.filter().values())
         result = []
@@ -21,7 +20,6 @@ class GetTenants(APIView):
             tenant["domain"] = f"{protocol}://{domain[0]['domain']}"
             if tenant["name"] != "public":
                 result.append({'shortName': tenant["short_name"], 'domain': tenant["name"]})
-            print(result)
         return HTTPResponse.success(
             data=result,
             message="Resource retrieved successfully",

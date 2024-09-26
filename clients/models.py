@@ -84,7 +84,3 @@ class ClientEmploymentDetails(BaseModel):
     def __str__(self):
         return f"{self.client} - {self.employer_name}"
 
-
-# Register models for Audit
-# auditlog.register(ClientDetails)
-# auditlog.register(ClientEmploymentDetails)

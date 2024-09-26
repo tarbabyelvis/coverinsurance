@@ -383,16 +383,16 @@ def __fetch_premiums(start_date: datetime, end_date: datetime):
 
 def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
     print(f'fetching fineract data from {start_date} to {end_date} for org {fineract_org_id}')
-    new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
-    closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
-    repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
-    loans_past_due = __fetch_past_loans_due(fineract_org_id)
-    # loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
-    save_new_loans(new_loans)
-    update_closed_loans(closed_loans)
-    save_repayments(repayments)
-    # process_adjustments(loans)
-    #process_unpaid_and_lapsed_policies(loans_past_due)
+    # new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    # closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    # repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
+    # loans_past_due = __fetch_past_loans_due(fineract_org_id)
+    loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
+    # save_new_loans(new_loans)
+    # update_closed_loans(closed_loans)
+    # save_repayments(repayments)
+    process_adjustments(loans)
+    # process_unpaid_and_lapsed_policies(loans_past_due)
     print(f'Done processing fineract data fetch for {start_date} to {end_date} and tenant {fineract_org_id}')
 
 
@@ -402,37 +402,39 @@ def process_adjustments(loans: list):
         try:
             product_id = loan['product_id']
             external_id = loan.get("external_id")
+
             if is_legacy_policy(product_id):
                 policy_number = get_loan_id_from_legacy_loan(external_id)
             else:
-                policy_number = loan['loanid']
+                policy_number = loan['loanId']
+
             policy = Policy.objects.filter(policy_number=policy_number).first()
+
             if policy is not None:
-                # if loan['premium']:
-                # premium = float(loan['premium'])
-                # admin_fee = calculate_guard_risk_admin_amount(premium)
-                # commission_amount = calculate_commission_amount(premium)
-                # binder_fees = calculate_binder_fees_amount(premium)
-                # policy.premium = round(premium, 2)
-                # policy.total_premium = round(float(loan['total_premium'] or 0), 2)
-                # policy.commission_amount = commission_amount
-                # policy.admin_fee = admin_fee
-                # policy_details = policy.policy_details or {}
-                # policy_details['current_outstanding_balance'] = loan['current_outstanding_balance']
-                # policy.policy_details = policy_details
-                # status = loan['loan_status_id']
-                # if status in ['400', '600', '700', 400, 600, 700]:
-                #     policy.policy_status = 'P'
-                # elif status in ['300', 300]:
-                #     policy.policy_status = 'A'
-                policy.claim_id = loan['loanid']
+                # Get policy details from the specific policy instance
+                policy_details = policy.policy_details or {}
+
+                # Convert and round values from loan data
+                initiation_fee = round(float(loan.get("initiation_fee", 0)), 2)
+                service_fee = round(float(loan.get("service_fee", 0)), 2)
+                interest_rate = round(float(loan.get("interest_rate", 0)), 2)
+
+                # Update the policy details dictionary
+                policy_details['loan_status'] = loan['loan_status']
+                policy_details['initiation_fee'] = initiation_fee
+                policy_details['service_fee'] = service_fee
+                policy_details['interest_rate'] = interest_rate
+
+                # Assign the updated policy details back to the instance
+                policy.policy_details = policy_details
                 policies.append(policy)
         except Exception as e:
-            print(f"Error saving new loan{loan}")
+            print(f"Error processing loan {loan}")
             print(e)
-    Policy.objects.bulk_update(policies,
-                               fields=['loan_id'])
-    print('done updating total_policy_premium_collected ...')
+
+    # Bulk update policies with new details
+    if policies:
+        Policy.objects.bulk_update(policies, fields=['policy_details'])
 
 
 DAYS_TO_LAPSE_POLICY_FOR_NON_PREMIUM_PAYMENT: Final = 60
@@ -531,6 +533,9 @@ def extract_policy_and_client_info(loan):
     collected = round(float(loan.get("total_policy_premium_collected", 0)), 2)
     installment = round(float(loan.get("instalment_amount", 0)))
     schedule = round(float(loan.get("total_loan_schedule", 0)), 2)
+    initiation_fee = round(float(loan.get("initiation_fee", 0)), 2)
+    service_fee = round(float(loan.get("service_fee", 0)), 2)
+    interest_rate = round(float(loan.get("interest_rate", 0)), 2)
     policy = {
         "policy_type": 1,
         "insurer": 1 if policy_provider_type == "Internal Credit Life" else 2,
@@ -562,6 +567,10 @@ def extract_policy_and_client_info(loan):
             "total_policy_premium_collected": collected,
             "current_outstanding_balance": outstanding_balance,
             "installment_amount": installment,
+            "loan_status": loan.get("loan_status"),
+            "initiation_fee": initiation_fee,
+            "service_fee": service_fee,
+            "interest_rate": interest_rate
         }
     }
     client = {
