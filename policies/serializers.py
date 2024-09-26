@@ -88,7 +88,6 @@ class PolicySerializer(serializers.ModelSerializer):
     dependants = DependantSerializer(required=False, many=True)
     insurer = serializers.PrimaryKeyRelatedField(queryset=InsuranceCompany.objects.all())
 
-
     def to_internal_value(self, data):
         # Convert QueryDict to a mutable dictionary
         print(f'policy data coming {data}')
@@ -137,6 +136,10 @@ class PolicySerializer(serializers.ModelSerializer):
         if "commencement_date" in mutable_data:
             if isinstance(mutable_data["commencement_date"], datetime):
                 mutable_data["commencement_date"] = mutable_data["commencement_date"].date()
+        if "expiry_date" in mutable_data:
+            expiry_date = mutable_data["expiry_date"]
+            if expiry_date == '':
+                mutable_data["expiry_date"] = None
         if "external_reference" in mutable_data:
             if mutable_data["external_reference"] == '':
                 mutable_data["external_reference"] = None

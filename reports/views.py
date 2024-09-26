@@ -273,3 +273,60 @@ def fetch_active_policies_payments(entity, start_date, end_date):
         payment_map[policy_id]["phone_number"] = payment['phone_number']
 
     return list(payment_map.values()) + list(policies_without_payments)
+
+
+
+class ClientExcelExportView(APIView):
+
+    @swagger_auto_schema(
+        operation_description="Export Client report to Excel",
+        manual_parameters=[
+            openapi.Parameter(
+                "from",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="Start date",
+                required=True,
+            ),
+            openapi.Parameter(
+                "to",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="End date",
+                required=True,
+            ),
+        ],
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            500: "Internal Server Error",
+        },
+    )
+    def get(self, request):
+        from_date = request.GET.get("from", None)
+        to_date = request.GET.get("to", None)
+        try:
+            from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+            to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+            policies_payments = fetch_active_policies_payments(start_date=from_date, end_date=to_date)
+            report = generate_excel_report_util(policies_payments, from_date, to_date)
+
+            # Serve the Excel file as a response
+            response = HttpResponse(
+                report,
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            response["Content-Disposition"] = (
+                'attachment; filename="exported_data.xlsx"'
+            )
+            return response
+
+        except Exception as e:
+            print(e)
+            return HTTPResponse.error(
+                message=f"An error occurred: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+

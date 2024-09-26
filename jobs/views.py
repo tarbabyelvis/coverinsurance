@@ -32,7 +32,6 @@ class DailyJobPostingAPIView(APIView):
                 data = request.data
                 print(f'data {data}')
                 if data:
-                    print('in data avail')
                     serializer = JobsSerializer(data=request.data)
                     if serializer.is_valid(raise_exception=True):
                         daily_job_postings(**serializer.validated_data)
@@ -44,7 +43,7 @@ class DailyJobPostingAPIView(APIView):
                         message="Invalid request data",
                         status_code=status.HTTP_409_CONFLICT,
                     )
-                print('in data not availaavail')
+
                 daily_job_postings()
                 return HTTPResponse.success(
                     message="Request Successful",

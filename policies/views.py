@@ -441,6 +441,7 @@ class CapturePaymentView(APIView):
         Get all policy payments.
         """
         payments = PremiumPayment.objects.filter(policy_id=policy_id)
+        print(f'payments {payments}')
         serializer = PremiumPaymentSerializer(payments, many=True)
         return HTTPResponse.success(
             data=serializer.data, status_code=status.HTTP_200_OK
