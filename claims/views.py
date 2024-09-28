@@ -74,6 +74,9 @@ class ClaimCreateAPIView(APIView):
                 password = passwords.get(k, None)
                 print("\u001b[34mPassword:::  ", password, "\u001b[0m")
             doc_type = list(filter(lambda d: d["document_type"] == k, doc_types))
+            if not doc_type:
+                print(f"Document type for {k} not found.")
+                continue
             print(f'document type: {doc_type}')
             time_str = itime.strftime("%Y%m%d%H%M%S%f")
             unique_id = 1
