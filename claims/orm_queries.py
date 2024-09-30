@@ -139,7 +139,7 @@ def get_claim_documents(claim_id, filter_params=None):
             .values(
                 "id",
                 "document_type__id",
-                "document_type_category",
+                "document_type__category",
                 "document",
                 "document_name",
                 "password",
@@ -154,6 +154,7 @@ def get_claim_documents(claim_id, filter_params=None):
             file_url = s3storage.create_pre_signed_url(document["document"])
             document["document"] = file_url
             document["document_name"] = document['document_name']
+            document["document_type_category"] = document['document_type__category']
             document["previous"] = False
             pre_signed_documents.append(document)
     return pre_signed_documents
