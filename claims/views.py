@@ -312,14 +312,15 @@ class ClaimDetailAPIView(APIView):
 
 
 class ProcessClaimAPIView(APIView):
-    # permission_classes = (IsAuthenticated,
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request, pk):
         try:
             # tenant_id = str(request.tenant).replace("-", "_")
             tenant_id = "fin_za_onlineloans"
-            print(f'claim processing ...')
-            process_claim(tenant_id, pk)
+            user = request.user
+            print(f'claim processing ...{user}')
+            #process_claim(tenant_id, pk, user)
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
@@ -421,8 +422,8 @@ class ReactivateDebicheckAPIView(APIView):
 
     def post(self, request, pk):
         try:
-            # tenant_id = str(request.tenant).replace("-", "_")
-            tenant_id = "fin_za_onlineloans"
+            tenant_id = str(request.tenant).replace("-", "_")
+            #tenant_id = "fin_za_onlineloans"
             data = request.data
             print(f'reactivate debicheck ...{data}')
             reactivate_debicheck(tenant_id, pk)
@@ -506,13 +507,13 @@ class GetClaimDocumentsView(APIView):
     # permission_classes = (IsAuthenticated,
 
     def get(self, request, *args, **kwargs):
-        # tenant_id = str(request.tenant).replace("-", "_")
-        tenant_id = "fin_za_onlineloans"
+        tenant_id = str(request.tenant).replace("-", "_")
+        #tenant_id = "fin_za_onlineloans"
         claim_id = self.kwargs["pk"]
         response_object = standard_http_response()
         try:
             claim = Claim.objects.get(id=claim_id)
-            data = get_claim_documents(claim_id, None, claim.client_id_number)
+            data = get_claim_documents(claim_id, None)
             return Response(data, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(str(e))

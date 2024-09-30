@@ -177,6 +177,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['is_team_leader'] = user.is_teamleader
         token['phone'] = user.phone
         token['permissions'] = [perm.codename for perm in user.user_permissions.all()]
+        print(f'token {token}')
         return token
 
     def validate(self, attrs):

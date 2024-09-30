@@ -15,7 +15,7 @@ RETRENCHMENT = 34
 DISABILITY = 35
 
 
-def process_claim(tenant_id, claim_id):
+def process_claim(tenant_id, claim_id, user):
     try:
         claim = __find_claim_by_id(claim_id)
         claim_serializer = ClaimSerializer(claim)
@@ -23,7 +23,7 @@ def process_claim(tenant_id, claim_id):
         print(f'claim :: {claim_data}')
         claim_type = claim_data['claim_type']
         if claim_type == DEATH:
-            return process_death_claim(claim_data)
+            return process_death_claim(claim, user)
         loan_id = get_loan_id_from_claim_id(claim_data)
         start_date = claim_data['submitted_date']
         number_of_months_to_claim = 6  # Claim for all the months that were left for death claim otherwise take the months passed
@@ -48,9 +48,17 @@ def process_claim(tenant_id, claim_id):
     except Exception as e:
         print(e)
 
-def process_death_claim(claim, claim_data):
-    #update_claim_suspension_details(claim, start_date, number_of_months_to_claim, total_amount, claim_type)
-    pass
+
+def process_death_claim(claim, user):
+    try:
+        claim.claim_status = ClaimStatus.ON_ASSESSMENT
+        claim.claim_assessed_by = user
+        claim.claim_assessment_date = date.today()
+        claim.save()
+    except Exception as e:
+        print(e)
+
+
 def update_claim_repayment_schedule_details(claim, total_amount, repayment_schedule):
     claim_details = claim.claim_details or {}
     claim_details['retrenchment_amount_claimed'] = total_amount
@@ -78,15 +86,6 @@ def update_claim_suspension_details(claim, start_date, number_of_months, total_a
     except Exception as e:
         print(e)
 
-def update_death_claim_details(claim, total_amount):
-    claim_details = claim.claim_details or {}
-    claim_details['retrenchment_amount_claimed'] = total_amount
-    claim.claim_details = claim_details
-    try:
-        claim.claim_status = ClaimStatus.ON_ASSESSMENT
-        claim.save()
-    except Exception as e:
-        print(e)
 
 def find_next_n_months_installments(tenant_id, loan_id, start_date, number_of_months: int = 6):
     try:

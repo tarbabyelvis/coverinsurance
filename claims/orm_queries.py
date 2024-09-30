@@ -118,7 +118,7 @@ def save_claim_document_blocking(claim, filename, doc_type, claim_file, content_
     )
 
 
-def get_claim_documents(claim_id, filter_params=None, client_number=None):
+def get_claim_documents(claim_id, filter_params=None):
     claim_docs = (ClientClaimDocuments.objects.filter(claim_id=claim_id).
     prefetch_related("client_claim_documents").values(
         "client_documents", "claim"
@@ -162,39 +162,12 @@ def get_claim_documents(claim_id, filter_params=None, client_number=None):
             document["doc_type"] = document["doc_type__name"]
             document["code"] = document["doc_type__code"]
             pre_signed_documents.append(document)
-    if filter_params is None:
-        kyc_documents = get_kyc_documents(client_number)
-        for q in kyc_documents:
-            print("Getting previous names")
-            print(q["document"])
-            print(type(q["document"]))
-            file_url = s3storage.create_pre_signed_url(q["document"])
-            print(file_url)
-            pre_signed_documents.append(
-                {
-                    "id": q["id"],
-                    "client_number": q["client_number"],
-                    "created": q["created"],
-                    "doc_type__id": q["doc_type__id"],
-                    "doc_type": q["doc_type__name"],
-                    "category": q["doc_type__category"],
-                    "code": q["doc_type__code"],
-                    "password": q["password"],
-                    "external_verification": q["external_verification"],
-                    "internally_verified": q["internally_verified"],
-                    "expiration_date": q["expiration_date"],
-                    "collection_date": q["collection_date"],
-                    "document": file_url,
-                    "previous": True,
-                    "is_rejected": q["is_rejected"],
-                }
-            )
     return pre_signed_documents
 
 
 def get_kyc_documents(client_id_number):
     previous_documents = (
-        ClientDocuments.objects.order_by("doc_type__name", "-created")
+        ClientClaimDocuments.objects.order_by("doc_type__name", "-created")
         .filter(
             client_number=client_id_number,
             deleted_at__isnull=True,
