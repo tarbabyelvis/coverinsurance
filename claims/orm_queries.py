@@ -97,7 +97,7 @@ def save_claim_document_blocking(claim, filename, doc_type, claim_file, content_
 
     claim_doc = ClaimDocument.objects.create(
         client_number=claim.client_id_number,
-        doc_type_id=doc_type,
+        document_type_id=doc_type,
         document=filename,
         actual_name=actual_file_name,
         content_type=content_type,
@@ -123,30 +123,25 @@ def get_claim_documents(claim_id, filter_params=None):
     prefetch_related("client_claim_documents").values(
         "client_documents", "claim"
     ))
+    print(f'claim docs {claim_docs}')
     pre_signed_documents = []
     for doc in claim_docs:
         filters = Q()
         if filter_params is not None:
-            if filter_params.get("code") is not None:
-                filters &= Q(doc_type__code=filter_params.get("code"))
             if filter_params.get("category") is not None:
-                filters &= Q(doc_type__category=filter_params.get("category"))
-            if filter_params.get("name") is not None:
-                filters &= Q(doc_type__name=filter_params.get("name"))
+                filters &= Q(document_type__category=filter_params.get("category"))
         else:
-            filters &= ~Q(doc_type__category="kyc_document")
+            filters &= ~Q(document_type__category="kyc_document")
         filters &= Q(id=doc["client_documents"], deleted_at__isnull=True)
         documents = (
-            ClaimDocument.objects.order_by("doc_type__name", "-created")
+            ClaimDocument.objects.order_by("-created")
             .filter(filters)
             .values(
                 "id",
-                "client_number",
-                "doc_type__id",
-                "doc_type__name",
-                "doc_type__category",
-                "doc_type__code",
+                "document_type__id",
+                "document_type__category",
                 "document",
+                "document_name",
                 "password",
                 "created",
                 "external_verification",
@@ -158,29 +153,27 @@ def get_claim_documents(claim_id, filter_params=None):
         for document in documents:
             file_url = s3storage.create_pre_signed_url(document["document"])
             document["document"] = file_url
+            document["document_name"] = document['document_name']
             document["previous"] = False
-            document["doc_type"] = document["doc_type__name"]
-            document["code"] = document["doc_type__code"]
             pre_signed_documents.append(document)
     return pre_signed_documents
 
 
 def get_kyc_documents(client_id_number):
     previous_documents = (
-        ClientClaimDocuments.objects.order_by("doc_type__name", "-created")
+        ClientClaimDocuments.objects.order_by("-created")
         .filter(
             client_number=client_id_number,
             deleted_at__isnull=True,
-            doc_type__category="kyc_document",
+            document_type__category="kyc_document",
         )
-        .distinct("doc_type__name")
+        .distinct("document_type__document_name")
         .values(
             "id",
             "client_number",
-            "doc_type__id",
-            "doc_type__name",
-            "doc_type__category",
-            "doc_type__code",
+            "document_type__id",
+            "document_type__document_name",
+            "document_type__category",
             "document",
             "password",
             "created",
