@@ -139,7 +139,7 @@ def get_claim_documents(claim_id, filter_params=None):
             .values(
                 "id",
                 "document_type__id",
-                "document_type__category",
+                "document_type_category",
                 "document",
                 "document_name",
                 "password",
