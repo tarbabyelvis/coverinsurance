@@ -1,4 +1,7 @@
+
 from django.db import models
+from django.utils import timezone
+
 from clients.models import ClientDetails
 from config.enums import PolicyType
 from config.models import Agent, InsuranceCompany, PolicyName, Relationships
@@ -224,3 +227,13 @@ class CoverCharges(BaseModel):
     package_name = models.CharField(max_length=50, null=True)
     benefit_amount = models.DecimalField(max_digits=10, decimal_places=2)
     premium = models.DecimalField(max_digits=10, decimal_places=2)
+
+
+class StatusSnapshot(BaseModel):
+    policy = models.ForeignKey(
+        Policy,
+        on_delete=models.RESTRICT,
+        related_name="status_snapshots"
+    )
+    policy_status = models.CharField(max_length=20, choices=PolicyStatus.choices)
+    status_date = models.DateTimeField(default=timezone.now)

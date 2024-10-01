@@ -59,7 +59,7 @@ def create_pre_signed_url(file_name):
     try:
         file_name = file_name if file_name is not None else "No file found"
         file_path = file_name.replace(" ", "_")
-        absolute_url = boto3.client('s3').generate_presigned_url('get_object', ExpiresIn=900,
+        absolute_url = boto3.client('s3').generate_presigned_url('get_object', ExpiresIn=3600,
                                                                  Params={'Bucket': aws_bucket_name, 'Key': file_path})
         logger.info(
             "Pre-signed URL for file name {file_name} is successfully generated from S3 bucket {bucket_name}".format(

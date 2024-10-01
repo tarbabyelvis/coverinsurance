@@ -383,13 +383,13 @@ def __fetch_premiums(start_date: datetime, end_date: datetime):
 
 def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
     print(f'fetching fineract data from {start_date} to {end_date} for org {fineract_org_id}')
-    #new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
-    #closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
     repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
     # loans_past_due = __fetch_past_loans_due(fineract_org_id)
     # loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
-    #save_new_loans(new_loans)
-    #update_closed_loans(closed_loans)
+    save_new_loans(new_loans)
+    update_closed_loans(closed_loans)
     save_repayments(repayments)
     # process_adjustments(loans)
     # process_unpaid_and_lapsed_policies(loans_past_due)
@@ -642,6 +642,8 @@ def save_repayments(repayments):
                 policy_details["current_outstanding_balance"] = outstanding
                 policy.policy_details = policy_details
                 policy.save()
+            else:
+                create_policy(repayment)
             repayment_details = extract_repayment_details(repayment)
             serializer = PremiumPaymentSerializer(
                 data=repayment_details

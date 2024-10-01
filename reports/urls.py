@@ -8,4 +8,9 @@ urlpatterns = [
         BordrexExcelExportView.as_view(),
         name="bordrex-report-excel",
     ),
+    path(
+        "bordrex-quarterly-report-excel",
+        BordrauxQuarterlyReportView.as_view(),
+        name="bordrex-quarterly-report-excel",
+    ),
 ]

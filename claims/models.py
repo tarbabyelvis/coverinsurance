@@ -76,7 +76,6 @@ class ClaimDocument(BaseModel):
     old_doc_id = models.IntegerField(null=True, blank=True)
 
 
-
 class ClientClaimDocuments(models.Model):
     client_documents = models.ForeignKey(ClaimDocument, on_delete=models.RESTRICT,
                                          related_name="client_claim_documents")
@@ -85,6 +84,7 @@ class ClientClaimDocuments(models.Model):
     class Meta:
         verbose_name = "Client Claim Document"
         verbose_name_plural = "Client Claim Documents"
+
 
 class Payment(BaseModel):
     transaction_date = models.DateTimeField(null=True, blank=True)
@@ -125,3 +125,13 @@ class ClaimTracker(models.Model):
 
     def __str__(self):
         return "{}".format(self.claim.id)
+
+
+class StatusSnapshot(BaseModel):
+    claim = models.ForeignKey(
+        Claim,
+        on_delete=models.RESTRICT,
+        related_name="status_snapshots"
+    )
+    claim_status = models.CharField(max_length=20, choices=ClaimStatus.choices)
+    status_date = models.DateTimeField(default=timezone.now)

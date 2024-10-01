@@ -13,7 +13,7 @@ from core.http_response import HTTPResponse
 from core.utils import CustomPagination
 from policies.models import PremiumPayment, Policy
 from policies.serializers import PolicyDetailSerializer
-from reports.utils import bordrex_report_util, generate_excel_report_util
+from reports.utils import bordrex_report_util, generate_excel_report_util, generate_quarterly_excel_report_util
 
 
 class BordrexReportView(APIView):
@@ -275,7 +275,6 @@ def fetch_active_policies_payments(entity, start_date, end_date):
     return list(payment_map.values()) + list(policies_without_payments)
 
 
-
 class ClientExcelExportView(APIView):
 
     @swagger_auto_schema(
@@ -330,3 +329,83 @@ class ClientExcelExportView(APIView):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+
+def fetch_active_policies_as_at_date(entity, given_date):
+    active_policies = Policy.objects.filter(
+        Q(entity=entity),  # Match the entity
+        Q(commencement_date__lte=given_date),  # Start date is before or on the given date
+        (Q(closed_date__gte=given_date) | Q(closed_date__isnull=True))  # Policy is not closed by the given date
+    )
+    return active_policies
+
+
+def fetch_new_policies_between(entity, start_date, end_date):
+    new_policies = Policy.objects.filter(
+        commencement_date__range=(start_date, end_date)
+    )
+    return new_policies
+
+
+class BordrauxQuarterlyReportView(APIView):
+
+    @swagger_auto_schema(
+        operation_description="Export Bordrex quarterly report to Excel",
+        manual_parameters=[
+            openapi.Parameter(
+                "from",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="Start date",
+                required=True,
+            ),
+            openapi.Parameter(
+                "to",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="End date",
+                required=True,
+            ),
+        ],
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            500: "Internal Server Error",
+        },
+    )
+    def get(self, request):
+        # Get data from the database
+        from_date = request.GET.get("from", None)
+        to_date = request.GET.get("to", None)
+        entity = request.GET.get("entity", None)
+
+        if not from_date or not to_date or not entity:
+            return HTTPResponse.error(
+                message="'from', 'to' and 'entity are required .",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+            to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+            active_policies_period_start = fetch_active_policies_as_at_date(entity, given_date=from_date)
+            active_policies_period_end = fetch_active_policies_as_at_date(entity, given_date=to_date)
+            new_policies = fetch_new_policies_between(entity, from_date, to_date)
+            report = generate_quarterly_excel_report_util(active_policies_period_start, active_policies_period_end,
+                                                          new_policies, from_date, to_date, entity)
+            response = HttpResponse(
+                report,
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            response["Content-Disposition"] = (
+                'attachment; filename="exported_data_quarterly.xlsx"'
+            )
+            return response
+
+        except Exception as e:
+            print(e)
+            return HTTPResponse.error(
+                message=f"An error occurred: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

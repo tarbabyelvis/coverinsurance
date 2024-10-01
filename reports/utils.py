@@ -12,7 +12,7 @@ from integrations.utils import is_new_policy, calculate_nett_amount, calculate_v
 
 def bordrex_report_util(policies, from_date, to_date, entity):
     timestamp = date.today().strftime("%Y%m%d")
-    return populate_policies(policies, from_date, to_date, entity, timestamp)
+    return populate_policies_with_payments(policies, from_date, to_date, entity, timestamp)
 
 
 def generate_main_report(policies):
@@ -109,7 +109,7 @@ def generate_excel_report_util(policy_payments, from_date, to_date, entity):
     ws_policies_sheet = wb.create_sheet(title="Data")
     timestamp = date.today().strftime("%Y%m%d")
     client_identifier = get_client_identifier(entity)
-    policy_payments = populate_policies(policy_payments, from_date, to_date, entity, timestamp)
+    policy_payments = populate_policies_with_payments(policy_payments, from_date, to_date, entity, timestamp)
     reports, totals = generate_main_report(policy_payments)
     generate_template_data(reports, totals, from_date, to_date, ws_front_sheet, f'L00{client_identifier}')
     header = ["Time Stamp", "Period Start", "Period End", "Administrator Identifier", "Insurer Name",
@@ -175,7 +175,7 @@ def generate_template_data(reports, totals, from_date, to_date, ws_front_sheet, 
         ws_front_sheet.append(row)
 
 
-def populate_policies(policy_payments, from_date, to_date, entity, timestamp):
+def populate_policies_with_payments(policy_payments, from_date, to_date, entity, timestamp):
     flattened_data = []
     for data in policy_payments:
         policy_number = data["policy_number_annotated"]
@@ -261,3 +261,114 @@ def convert_dictionary_to_list(dictionaries):
         data = extract_dictionary(data)
         returned_data.append(data)
     return returned_data
+
+
+def generate_quarterly_excel_report_util(active_policies_period_start, active_policies_period_end, new_policies,
+                                         from_date, to_date, entity):
+    wb = openpyxl.Workbook()
+    ws_front_sheet = wb.active
+    ws_front_sheet.title = "New Policies"
+    ws_active_policies_beginning_sheet = wb.create_sheet(title="Active Policies beginning")
+    ws_active_policies_at_end_sheet = wb.create_sheet(title="Active Policies end")
+    timestamp = date.today().strftime("%Y%m%d")
+    client_identifier = get_client_identifier(entity)
+    new_policies_populated = populate_policies(new_policies, entity, timestamp)
+    active_policies_beginning_quarter_populated = populate_policies(active_policies_period_start, client_identifier,
+                                                                    timestamp)
+    active_policies_end_quarter_populated = populate_policies(active_policies_period_end, client_identifier, timestamp)
+    reports, totals = generate_policy_report(new_policies_populated)
+    print(f'reports {reports} totals {totals}')
+    generate_quarterly_report_summary_data(reports, totals, from_date, to_date, ws_front_sheet, f'L00{client_identifier}')
+    header = ["Time Stamp", "Administrator Identifier", "Insurer Name",
+              "Client Identifier", "Division", "Risk Identifier", "Sub Scheme Name", "Policy Number",
+              "Commencement Date", "Expiry Date", "Policy Term", "Total Premium",
+              ]
+    ws_front_sheet.append(header)
+    policies_data = convert_dictionary_to_list(new_policies_populated)
+    for row in policies_data:
+        ws_front_sheet.append(row)
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def populate_policies(policies, entity, timestamp):
+    flattened_data = []
+    for data in policies:
+        policy_number = data.policy_number
+        premium = float(data.premium)
+        sum_assured = float(data.sum_insured)
+        annual_sum_assured = round(sum_assured * 12, 2)
+        commencement_date = data.commencement_date
+        business_unit = data.business_unit
+        policy_term = data.policy_term
+        flattened_item = {
+            "timestamp": timestamp,
+            "administrator_identifier": "Indlu",
+            "insurer": "Guardrisk",
+            "client_identifier": entity,
+            "division": business_unit,
+            "sub_scheme": data.sub_scheme,
+            "policy_number": policy_number,
+            "commencement_date": commencement_date,
+            "expiry_date": data.expiry_date,
+            "policy_term": policy_term,
+            "premium": premium,
+            "sum_insured": sum_assured,
+            "annual_sum_insured": annual_sum_assured
+        }
+        flattened_data.append(flattened_item)
+    return flattened_data
+
+
+def generate_policy_report(policies):
+    aggregates = defaultdict(lambda: [0, 0, 0])
+    for policy in policies:
+        print(f'policy in gen {policy}')
+        division = policy['division']
+        print(f'division: {division}')
+        try:
+            risk_premium = float(policy['premium'])
+        except TypeError as e:
+            risk_premium = 0
+        try:
+            annual_risk_premium = float(policy['annual_sum_insured'])
+        except TypeError as e:
+            annual_risk_premium = 0
+        try:
+            total_sum_assured = float(policy['sum_insured'])
+        except TypeError as e:
+            total_sum_assured = 0
+        else:
+            aggregates[division][0] += risk_premium
+            aggregates[division][1] += annual_risk_premium
+            aggregates[division][2] += total_sum_assured
+    totals = {
+        "division": "",
+        "total_risk_premium": 0,
+        "total_annual_risk_premium": 0,
+        "total_sum_assured": 0
+    }
+    for division, tot in aggregates.items():
+        totals["division"] = division
+        totals["total_risk_premium"] += tot[0]
+        totals["total_annual_risk_premium"] += tot[1]
+        totals["total_sum_assured"] += tot[2]
+    return aggregates, totals
+
+
+def generate_quarterly_report_summary_data(reports, totals, from_date, to_date, ws_front_sheet, client_identifier):
+    timestamp = date.today().strftime('%Y-%m-%d')
+    start_date = from_date.strftime('%Y-%m-%d')
+    end_date = to_date.strftime('%Y-%m-%d')
+
+    table_header = [
+        "Entity", "Risk Premium", "Annual Risk Premium", "Sum Insured", "Count"
+    ]
+    ws_front_sheet.append(table_header)
+    for entity, sums in reports.items():
+        ws_front_sheet.append([entity] + sums)
+
+    # for row in totals:
+    #     ws_front_sheet.append(row)

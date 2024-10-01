@@ -199,7 +199,6 @@ class ClaimCreateAPIView(APIView):
         serializer = ClaimSerializer(result_page, many=True)
         claims_list = []
         for claim in serializer.data:
-            print(f'claim {claim}')
             claims_list.append({
                 "id": claim["id"],
                 "name": claim["name"],
@@ -316,11 +315,11 @@ class ProcessClaimAPIView(APIView):
 
     def get(self, request, pk):
         try:
-            # tenant_id = str(request.tenant).replace("-", "_")
-            tenant_id = "fin_za_onlineloans"
+            tenant_id = str(request.tenant).replace("-", "_")
+            #tenant_id = "fin_za_onlineloans"
             user = request.user
             print(f'claim processing ...{user}')
-            #process_claim(tenant_id, pk, user)
+            process_claim(tenant_id, pk, user)
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
@@ -339,8 +338,8 @@ class ApproveClaimAPIView(APIView):
 
     def get(self, request, pk):
         try:
-            # tenant_id = str(request.tenant).replace("-", "_")
-            tenant_id = "fin_za_onlineloans"
+            tenant_id = str(request.tenant).replace("-", "_")
+            #tenant_id = "fin_za_onlineloans"
             print(f'claim approval ...')
             approve_claim(tenant_id, pk)
             return HTTPResponse.success(
@@ -361,8 +360,8 @@ class RepudiateClaimAPIView(APIView):
 
     def post(self, request, pk):
         try:
-            # tenant_id = str(request.tenant).replace("-", "_")
-            tenant_id = "fin_za_onlineloans"
+            tenant_id = str(request.tenant).replace("-", "_")
+            #tenant_id = "fin_za_onlineloans"
             data = request.data
             print(f'claim repudiation ...{data}')
             repudiation_reason = data['repudiation_reason']
@@ -386,8 +385,8 @@ class ReceiptClaimAPIView(APIView):
 
     def post(self, request, pk):
         try:
-            # tenant_id = str(request.tenant).replace("-", "_")
-            tenant_id = "fin_za_onlineloans"
+            tenant_id = str(request.tenant).replace("-", "_")
+            #tenant_id = "fin_za_onlineloans"
             data = request.data
             print(f'receipt claim ...{data}')
             claim_amount = data['amount']
@@ -452,8 +451,8 @@ class AddDocuments(AsyncAPIView):
                 {"error": "missing parameters"}, status=status.HTTP_400_BAD_REQUEST
             )
         else:
-            # tenant_id = str(request.tenant).replace("-", "_")
-            tenant_id = "fin_za_onlineloans"
+            tenant_id = str(request.tenant).replace("-", "_")
+            #tenant_id = "fin_za_onlineloans"
             print("Client request saving new Document")
             print(f'request:: {request.data}')
             raw_details = request.data["details"]
@@ -534,8 +533,8 @@ class AddDocTemplates(AsyncAPIView):
                 {"error": "missing parameters"}, status=status.HTTP_400_BAD_REQUEST
             )
         else:
-            # tenant_id = str(request.tenant).replace("-", "_")
-            tenant_id = "fin_za_onlineloans"
+            tenant_id = str(request.tenant).replace("-", "_")
+            #tenant_id = "fin_za_onlineloans"
             claim_id = request.data.get("claim_id", None)
             templates = request.data.get("templates", None)
             claim = await Claim.objects.aget(id=int(claim_id))
