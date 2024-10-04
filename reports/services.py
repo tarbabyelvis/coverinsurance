@@ -391,7 +391,7 @@ def fetch_claims(claim_type, from_date, to_date, query):
         )
 
     if claim_type is not None:
-        claims = claims.filter(claim_type_id=claim_type)
+        claims = claims.filter(claim_type__id=claim_type)
     if from_date:
         claims = claims.filter(created__gte=from_date)
 
