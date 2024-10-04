@@ -116,12 +116,12 @@ class PolicySerializer(serializers.ModelSerializer):
             except ObjectDoesNotExist:
                 raise serializers.ValidationError("Invalid client ID.")
 
-        policy_number = mutable_data['policy_number']
-        if isinstance(policy_number, str):
-            if policy_number.strip() == "":
-                policy_number = generate_policy_number()
-                mutable_data['policy_number'] = policy_number
-        # Convert policy_status to a proper format if needed
+        policy_number = mutable_data.get('policy_number')
+        if policy_number is not None:
+            if isinstance(policy_number, str):
+                if policy_number.strip() == "":
+                    policy_number = generate_policy_number()
+                    mutable_data['policy_number'] = policy_number
         if "policy_status" in mutable_data:
             policy_status = mutable_data["policy_status"]
             if isinstance(policy_status, int) or str(policy_status).isdigit():

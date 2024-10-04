@@ -182,7 +182,7 @@ class ClaimCreateAPIView(APIView):
                 | Q(claimant_email__icontains=query)
                 | Q(claimant_phone__icontains=query)
                 | Q(policy__insurer__name__icontains=query)
-                | Q(policy__policy_number__icontains=query)
+                | Q(claim_status__icontains=query)
             )
 
         if claim_type is not None:

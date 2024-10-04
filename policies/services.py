@@ -170,12 +170,18 @@ def upload_funeral_clients_and_policies(
 
         policy_number = data["policy_number"].strip() if isinstance(data["policy_number"],str) else data["policy_number"]
         print(f'policy')
+        policy_status = data['policy_status']
         policy = Policy.objects.get(policy_number=policy_number, policy_type_id=2)
-        if policy.policy_status in ['L', 'X', ]:
-            date_obj = datetime.strptime(data['policy_details']['policy_status_date'], '%Y-%m-%dT%H:%M:%S')
-            policy.closed_date = date_obj.strftime('%Y-%m-%d')
+        if policy_status == 'A':
+            policy.policy_status = policy_status
+            policy.closed_date = None
             policies.append(policy)
-    Policy.objects.bulk_update(policies, ['closed_date'])
+        elif policy_status in ['L', 'X']:
+            date_obj = datetime.strptime(data['policy_details']['policy_status_date'], '%Y-%m-%dT%H:%M:%S')
+            policy.policy_status = policy_status
+            policy.closed_date = date_obj
+            policies.append(policy)
+    Policy.objects.bulk_update(policies, ['closed_date','policy_status'])
     # save_policy_beneficiary_data(policy_beneficiary_data)
     # client_columns = {
     #     "first_name": "principal_firstname",

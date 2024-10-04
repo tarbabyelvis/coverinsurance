@@ -1,8 +1,18 @@
 import logging
+from datetime import datetime
 
-from rest_framework.permissions import IsAuthenticated
+from django.db import transaction
+from django.db.models import Q
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.views import APIView
 
-from core.utils import CustomPagination, get_current_schema, generate_policy_number
+from core.http_response import HTTPResponse
+from core.utils import CustomPagination, get_current_schema
 from policies.constants import (
     CLIENT_COLUMNS,
     POLICY_COLUMNS,
@@ -10,13 +20,9 @@ from policies.constants import (
     REPAYMENT_COLUMNS_MEDIFIN,
 )
 from policies.models import Beneficiary, Dependant, Policy, PremiumPayment, CoverCharges
-from rest_framework.views import APIView
-from core.http_response import HTTPResponse
-from rest_framework.views import APIView
-from rest_framework import status
-from policies.services import upload_clients_and_policies, upload_funeral_clients_and_policies, \
-    upload_indlu_clients_and_policies
 from policies.services import upload_clients_and_policies, upload_bulk_repayments
+from policies.services import upload_funeral_clients_and_policies, \
+    upload_indlu_clients_and_policies
 from .serializers import (
     BeneficiarySerializer,
     ClientPolicyRequestSerializer,
@@ -27,14 +33,6 @@ from .serializers import (
     PolicySerializer,
     PremiumPaymentSerializer, CoverChargesSerializer,
 )
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-from django.shortcuts import get_object_or_404
-from django.http import Http404
-from django.db import transaction
-from rest_framework.parsers import MultiPartParser, FormParser
-from django.db.models import Q
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +158,7 @@ class PolicyView(APIView):
         )
 
 
+
 class PolicyDetailView(APIView):
     # permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
@@ -191,7 +190,8 @@ class PolicyDetailView(APIView):
     def put(self, request, pk):
         try:
             policy = get_object_or_404(Policy, pk=pk)
-            serializer = PolicySerializer(policy, data=request.data)
+            print(f'updating policy ...{policy}')
+            serializer = PolicySerializer(policy, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
                 return HTTPResponse.success(
