@@ -1,19 +1,19 @@
+from collections import defaultdict
+from datetime import date
+from io import BytesIO
+
 import openpyxl
 import pandas as pd
 from django.db.models import Q, Sum, Count
 
 from claims.models import Claim
 from policies.models import Policy
-from datetime import date, datetime
-from io import BytesIO
-from collections import defaultdict
-
 from reports.utils import get_client_identifier, convert_dictionary_to_list
 
 
 def fetch_active_policies_as_at_date(entity, given_date):
     active_policies = Policy.objects.filter(
-        Q(entity=entity),  # Match the entity
+        Q(entity=entity),
         Q(commencement_date__lte=given_date),  # Start date is before or on the given date
         (Q(closed_date__gte=given_date) | Q(closed_date__isnull=True))  # Policy is not closed by the given date
     )
@@ -325,7 +325,6 @@ def summarize_policies(policies):
         'sum_insured': 'sum'
     }).to_dict()
     summary['policy_count'] = len(df)
-
     return summary
 
 
@@ -378,6 +377,7 @@ def generate_claims_excel_report(claim_type, from_date, to_date, query):
 
 
 def fetch_claims(claim_type, from_date, to_date, query):
+    print('fetching...')
     claims = Claim.objects.all()
     if query:
         claims = claims.filter(
@@ -465,3 +465,74 @@ def summarize_claims(claims):
         "breakdown_by_status": list(status_breakdown)
     }
     return summary
+
+
+def summarize_clients(clients):
+    df = pd.DataFrame(list(clients.values()))
+    if df.empty:
+        return {
+            'client_count': 0
+        }
+    return {'client_count': len(df)}
+
+
+def generate_clients_excel_report(from_date, to_date, query):
+    clients = fetch_clients(from_date, to_date, query)
+    wb = openpyxl.Workbook()
+    ws_front_sheet = wb.active
+    ws_front_sheet.title = "Clients Summary"
+
+    ws_clients_sheet = wb.create_sheet(title="Clients")
+    timestamp = date.today().strftime("%Y%m%d")
+    clients_flattened = flatten_clients(clients, timestamp)
+    generate_clients_summary_sheet(
+        ws_front_sheet,
+        clients
+    )
+    header = ["Time Stamp", "Title", "Id number",
+              "First Name", "Middle Name", "Surname", "Entity Type", "Gender","Email", "Contact",
+              "Marital Status", "D.O.B", "D.O.D", "Address"
+              ]
+    populate_data_sheet(clients_flattened, header, ws_clients_sheet)
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def flatten_clients(clients, timestamp):
+    flattened_data = []
+    for data in clients:
+        id_number = data.primary_id_number
+        flattened_item = {
+            "timestamp": timestamp,
+            "title": data.title,
+            "id_number": id_number,
+            "first_name": data.first_name,
+            "middle_name": data.middle_name,
+            "last_name": data.last_name,
+            "entity_type": data.entity_type,
+            "gender": data.gender,
+            "email": data.email,
+            "phone_number": data.phone_number,
+            "marital_status": data.marital_status,
+            "date_of_birth": data.date_of_birth,
+            "date_of_death": data.date_of_death,
+            "address": (
+                f"{data.address_street or ''} {data.address_suburb or ''} "
+                f"{data.address_town or ''}, {data.address_province or ''}"
+            ).strip()
+        }
+        flattened_data.append(flattened_item)
+    return flattened_data
+
+
+def generate_clients_summary_sheet(summary_sheet, clients):
+    summaries = summarize_clients(clients)
+    count = summaries['client_count']
+
+    clients_data = ["Clients", count]
+
+    headers = ["Count"]
+    summary_sheet.append(headers)
+    summary_sheet.append(clients_data)

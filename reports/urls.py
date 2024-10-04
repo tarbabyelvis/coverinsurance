@@ -40,4 +40,14 @@ urlpatterns = [
         ClaimsSummaryReportExcelView.as_view(),
         name="claims-report-excel",
     ),
+    path(
+        "clients-summary-report",
+        ClientsSummaryReportView.as_view(),
+        name="clients-report",
+    ),
+    path(
+        "clients-summary-report-download",
+        ClientsSummaryReportExcelView.as_view(),
+        name="clients-report-excel",
+    ),
 ]

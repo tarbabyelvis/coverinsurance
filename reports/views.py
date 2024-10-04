@@ -9,12 +9,14 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.views import APIView
 
+from clients.models import ClientDetails
 from core.http_response import HTTPResponse
 from core.utils import CustomPagination
 from policies.models import PremiumPayment, Policy
 from policies.serializers import PolicyDetailSerializer
 from reports.services import fetch_quarterly_bordraux_summary, generate_quarterly_excel_report, fetch_policies, \
-    summarize_policies, generate_policies_excel_report, fetch_claims, summarize_claims, generate_claims_excel_report
+    summarize_policies, generate_policies_excel_report, fetch_claims, summarize_claims, generate_claims_excel_report, \
+    summarize_clients, generate_clients_excel_report
 from reports.utils import bordrex_report_util, generate_excel_report_util
 
 
@@ -601,8 +603,12 @@ class ClaimsSummaryReportView(APIView):
         },
     )
     def get(self, request):
+        print('fetching claims....')
         from_date = request.GET.get("from", None)
         to_date = request.GET.get("to", None)
+        claim_type = request.GET.get("claim_type", None)
+        query = request.GET.get("query", None)
+        print(f'query: {query} from_date: {from_date} to_date: {to_date} claim_type: {claim_type}')
 
         if not from_date or not to_date:
             return HTTPResponse.error(
@@ -613,8 +619,7 @@ class ClaimsSummaryReportView(APIView):
         try:
             from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
             to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
-            claim_type = request.GET.get("claim_type", None)
-            query = request.GET.get("query", None)
+
             claims = fetch_claims(claim_type, from_date, to_date, query)
             data = summarize_claims(claims)
             return HTTPResponse.success(
@@ -690,3 +695,142 @@ class ClaimsSummaryReportExcelView(APIView):
                 message=f"An error occurred: {str(e)}",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class ClientsSummaryReportView(APIView):
+
+    @swagger_auto_schema(
+        operation_description="Clients summary report",
+        manual_parameters=[
+            openapi.Parameter(
+                "from",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="Start date",
+                required=True,
+            ),
+            openapi.Parameter(
+                "to",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="End date",
+                required=True,
+            ),
+        ],
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            500: "Internal Server Error",
+        },
+    )
+    def get(self, request):
+        from_date = request.GET.get("from", None)
+        to_date = request.GET.get("to", None)
+        query = request.GET.get("query", None)
+
+        if not from_date or not to_date:
+            return HTTPResponse.error(
+                message="'from', 'to' are required .",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            clients = fetch_clients(from_date, to_date, query)
+            data = summarize_clients(clients)
+            return HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+                data=data,
+            )
+
+        except Exception as e:
+            print(e)
+            return HTTPResponse.error(
+                message=f"An error occurred: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class ClientsSummaryReportExcelView(APIView):
+
+    @swagger_auto_schema(
+        operation_description="Clients summary report to excel",
+        manual_parameters=[
+            openapi.Parameter(
+                "from",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="Start date",
+                required=True,
+            ),
+            openapi.Parameter(
+                "to",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="End date",
+                required=True,
+            ),
+        ],
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            500: "Internal Server Error",
+        },
+    )
+    def get(self, request):
+        from_date = request.GET.get("from", None)
+        to_date = request.GET.get("to", None)
+        query = request.GET.get("query", None)
+
+        if not from_date or not to_date:
+            return HTTPResponse.error(
+                message="'from', 'to' are required .",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+            to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+            report = generate_clients_excel_report(from_date, to_date, query)
+            response = HttpResponse(
+                report,
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            response["Content-Disposition"] = (
+                'attachment; filename="clients_summary.xlsx"'
+            )
+            return response
+
+        except Exception as e:
+            print(e)
+            return HTTPResponse.error(
+                message=f"An error occurred: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+def fetch_clients(from_date, to_date, query):
+    clients = ClientDetails.objects.all()
+    if query:
+        clients = clients.filter(
+            Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+            | Q(middle_name__icontains=query)
+            | Q(external_id__icontains=query)
+            | Q(email__icontains=query)
+            | Q(phone_number__icontains=query)
+            | Q(primary_id_number__icontains=query)
+        )
+
+    if from_date:
+        from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+        clients = clients.filter(created__gte=from_date)
+
+    if to_date:
+        to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+        clients = clients.filter(created__lte=to_date)
+    return clients
