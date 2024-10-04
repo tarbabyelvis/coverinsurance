@@ -117,32 +117,23 @@ class BordrexExcelExportView(APIView):
         from_date = request.GET.get("from", None)
         to_date = request.GET.get("to", None)
         entity = request.GET.get("entity")
-        # validate dates to make sure they are not null
         if not from_date or not to_date or not entity:
             return HTTPResponse.error(
                 message="from and to dates and entity are required",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            policy_payments = fetch_active_policies_payments(entity, start_date=from_date, end_date=to_date)
-            page_number = request.GET.get('page', 1)
-            page_size = request.GET.get('page_size', 20)
-            paginator = Paginator(policy_payments, page_size)
-
-            paginated_payments = paginator.page(page_number)
-            report = bordrex_report_util(paginated_payments, from_date, to_date, entity=entity)
-            return HTTPResponse.success(
-                message="Request Successful",
-                status_code=status.HTTP_200_OK,
-                data={
-                    "results": report,
-                    "count": paginator.count if paginator.page else 0,
-                    "next": paginated_payments.has_next() and paginated_payments.next_page_number() or None,
-                    "previous": paginated_payments.has_previous() and paginated_payments.
-                    previous_page_number() or None,
-                },
+            policy_payments = fetch_active_policies_payments(entity=entity, start_date=from_date, end_date=to_date)
+            report = generate_excel_report_util(policy_payments, from_date, to_date,entity)
+            # Serve the Excel file as a response
+            response = HttpResponse(
+                report,
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
-
+            response["Content-Disposition"] = (
+                'attachment; filename="exported_data.xlsx"'
+            )
+            return response
         except Exception as e:
             print(e)
             return HTTPResponse.error(

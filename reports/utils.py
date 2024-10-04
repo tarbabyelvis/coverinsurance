@@ -137,8 +137,8 @@ def generate_excel_report_util(policy_payments, from_date, to_date, entity):
 
 def generate_template_data(reports, totals, from_date, to_date, ws_front_sheet, client_identifier):
     timestamp = date.today().strftime('%Y-%m-%d')
-    start_date = from_date.strftime('%Y-%m-%d')
-    end_date = to_date.strftime('%Y-%m-%d')
+    start_date = from_date if isinstance(from_date, str) else from_date.strftime('%Y-%m-%d')
+    end_date = to_date if isinstance(to_date, str) else to_date.strftime('%Y-%m-%d')
 
     header_info = [
         ("INDLUE (PTY) LTD - Cell no", client_identifier),
