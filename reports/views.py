@@ -16,7 +16,7 @@ from policies.models import PremiumPayment, Policy
 from policies.serializers import PolicyDetailSerializer
 from reports.services import fetch_quarterly_bordraux_summary, generate_quarterly_excel_report, fetch_policies, \
     summarize_policies, generate_policies_excel_report, fetch_claims, summarize_claims, generate_claims_excel_report, \
-    summarize_clients, generate_clients_excel_report
+    summarize_clients, generate_clients_excel_report, fetch_dashboard_stats
 from reports.utils import bordrex_report_util, generate_excel_report_util
 
 
@@ -124,7 +124,7 @@ class BordrexExcelExportView(APIView):
             )
         try:
             policy_payments = fetch_active_policies_payments(entity=entity, start_date=from_date, end_date=to_date)
-            report = generate_excel_report_util(policy_payments, from_date, to_date,entity)
+            report = generate_excel_report_util(policy_payments, from_date, to_date, entity)
             # Serve the Excel file as a response
             response = HttpResponse(
                 report,
@@ -269,61 +269,6 @@ def fetch_active_policies_payments(entity, start_date, end_date):
         payment_map[policy_id]["phone_number"] = payment['phone_number']
 
     return list(payment_map.values()) + list(policies_without_payments)
-
-
-class ClientExcelExportView(APIView):
-
-    @swagger_auto_schema(
-        operation_description="Export Client report to Excel",
-        manual_parameters=[
-            openapi.Parameter(
-                "from",
-                in_=openapi.IN_QUERY,
-                type=openapi.TYPE_STRING,
-                format="date",
-                description="Start date",
-                required=True,
-            ),
-            openapi.Parameter(
-                "to",
-                in_=openapi.IN_QUERY,
-                type=openapi.TYPE_STRING,
-                format="date",
-                description="End date",
-                required=True,
-            ),
-        ],
-        responses={
-            200: "Success",
-            400: "Bad Request",
-            500: "Internal Server Error",
-        },
-    )
-    def get(self, request):
-        from_date = request.GET.get("from", None)
-        to_date = request.GET.get("to", None)
-        try:
-            from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
-            to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
-            policies_payments = fetch_active_policies_payments(start_date=from_date, end_date=to_date)
-            report = generate_excel_report_util(policies_payments, from_date, to_date)
-
-            # Serve the Excel file as a response
-            response = HttpResponse(
-                report,
-                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
-            response["Content-Disposition"] = (
-                'attachment; filename="exported_data.xlsx"'
-            )
-            return response
-
-        except Exception as e:
-            print(e)
-            return HTTPResponse.error(
-                message=f"An error occurred: {str(e)}",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
 
 
 class BordrauxQuarterlyReportView(APIView):
@@ -825,3 +770,60 @@ def fetch_clients(from_date, to_date, query):
         to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
         clients = clients.filter(created__lte=to_date)
     return clients
+
+
+class DashboardStatisticsView(APIView):
+
+    @swagger_auto_schema(
+        operation_description="Dashboard stats report",
+        manual_parameters=[
+            openapi.Parameter(
+                "from",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="Start date",
+                required=True,
+            ),
+            openapi.Parameter(
+                "to",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format="date",
+                description="End date",
+                required=True,
+            ),
+        ],
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            500: "Internal Server Error",
+        },
+    )
+    def get(self, request):
+        from_date = request.GET.get("from", None)
+        to_date = request.GET.get("to", None)
+        policy_type = request.GET.get("policy_type", None)
+
+        if not from_date or not to_date:
+            return HTTPResponse.error(
+                message="'from', 'to', entity are required .",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+            to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+
+            data = fetch_dashboard_stats(from_date, to_date, policy_type)
+            return HTTPResponse.success(
+                message="Request Successful",
+                status_code=status.HTTP_200_OK,
+                data=data,
+            )
+        except Exception as e:
+            print(e)
+            return HTTPResponse.error(
+                message=f"An error occurred: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

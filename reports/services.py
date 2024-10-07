@@ -1,13 +1,18 @@
+import calendar
 from collections import defaultdict
 from datetime import date
 from io import BytesIO
 
 import openpyxl
 import pandas as pd
-from django.db.models import Q, Sum, Count
+from django.db.models import Q, Count
+from django.db.models import Sum
+from django.db.models.functions import TruncMonth
 
 from claims.models import Claim
-from policies.models import Policy
+from clients.models import ClientDetails
+from integrations.guardrisk.data.premiums import calculate_binder_fee_amount, calculate_insurer_commission_amount
+from policies.models import Policy, PremiumPayment
 from reports.utils import get_client_identifier, convert_dictionary_to_list
 
 
@@ -110,10 +115,7 @@ def generate_quarterly_excel_report(from_date, to_date, entity):
     populate_data_sheet(active_policies_beginning_quarter_populated, header, ws_active_policies_beginning_sheet)
     populate_data_sheet(active_policies_end_quarter_populated, header, ws_active_policies_at_end_sheet)
 
-    buffer = BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
-    return buffer.getvalue()
+    return write_work_book_bytes(workbook=wb)
 
 
 def populate_data_sheet(data, header, worksheet):
@@ -136,13 +138,16 @@ def generate_summary_sheet(summary_sheet, new_policies, active_policies_period_s
     lapsed_premium = summaries['lapsed_premium']
     lapsed_insured = summaries['lapsed_insured']
 
-    new_policies_data = ["New Policies", len(new_policies), new_premium, new_premium * 12, new_insured]
-    active_policies_at_start = ["Active Policies Start", len(active_policies_period_start), active_start_premium,
-                                active_start_premium * 12, active_start_insured]
-    active_policies_at_end = ["Active Policies End", len(active_policies_period_end), active_end_premium,
-                              active_end_premium * 12, active_end_insured]
-    lapsed_policies_data = ["Lapsed Policies", len(lapsed_policies), lapsed_premium, lapsed_premium * 12,
-                            lapsed_insured]
+    new_policies_data = ["New Policies", len(new_policies), f"{new_premium:,.2f}", f"{new_premium * 12:,.2f}",
+                         f"{new_insured:,.2f}"]
+    active_policies_at_start = ["Active Policies Start", len(active_policies_period_start),
+                                f"{active_start_premium:,.2f}", f"{active_start_premium * 12:,.2f}",
+                                f"{active_start_insured:,.2f}"]
+    active_policies_at_end = ["Active Policies End", len(active_policies_period_end), f"{active_end_premium:,.2f}",
+                              f"{active_end_premium * 12:,.2f}", f"{active_end_insured:,.2f}"]
+    lapsed_policies_data = ["Lapsed Policies", len(lapsed_policies), f"{lapsed_premium:,.2f}",
+                            f"{lapsed_premium * 12:,.2f}",
+                            f"{lapsed_insured:,.2f}"]
 
     headers = ["Policy Type", "Count", "Premium", "Annual Premium", "Sum Insured"]
     summary_sheet.append(headers)
@@ -302,7 +307,7 @@ def fetch_policies(policy_type, from_date, to_date, query):
         )
 
     if policy_type is not None:
-        policies = policies.filter(policy_type_id=policy_type)
+        policies = policies.filter(policy_type__id=policy_type)
 
     if from_date:
         policies = policies.filter(commencement_date__gte=from_date)
@@ -346,8 +351,12 @@ def generate_policies_excel_report(policy_type, from_date, to_date, query):
               "Commencement Date", "Expiry Date", "Closed Date", "Status", "Policy Term", "Premium", "Sum Insured"
               ]
     populate_data_sheet(policies_flattened, header, ws_policies_sheet)
+    return write_work_book_bytes(wb)
+
+
+def write_work_book_bytes(workbook):
     buffer = BytesIO()
-    wb.save(buffer)
+    workbook.save(buffer)
     buffer.seek(0)
     return buffer.getvalue()
 
@@ -370,10 +379,7 @@ def generate_claims_excel_report(claim_type, from_date, to_date, query):
               "Commencement Date", "Policy Term", "Submitted Date"
               ]
     populate_data_sheet(claims_flattened, header, ws_claims_sheet)
-    buffer = BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
-    return buffer.getvalue()
+    return write_work_book_bytes(wb)
 
 
 def fetch_claims(claim_type, from_date, to_date, query):
@@ -490,7 +496,7 @@ def generate_clients_excel_report(from_date, to_date, query):
         clients
     )
     header = ["Time Stamp", "Title", "Id number",
-              "First Name", "Middle Name", "Surname", "Entity Type", "Gender","Email", "Contact",
+              "First Name", "Middle Name", "Surname", "Entity Type", "Gender", "Email", "Contact",
               "Marital Status", "D.O.B", "D.O.D", "Address"
               ]
     populate_data_sheet(clients_flattened, header, ws_clients_sheet)
@@ -536,3 +542,119 @@ def generate_clients_summary_sheet(summary_sheet, clients):
     headers = ["Count"]
     summary_sheet.append(headers)
     summary_sheet.append(clients_data)
+
+
+def fetch_dashboard_stats(from_date, to_date, policy_type):
+    print(f'policy_type: {policy_type}')
+    # active_policies_period_start = fetch_active_policies_as_at_date(entity, given_date=from_date)
+    # active_policies_period_end = fetch_active_policies_as_at_date(entity, given_date=to_date)
+    new_policies = fetch_all_new_policies(from_date, to_date, policy_type)
+    # lapsed_policies = fetch_lapsed_policies_between(entity, from_date, to_date)
+    clients_by_gender = fetch_clients_summarized_by_gender()
+
+    df = pd.DataFrame(list(new_policies.values('premium', 'sum_insured')))
+    if df.empty:
+        return {
+            'premium': 0,
+            'sum_insured': 0,
+            'policy_count': 0,
+            'total_commission': 0,
+            'binder_fee': 0,
+            'income': []
+        }
+    df['commission'] = df['premium'].astype(float).apply(calculate_insurer_commission_amount)
+    df['binder_fee'] = df['premium'].astype(float).apply(calculate_binder_fee_amount)
+    summary = df.agg({
+        'premium': 'sum',
+        'sum_insured': 'sum',
+        'commission': 'sum',
+        'binder_fee': 'sum'
+    }).to_dict()
+    summary['policy_count'] = len(df)
+    expected_premiums = calculate_total_premium_for_active_policies(start_date=from_date, end_date=to_date)
+    received_premiums = get_total_payments_by_month(from_date, to_date)
+    combined = combine_premium_data(expected_premiums, received_premiums)
+    summary['income'] = combined
+    summary['clients_by_gender'] = clients_by_gender
+    return summary
+
+
+def fetch_all_new_policies(from_date, to_date, policy_type):
+    new_policies = Policy.objects.filter(
+        Q(policy_type__id=policy_type),
+        Q(commencement_date__range=(from_date, to_date))
+    )
+    return new_policies
+
+
+def fetch_clients_summarized_by_gender():
+    gender_summary = (
+        ClientDetails.objects
+        .values('gender')
+        .annotate(client_count=Count('id'))
+        .order_by('gender')
+    )
+
+    return gender_summary
+
+
+def calculate_total_premium_for_active_policies(start_date: date, end_date: date):
+    """
+    Calculate the total premium for active policies by month within a given period.
+    Only pick the policies that are active during the specified period.
+    """
+    # Step 1: Filter policies that are active in the given period
+    active_policies = active_policies_during_period(start_date, end_date)
+
+    total_premium_by_month = (
+        active_policies
+        .annotate(month=TruncMonth('commencement_date'))
+        .values('month')
+        .annotate(premium=Sum('premium'))
+        .order_by('month')
+    )
+
+    return total_premium_by_month
+
+
+def active_policies_during_period(start_date, end_date):
+    return Policy.objects.filter(
+        Q(commencement_date__lte=end_date),
+        Q(closed_date__isnull=True) | Q(closed_date__gte=start_date)
+    )
+
+
+def get_total_payments_by_month(start_date: date, end_date: date):
+    payments_by_month = (
+        PremiumPayment.objects.filter(
+            payment_date__gte=start_date,
+            payment_date__lte=end_date
+        )
+        .annotate(month=TruncMonth('payment_date'))
+        .values('month')
+        .annotate(amount_paid=Sum('amount'))
+        .order_by('month')
+    )
+
+    return payments_by_month
+
+
+def combine_premium_data(expected_premiums, received_premiums):
+    combined_data = {entry['month'].strftime('%b'): {'expected': entry['premium']} for entry in expected_premiums}
+
+    for entry in received_premiums:
+        month_key = entry['month'].strftime('%b')
+        if month_key in combined_data:
+            combined_data[month_key]['received'] = entry['amount_paid']
+        else:
+            combined_data[month_key] = {'expected': 0, 'received': entry['amount_paid']}
+
+    result = [
+        {
+            'name': month,
+            'received': combined_data[month].get('received', 0),
+            'expected': combined_data[month].get('expected', 0),
+        }
+        for month in calendar.month_abbr[1:]
+    ]
+    return result

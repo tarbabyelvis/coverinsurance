@@ -50,4 +50,9 @@ urlpatterns = [
         ClientsSummaryReportExcelView.as_view(),
         name="clients-report-excel",
     ),
+    path(
+        "dashboard-stats",
+        DashboardStatisticsView.as_view(),
+        name="dashboard-statistics",
+    ),
 ]
