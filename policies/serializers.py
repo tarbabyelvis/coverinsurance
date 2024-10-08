@@ -439,10 +439,11 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
     policy = PolicySerializer(required=False)
 
     def to_internal_value(self, data):
-        policy_id = data.get("policy_id")
         internal_value = super(PremiumPaymentSerializer, self).to_internal_value(data)
-        internal_value.update(policy_id=policy_id)
-        # Convert datetime to date for specified fields if needed
+        # Extract policy_id from the data and update internal_value
+        policy_id = data.get("policy_id")
+        if policy_id:
+            internal_value.update({"policy_id": policy_id})  # Ensure it gets mapped correctly
         return internal_value
 
     def validate_amount(self, value):
@@ -452,7 +453,6 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = PremiumPayment
         fields = '__all__'
-        # exclude = ["policy"]
 
     def get_fields(self):
         fields = super().get_fields()
@@ -467,11 +467,12 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        print(f'validated data {validated_data}')
         policy_id = validated_data.pop("policy_id")
-        policy = Policy.objects.filter(policy_number=policy_id).first()
+        policy = Policy.objects.filter(id=policy_id).first()
         if not policy:
             raise serializers.ValidationError(
-                f"Policy with the provided number does not exist {policy_id}."
+                f"Policy with the provided id does not exist {policy_id}."
             )
 
         payment_schedules = PolicyPaymentSchedule.objects.filter(

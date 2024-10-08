@@ -425,9 +425,10 @@ class CapturePaymentView(APIView):
         """
         Capture payment.
         """
-        serializer = PremiumPaymentSerializer(data=request.data)
+        data = request.data
+        serializer = PremiumPaymentSerializer(data=data)
         if serializer.is_valid():
-            serializer.save(policy=policy_id)
+            serializer.save()
             return HTTPResponse.success(
                 data=serializer.data, status_code=status.HTTP_201_CREATED
             )
