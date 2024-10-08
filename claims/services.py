@@ -229,9 +229,12 @@ def create_claim_payment(payment):
     payment.save()
 
 
-def approve_claim(tenant_id, claim_id):
+def approve_claim(tenant_id, claim_id, approved_by):
     claim = __find_claim_by_id(claim_id)
     claim.claim_status = ClaimStatus.APPROVED
+    claim_details = claim.claim_details or {}
+    claim_details['approved_by'] = approved_by
+    claim.claim_details = claim_details
     claim.save()
 
 

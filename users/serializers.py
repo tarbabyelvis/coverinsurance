@@ -182,6 +182,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         try:
+            print('validating...')
             data = super().validate(attrs)
         except Exception as e:
             print(f"Validation error: {e}")

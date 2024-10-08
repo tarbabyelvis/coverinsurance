@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class ClaimCreateAPIView(APIView):
-    # permission_classes = IsAuthenticated,
+    permission_classes = IsAuthenticated,
     pagination_class = CustomPagination
 
     @swagger_auto_schema(
@@ -239,7 +239,7 @@ class ClaimCreateAPIView(APIView):
 
 
 class ClaimDetailAPIView(APIView):
-    # permission_classes = (IsAuthenticated,
+    permission_classes = (IsAuthenticated,)
 
     @swagger_auto_schema(
         operation_description="Retrieve a specific Claim by ID",
@@ -316,9 +316,8 @@ class ProcessClaimAPIView(APIView):
     def get(self, request, pk):
         try:
             tenant_id = str(request.tenant).replace("-", "_")
-            #tenant_id = "fin_za_onlineloans"
-            user = request.user
-            print(f'claim processing ...{user}')
+            # tenant_id = "fin_za_onlineloans"
+            user = request.user.email
             process_claim(tenant_id, pk, user)
             return HTTPResponse.success(
                 message="Request Successful",
@@ -334,14 +333,15 @@ class ProcessClaimAPIView(APIView):
 
 
 class ApproveClaimAPIView(APIView):
-    # permission_classes = (IsAuthenticated,
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request, pk):
         try:
             tenant_id = str(request.tenant).replace("-", "_")
-            #tenant_id = "fin_za_onlineloans"
+            # tenant_id = "fin_za_onlineloans"
             print(f'claim approval ...')
-            approve_claim(tenant_id, pk)
+            user = request.user.email
+            approve_claim(tenant_id, pk, user)
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
@@ -356,17 +356,17 @@ class ApproveClaimAPIView(APIView):
 
 
 class RepudiateClaimAPIView(APIView):
-    # permission_classes = (IsAuthenticated,
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request, pk):
         try:
             tenant_id = str(request.tenant).replace("-", "_")
-            #tenant_id = "fin_za_onlineloans"
+            # tenant_id = "fin_za_onlineloans"
             data = request.data
+            user = request.user.email
             print(f'claim repudiation ...{data}')
             repudiation_reason = data['repudiation_reason']
-            repudiated_by = data['repudiated_by']
-            repudiate_claim(tenant_id, pk, repudiation_reason, repudiated_by)
+            repudiate_claim(tenant_id, pk, repudiation_reason, user)
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
@@ -381,12 +381,12 @@ class RepudiateClaimAPIView(APIView):
 
 
 class ReceiptClaimAPIView(APIView):
-    # permission_classes = (IsAuthenticated,
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request, pk):
         try:
             tenant_id = str(request.tenant).replace("-", "_")
-            #tenant_id = "fin_za_onlineloans"
+            # tenant_id = "fin_za_onlineloans"
             data = request.data
             print(f'receipt claim ...{data}')
             claim_amount = data['amount']
@@ -417,12 +417,12 @@ class ReceiptClaimAPIView(APIView):
 
 
 class ReactivateDebicheckAPIView(APIView):
-    # permission_classes = (IsAuthenticated,
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request, pk):
         try:
             tenant_id = str(request.tenant).replace("-", "_")
-            #tenant_id = "fin_za_onlineloans"
+            # tenant_id = "fin_za_onlineloans"
             data = request.data
             print(f'reactivate debicheck ...{data}')
             reactivate_debicheck(tenant_id, pk)
@@ -452,7 +452,7 @@ class AddDocuments(AsyncAPIView):
             )
         else:
             tenant_id = str(request.tenant).replace("-", "_")
-            #tenant_id = "fin_za_onlineloans"
+            # tenant_id = "fin_za_onlineloans"
             print("Client request saving new Document")
             print(f'request:: {request.data}')
             raw_details = request.data["details"]
@@ -503,11 +503,11 @@ class AddDocuments(AsyncAPIView):
 
 
 class GetClaimDocumentsView(APIView):
-    # permission_classes = (IsAuthenticated,
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request, *args, **kwargs):
         tenant_id = str(request.tenant).replace("-", "_")
-        #tenant_id = "fin_za_onlineloans"
+        # tenant_id = "fin_za_onlineloans"
         claim_id = self.kwargs["pk"]
         response_object = standard_http_response()
         try:
@@ -534,7 +534,7 @@ class AddDocTemplates(AsyncAPIView):
             )
         else:
             tenant_id = str(request.tenant).replace("-", "_")
-            #tenant_id = "fin_za_onlineloans"
+            # tenant_id = "fin_za_onlineloans"
             claim_id = request.data.get("claim_id", None)
             templates = request.data.get("templates", None)
             claim = await Claim.objects.aget(id=int(claim_id))
