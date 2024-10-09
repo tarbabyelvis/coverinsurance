@@ -260,10 +260,6 @@ class PolicyDetailSerializer(PolicySerializer):
     agent = AgentSerializer(read_only=True)
     policy_beneficiary = BeneficiarySerializer(many=True)
     policy_dependants = DependantSerializer(many=True)
-    # Add other nested serializers for related models here
-
-    # class Meta(PolicySerializer.Meta):
-    #     fields = '__all__'
 
 
 class ClientPolicyRequestSerializer(serializers.Serializer):

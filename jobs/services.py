@@ -626,15 +626,21 @@ def create_policy(loan, is_update: bool = False, old_policy=None):
         data={"client": client, "policy": policy},
     )
     serializer.is_valid(raise_exception=True)
-    serializer.save()
+    policy_client = serializer.save()
+    print(f'policy client {policy_client}')
+    policy_from = policy['policy']
+    print(f'policy from ::{policy_from}')
+    return policy_from
 
 
 def save_repayments(repayments):
     for repayment in repayments:
         policy_number, _ = get_policy_number_and_external_id(repayment)
+        print(f'policy_number: {policy_number}')
         try:
             policy = Policy.objects.filter(policy_number=policy_number).first()
             if policy is not None:
+                policy_id = policy.id
                 policy_details = policy.policy_details
                 collected = round(float(repayment.get("total_policy_premium_collected")), 2)
                 outstanding = round(float(repayment.get("current_outstanding_balance") or 0), 2)
@@ -644,7 +650,9 @@ def save_repayments(repayments):
                 policy.save()
             else:
                 create_policy(repayment)
-            repayment_details = extract_repayment_details(repayment)
+                policy_created = Policy.objects.filter(policy_number=policy_number).first()
+                policy_id = policy_created.id
+            repayment_details = extract_repayment_details(repayment, policy_id)
             serializer = PremiumPaymentSerializer(
                 data=repayment_details
             )
@@ -669,10 +677,11 @@ def get_policy_number_and_external_id(loan):
     return loan["loanId"], external_id
 
 
-def extract_repayment_details(repayment):
+def extract_repayment_details(repayment, policy_id):
     policy_number, _ = get_policy_number_and_external_id(repayment)
     return {
-        "policy_id": policy_number,
+        "policy_id": policy_id,
+        "policy_number": policy_number,
         "payment_date": repayment["transactionDate"],
         "amount": round(float(repayment.get("paidAmount", "0")), 2),
         "transaction_type": repayment["paymentType"],
