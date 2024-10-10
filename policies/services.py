@@ -18,7 +18,7 @@ from core.utils import get_dict_values, merge_dict_into_another, replace_keys, g
 from integrations.utils import calculate_binder_fees_amount, calculate_commission_amount, \
     calculate_guard_risk_admin_amount
 from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, POLICY_CLIENTS_COLUMNS_THF_UPDATE, \
-    DEFAULT_BENEFICIARY_FIELDS
+    DEFAULT_BENEFICIARY_FIELDS, POLICY_SCORE_THF_UPDATE
 from policies.constants import FUNERAL_POLICY_CLIENT_COLUMNS
 from policies.models import Policy
 from policies.serializers import BeneficiarySerializer
@@ -168,7 +168,8 @@ def upload_funeral_clients_and_policies(
     for data in client_policy_data:
         print(f' data coming {data}')
 
-        policy_number = data["policy_number"].strip() if isinstance(data["policy_number"],str) else data["policy_number"]
+        policy_number = data["policy_number"].strip() if isinstance(data["policy_number"], str) else data[
+            "policy_number"]
         print(f'policy')
         policy_status = data['policy_status']
         policy = Policy.objects.get(policy_number=policy_number, policy_type_id=2)
@@ -181,7 +182,7 @@ def upload_funeral_clients_and_policies(
             policy.policy_status = policy_status
             policy.closed_date = date_obj
             policies.append(policy)
-    Policy.objects.bulk_update(policies, ['closed_date','policy_status'])
+    Policy.objects.bulk_update(policies, ['closed_date', 'policy_status'])
     # save_policy_beneficiary_data(policy_beneficiary_data)
     # client_columns = {
     #     "first_name": "principal_firstname",
@@ -288,26 +289,27 @@ def process_worksheet(
         raise ValidationError(f"{data_type.capitalize()} headers not matching the ones on the excel sheet")
 
     processed_data = []
-    # for row in worksheet.iter_rows(min_row=2, values_only=True):
-    #     if any(cell is not None for cell in row):
-    #         row_dict = dict(zip(headers, row))
-    #         if row_dict is not None:
-    #             row_dict = replace_keys(columns, row_dict)
-    #             if row_dict is not None:
-    #                 data = {k: row_dict[k] for k in columns if k in row_dict}
-    #                 if data is not None:
-    #                     print(f'data {data}')
-    #                     policy_number = data["loanId"]
-    #                     print(f'policy number: {policy_number}')
-    #                     policy = Policy.objects.filter(policy_number=policy_number).first()
-    #                     if policy is not None:
-    #                         if policy.premium is None:
-    #                             print(f'policy {policy}')
-    #                             premium = policy.total_premium
-    #                             total_premium = data["total_premium"]
-    #                             policy.premium = premium
-    #                             policy.total_premium = total_premium
-    #                             policy.save()
+    for row in worksheet.iter_rows(min_row=2, values_only=True):
+        if any(cell is not None for cell in row):
+            row_dict = dict(zip(headers, row))
+            if row_dict is not None:
+                row_dict = replace_keys(columns, row_dict)
+                if row_dict is not None:
+                    data = {k: row_dict[k] for k in columns if k in row_dict}
+                    if data is not None:
+                        print(f'data {data}')
+                        policy_number = data["policy_number"]
+                        print(f'policy number: {policy_number}')
+                        policy = Policy.objects.filter(policy_number=policy_number).first()
+                        if policy is not None:
+                            policy_details = policy.policy_details or {}
+                            policy_details['risk_band'] = data["risk_band"]
+                            policy_details['score'] = data["score"]
+                            policy.policy_details = policy_details
+                            processed_data.append(policy)
+
+    Policy.objects.bulk_update(processed_data, ['policy_details'])
+    print('Done updating credit scores...')
     # for row in worksheet.iter_rows(min_row=2, values_only=True):
     #     if any(cell is not None for cell in row):
     #         row_dict = dict(zip(headers, row))
@@ -326,43 +328,43 @@ def process_worksheet(
     #                         policy.policy_status = map_closure_reason(data["closed_reason"])
     #                         policy.closed_date = data["expiry_date"]
     #                         policy.save()
-    for row in worksheet.iter_rows(min_row=2, values_only=True):
-        if any(cell is not None for cell in row):
-            row_dict = dict(zip(headers, row))
-            row_dict = replace_keys(columns, row_dict)
-            data = {k: row_dict[k] for k in columns if k in row_dict}
-            if data_type == "client_policy":
-                default_columns = {**DEFAULT_CLIENT_FIELDS, **DEFAULT_POLICY_FIELDS,
-                                   "entity": "Indlu",
-                                   "commission_frequency": "Monthly",
-                                   "premium_frequency": "Monthly",
-                                   "policy_type_id": 2,
-                                   "commission_percentage": 7.50
-                                   }
-            elif data_type == "policy":
-                default_columns = {**DEFAULT_POLICY_FIELDS, "entity": "Indlu",
-                                   "sub_scheme": "Credit Life",
-                                   "commission_frequency": "Monthly",
-                                   "premium_frequency": "Monthly",
-                                   }
-            elif data_type == "client":
-                default_columns = {**DEFAULT_CLIENT_FIELDS}
-            elif data_type == "repayment":
-                default_columns = {}
-            elif data_type == "policy_client_dump" or data_type == 'cfsa' or data_type == 'cfsacorrect':
-                default_columns = {**DEFAULT_POLICY_FIELDS, **DEFAULT_CLIENT_FIELDS,
-                                   "entity": "Indlu",
-                                   "policy_type_id": 1,
-                                   "sub_scheme": "Credit Life",
-                                   "commission_frequency": "Monthly",
-                                   "premium_frequency": "Monthly",
-                                   "commission_percentage": 7.50
-                                   }
-            else:
-                default_columns = DEFAULT_BENEFICIARY_FIELDS
-
-            data = merge_dict_into_another(data, default_columns)
-            processed_data.append(process_data(data, data_type))
+    # for row in worksheet.iter_rows(min_row=2, values_only=True):
+    #     if any(cell is not None for cell in row):
+    #         row_dict = dict(zip(headers, row))
+    #         row_dict = replace_keys(columns, row_dict)
+    #         data = {k: row_dict[k] for k in columns if k in row_dict}
+    #         if data_type == "client_policy":
+    #             default_columns = {**DEFAULT_CLIENT_FIELDS, **DEFAULT_POLICY_FIELDS,
+    #                                "entity": "Indlu",
+    #                                "commission_frequency": "Monthly",
+    #                                "premium_frequency": "Monthly",
+    #                                "policy_type_id": 2,
+    #                                "commission_percentage": 7.50
+    #                                }
+    #         elif data_type == "policy":
+    #             default_columns = {**DEFAULT_POLICY_FIELDS, "entity": "Indlu",
+    #                                "sub_scheme": "Credit Life",
+    #                                "commission_frequency": "Monthly",
+    #                                "premium_frequency": "Monthly",
+    #                                }
+    #         elif data_type == "client":
+    #             default_columns = {**DEFAULT_CLIENT_FIELDS}
+    #         elif data_type == "repayment":
+    #             default_columns = {}
+    #         elif data_type == "policy_client_dump" or data_type == 'cfsa' or data_type == 'cfsacorrect':
+    #             default_columns = {**DEFAULT_POLICY_FIELDS, **DEFAULT_CLIENT_FIELDS,
+    #                                "entity": "Indlu",
+    #                                "policy_type_id": 1,
+    #                                "sub_scheme": "Credit Life",
+    #                                "commission_frequency": "Monthly",
+    #                                "premium_frequency": "Monthly",
+    #                                "commission_percentage": 7.50
+    #                                }
+    #         else:
+    #             default_columns = DEFAULT_BENEFICIARY_FIELDS
+    #
+    #         data = merge_dict_into_another(data, default_columns)
+    #         processed_data.append(process_data(data, data_type))
     return processed_data
 
 
@@ -739,8 +741,8 @@ def upload_indlu_clients_and_policies(
     wb = openpyxl.load_workbook(file_obj.file)
     # clients = process_worksheet(wb, "Members", CLIENT_COLUMNS_INDLU, "client")
     data_type = source
-    if data_type == 'cfsa_update':
-        policy_clients_dump = process_worksheet(wb, "DataDump", POLICY_CLIENTS_COLUMNS_THF_UPDATE, "cfsa_update")
+    if data_type == 'indlu':
+        policy_clients_dump = process_worksheet(wb, "DataDump 300624", POLICY_SCORE_THF_UPDATE, "indlu")
     # elif data_type == 'cfsa':
     #     policy_clients_dump = process_worksheet(wb, "Data", POLICY_CLIENTS_COLUMNS_CFSA, "cfsa")
     # else:

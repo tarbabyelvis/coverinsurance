@@ -1,10 +1,7 @@
-import asyncio
-import re
 import traceback
 from datetime import datetime, date, timedelta
 from typing import Final
 
-from asgiref.sync import sync_to_async
 from django.db.models import Q
 
 from claims.models import Claim
@@ -626,11 +623,7 @@ def create_policy(loan, is_update: bool = False, old_policy=None):
         data={"client": client, "policy": policy},
     )
     serializer.is_valid(raise_exception=True)
-    policy_client = serializer.save()
-    print(f'policy client {policy_client}')
-    policy_from = policy['policy']
-    print(f'policy from ::{policy_from}')
-    return policy_from
+    serializer.save()
 
 
 def save_repayments(repayments):

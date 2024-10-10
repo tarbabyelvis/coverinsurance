@@ -393,6 +393,11 @@ POLICY_CLIENTS_COLUMNS_THF_UPDATE = {
     "total_premium": "CLI Sched",
     "premium": "Monthly CLI Prem",
 }
+POLICY_SCORE_THF_UPDATE = {
+    "policy_number": "LoanRefId",
+    "score": "Application Score",
+    "risk_band": "RiskBand",
+}
 POLICY_CLIENTS_COLUMNS_CFSA_UPDATE = {
     "loanId": "Loan Id",
     "product_id": "product_id",

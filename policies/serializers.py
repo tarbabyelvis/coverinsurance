@@ -463,7 +463,6 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        print(f'validated data {validated_data}')
         policy_id = validated_data.pop("policy_id")
         policy = Policy.objects.filter(id=policy_id).first()
         if not policy:

@@ -807,7 +807,7 @@ class DashboardStatisticsView(APIView):
 
         if not from_date or not to_date:
             return HTTPResponse.error(
-                message="'from', 'to', entity are required .",
+                message="'from', 'to' are required .",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
