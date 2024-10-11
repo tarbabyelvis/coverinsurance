@@ -387,7 +387,7 @@ def fetch_and_process_fin_connect_data(start_date: date, end_date: date, finerac
         "loan_ids": loan_ids
     }
     print(f'payload {payload}')
-    scores = __make_backoffice_request('fin_za', '/reports/application-score-and-employment-report', payload)
+    scores = __make_backoffice_request('fin_za', '/clients/score', payload)
     print(f'scores found in bo {scores}')
 
     # closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
