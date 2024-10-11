@@ -6,7 +6,7 @@ from FinCover.settings import BACK_OFFICE_URL
 
 
 def __make_backoffice_request(tenant_id, uri, payload):
-    back_office_url = generate_back_office_url(tenant_id, payload)
+    back_office_url = generate_back_office_url(tenant_id, uri)
     return requests.post(
         url=back_office_url + uri,
         json=payload,

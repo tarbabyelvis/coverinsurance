@@ -277,13 +277,6 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
-        # 'file': {
-        #     'level': 'DEBUG',
-        #     'class': DailyRotatingFileHandler,
-        #     'directory': os.path.join(BASE_DIR, 'logs'),
-        #     'prefix': 'cover-admin',
-        #     'formatter': 'verbose',
-        # },
     },
     "loggers": {
         'django': {
