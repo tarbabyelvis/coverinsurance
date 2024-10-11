@@ -1,7 +1,8 @@
 import random
-from typing import List
-from django.db import connection
 from datetime import date, datetime, timedelta
+from typing import List
+
+from django.db import connection
 from rest_framework.pagination import PageNumberPagination
 
 
@@ -137,12 +138,12 @@ def last_day_of_previous_month():
     first_day_of_current_month = today.replace(day=1)
     return first_day_of_current_month - timedelta(days=1)
 
+
 def first_day_of_month_for_yesterday():
     today = datetime.now()
     yesterday = today - timedelta(days=1)
     first_day_of_month = yesterday.replace(day=1)
     return first_day_of_month
-
 
 
 def get_initial_letter(word: str):
@@ -160,11 +161,14 @@ def get_loan_id_from_legacy_loan(loan_external_id: str):
 def generate_policy_number() -> str:
     return generate_reference_number()
 
+
 def generate_reference_number():
     return f"FIN{random.randint(100000, 999999)}"
+
 
 def standard_http_response() -> dict:
     return {
         "message": "",
         "data": [],
     }
+

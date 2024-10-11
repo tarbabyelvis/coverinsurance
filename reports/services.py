@@ -5,7 +5,7 @@ from io import BytesIO
 
 import openpyxl
 import pandas as pd
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Case, When, Value, CharField
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 
@@ -45,6 +45,7 @@ def fetch_quarterly_bordraux_summary(from_date, to_date, entity):
     active_policies_period_start = fetch_active_policies_as_at_date(entity, given_date=from_date)
     active_policies_period_end = fetch_active_policies_as_at_date(entity, given_date=to_date)
     new_policies = fetch_new_policies_between(entity, from_date, to_date)
+    category_counts = get_categorized_policy_counts(new_policies)
     lapsed_policies = fetch_lapsed_policies_between(entity, from_date, to_date)
     summaries = sum_and_get_summaries(new_policies, active_policies_period_start, active_policies_period_end,
                                       lapsed_policies)
@@ -76,13 +77,29 @@ def fetch_quarterly_bordraux_summary(from_date, to_date, entity):
         "lapsed_policies_premium": lapsed_premium,
         "lapsed_policies_annual_premium": lapsed_premium * 12,
         "lapsed_policies_sum_insured": lapsed_insured,
+        "categorized_policies": category_counts
     }
+
+
+def get_categorized_policy_counts(policies):
+    categorized_policies = policies.annotate(
+        category=Case(
+            When(policy_details__score__gte=673, policy_details__score__lte=900, then=Value('CatA')),
+            When(policy_details__score__gte=652, policy_details__score__lte=672, then=Value('CatB')),
+            When(policy_details__score__gte=1, policy_details__score__lte=651, then=Value('CatC')),
+            default=Value('Other'),
+            output_field=CharField(),
+        )
+    ).values('category').annotate(count=Count('id')).order_by('category')
+
+    return categorized_policies
 
 
 def generate_quarterly_excel_report(from_date, to_date, entity):
     active_policies_period_start = fetch_active_policies_as_at_date(entity, given_date=from_date)
     active_policies_period_end = fetch_active_policies_as_at_date(entity, given_date=to_date)
     new_policies = fetch_new_policies_between(entity, from_date, to_date)
+    category_counts = get_categorized_policy_counts(new_policies)
     lapsed_policies = fetch_lapsed_policies_between(entity, from_date, to_date)
     wb = openpyxl.Workbook()
     ws_front_sheet = wb.active
@@ -104,7 +121,8 @@ def generate_quarterly_excel_report(from_date, to_date, entity):
         new_policies,
         active_policies_period_start,
         active_policies_period_end,
-        lapsed_policies
+        lapsed_policies,
+        category_counts,
     )
     header = ["Time Stamp", "Administrator Identifier", "Insurer Name",
               "Client Identifier", "Division", "Policy Type", "Sub Scheme Name", "Policy Number",
@@ -126,7 +144,7 @@ def populate_data_sheet(data, header, worksheet):
 
 
 def generate_summary_sheet(summary_sheet, new_policies, active_policies_period_start, active_policies_period_end,
-                           lapsed_policies):
+                           lapsed_policies, categorized_policies):
     summaries = sum_and_get_summaries(new_policies, active_policies_period_start, active_policies_period_end,
                                       lapsed_policies)
     active_start_premium = summaries['active_start_premium']
@@ -148,6 +166,10 @@ def generate_summary_sheet(summary_sheet, new_policies, active_policies_period_s
     lapsed_policies_data = ["Lapsed Policies", len(lapsed_policies), f"{lapsed_premium:,.2f}",
                             f"{lapsed_premium * 12:,.2f}",
                             f"{lapsed_insured:,.2f}"]
+    categorized_policies_list = [
+        {"category": entry["category"], "Count": entry["count"]}
+        for entry in categorized_policies
+    ]
 
     headers = ["Policy Type", "Count", "Premium", "Annual Premium", "Sum Insured"]
     summary_sheet.append(headers)
@@ -155,6 +177,7 @@ def generate_summary_sheet(summary_sheet, new_policies, active_policies_period_s
     summary_sheet.append(lapsed_policies_data)
     summary_sheet.append(active_policies_at_start)
     summary_sheet.append(active_policies_at_end)
+    summary_sheet.append(categorized_policies_list)
 
 
 def generate_policy_summary_sheet(summary_sheet, policies):

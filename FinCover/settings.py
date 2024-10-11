@@ -356,6 +356,9 @@ CELERY_BEAT_SCHEDULE = {
 # SUPABASE_REST_URL = os.getenv(
 #     "SUPABASE_REST_URL", "https://judylsxekmubhznqnakm.supabase.co"
 # )
+# BACK_OFFICE_URL = os.getenv(
+#     "BACK_OFFICE_URL", "https://dev-workflow.fin-connect.net"
+# )
 
 # PROD
 SUPABASE_TOKEN = os.getenv(
@@ -371,6 +374,9 @@ SUPABASE_POSTGREST_URL = os.getenv(
 SUPABASE_PROJECTID = os.getenv("SUPABASE_PROJECTID", "xmsplibcemufhdyeyugm")
 SUPABASE_REST_URL = os.getenv(
     "SUPABASE_REST_URL", "https://xmsplibcemufhdyeyugm.supabase.co"
+)
+BACK_OFFICE_URL = os.getenv(
+    "BACK_OFFICE_URL", "https://workflow.fin-connect.net"
 )
 
 

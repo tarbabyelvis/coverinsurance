@@ -10,6 +10,7 @@ from config.enums import PolicyType
 from config.models import ClaimantDetails, LoanProduct
 from core.utils import first_day_of_previous_month, last_day_of_previous_month, get_loan_id_from_legacy_loan, \
     first_day_of_month_for_yesterday
+from integrations.back_office import __make_backoffice_request
 from integrations.enums import Integrations
 from integrations.guardrisk.guardrisk import GuardRisk
 from integrations.models import IntegrationConfigs
@@ -380,17 +381,32 @@ def __fetch_premiums(start_date: datetime, end_date: datetime):
 
 def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
     print(f'fetching fineract data from {start_date} to {end_date} for org {fineract_org_id}')
-    new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
-    closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
-    repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
-    # loans_past_due = __fetch_past_loans_due(fineract_org_id)
-    # loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
-    save_new_loans(new_loans)
-    update_closed_loans(closed_loans)
-    save_repayments(repayments)
+    # new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    loan_ids = find_credit_life_policies()
+    payload = {
+        "loan_ids": loan_ids
+    }
+    scores = __make_backoffice_request('fin_za', '/reports/application-score-and-employment-report', payload)
+    print(f'scores found in bo {scores}')
+
+    # closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    # repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
+    # # loans_past_due = __fetch_past_loans_due(fineract_org_id)
+    # # loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
+    # save_new_loans(new_loans)
+    # update_closed_loans(closed_loans)
+    # save_repayments(repayments)
     # process_adjustments(loans)
     # process_unpaid_and_lapsed_policies(loans_past_due)
     print(f'Done processing fineract data fetch for {start_date} to {end_date} and tenant {fineract_org_id}')
+
+
+def find_credit_life_policies():
+    policy_ids = []
+    policies = Policy.objects.filter(policy_type__id=1, is_legacy=False)
+    for policy in policies:
+        policy_ids.append(policy.loan_id)
+    return policy_ids
 
 
 def process_adjustments(loans: list):
