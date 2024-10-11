@@ -673,8 +673,7 @@ class ClientsSummaryReportView(APIView):
             )
 
         try:
-            clients = fetch_clients(from_date, to_date, query)
-            data = summarize_clients(clients)
+            data = summarize_clients()
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
@@ -731,7 +730,8 @@ class ClientsSummaryReportExcelView(APIView):
         try:
             from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
             to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
-            report = generate_clients_excel_report(from_date, to_date, query)
+            clients = fetch_clients(from_date, to_date, query)
+            report = generate_clients_excel_report(clients)
             response = HttpResponse(
                 report,
                 content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

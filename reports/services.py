@@ -5,7 +5,8 @@ from io import BytesIO
 
 import openpyxl
 import pandas as pd
-from django.db.models import Q, Count, Case, When, Value, CharField
+from django.db.models import Q, Count, Case, When, Value, CharField, IntegerField
+from django.db.models.functions import Cast
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 
@@ -45,7 +46,13 @@ def fetch_quarterly_bordraux_summary(from_date, to_date, entity):
     active_policies_period_start = fetch_active_policies_as_at_date(entity, given_date=from_date)
     active_policies_period_end = fetch_active_policies_as_at_date(entity, given_date=to_date)
     new_policies = fetch_new_policies_between(entity, from_date, to_date)
-    category_counts = get_categorized_policy_counts(new_policies)
+    categorized_policies = get_categorized_policy_counts(new_policies)
+
+    print(f'counts {categorized_policies}')
+    categorized_policies_list = [
+        {"category": entry["category"], "count": entry["count"]}
+        for entry in categorized_policies
+    ]
     lapsed_policies = fetch_lapsed_policies_between(entity, from_date, to_date)
     summaries = sum_and_get_summaries(new_policies, active_policies_period_start, active_policies_period_end,
                                       lapsed_policies)
@@ -77,7 +84,7 @@ def fetch_quarterly_bordraux_summary(from_date, to_date, entity):
         "lapsed_policies_premium": lapsed_premium,
         "lapsed_policies_annual_premium": lapsed_premium * 12,
         "lapsed_policies_sum_insured": lapsed_insured,
-        "categorized_policies": category_counts
+        "categorized_policies": categorized_policies_list
     }
 
 
@@ -99,6 +106,8 @@ def generate_quarterly_excel_report(from_date, to_date, entity):
     active_policies_period_start = fetch_active_policies_as_at_date(entity, given_date=from_date)
     active_policies_period_end = fetch_active_policies_as_at_date(entity, given_date=to_date)
     new_policies = fetch_new_policies_between(entity, from_date, to_date)
+    for policy in new_policies:
+        print(f'print policy {policy.policy_details}')
     category_counts = get_categorized_policy_counts(new_policies)
     lapsed_policies = fetch_lapsed_policies_between(entity, from_date, to_date)
     wb = openpyxl.Workbook()
@@ -167,17 +176,19 @@ def generate_summary_sheet(summary_sheet, new_policies, active_policies_period_s
                             f"{lapsed_premium * 12:,.2f}",
                             f"{lapsed_insured:,.2f}"]
     categorized_policies_list = [
-        {"category": entry["category"], "Count": entry["count"]}
+        [entry["category"], entry["count"]]
         for entry in categorized_policies
     ]
-
+    for policy in categorized_policies_list:
+        print(f'categorized in summary sheet policy: {policy}')
     headers = ["Policy Type", "Count", "Premium", "Annual Premium", "Sum Insured"]
     summary_sheet.append(headers)
     summary_sheet.append(new_policies_data)
     summary_sheet.append(lapsed_policies_data)
     summary_sheet.append(active_policies_at_start)
     summary_sheet.append(active_policies_at_end)
-    summary_sheet.append(categorized_policies_list)
+    for policy in categorized_policies_list:
+        summary_sheet.append(policy)
 
 
 def generate_policy_summary_sheet(summary_sheet, policies):
@@ -505,8 +516,7 @@ def summarize_clients(clients):
     return {'client_count': len(df)}
 
 
-def generate_clients_excel_report(from_date, to_date, query):
-    clients = fetch_clients(from_date, to_date, query)
+def generate_clients_excel_report(clients):
     wb = openpyxl.Workbook()
     ws_front_sheet = wb.active
     ws_front_sheet.title = "Clients Summary"

@@ -1,3 +1,5 @@
+import json
+
 import requests
 
 from FinCover.settings import BACK_OFFICE_URL
@@ -5,14 +7,20 @@ from FinCover.settings import BACK_OFFICE_URL
 
 def __make_backoffice_request(tenant_id, uri, payload):
     back_office_url = generate_back_office_url(tenant_id, uri)
-    print(f'endpoint we hitting {back_office_url}')
-    return requests.post(
+    response = requests.post(
         url=back_office_url,
         json=payload,
         headers={
             "content-type": 'application/json',
         },
     )
+    try:
+        response_json = response.json()
+    except json.JSONDecodeError:
+        print("Failed to decode JSON from response")
+        return 0, {}
+
+    return 200, response_json
 
 
 def generate_back_office_url(tenant: str, path: str = '') -> str:

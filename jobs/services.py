@@ -387,9 +387,10 @@ def fetch_and_process_fin_connect_data(start_date: date, end_date: date, finerac
         "loan_ids": loan_ids
     }
     print(f'payload {payload}')
-    scores = __make_backoffice_request('fin-za', '/reports/application-score-and-employment-report', payload)
-    print(f'scores found in bo {scores}')
-
+    status, scores = __make_backoffice_request('fin-za', '/reports/application-score-and-employment-report', payload)
+    print(f'scores {scores}')
+    if status == 200:
+        saving_application_score(scores)
     # closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
     # repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
     # # loans_past_due = __fetch_past_loans_due(fineract_org_id)
@@ -408,6 +409,19 @@ def find_credit_life_policies():
     for policy in policies:
         policy_ids.append(policy.loan_id)
     return policy_ids
+
+
+def saving_application_score(scores):
+    policies = []
+    for score in scores:
+        policy = Policy.objects.filter(loan_id=score['loan_id']).first()
+        if policy is not None:
+            policy_details = policy.policy_details or {}
+            policy_details['score'] = score['Score'] or 0
+            policy_details['score_band'] = score['Score Band'] or ''
+            policy.policy_details = policy_details
+            policies.append(policy)
+    Policy.objects.bulk_update(policies, ['policy_details'])
 
 
 def process_adjustments(loans: list):
