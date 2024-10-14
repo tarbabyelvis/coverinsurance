@@ -202,6 +202,7 @@ class Beneficiary(BaseModel):
         Relationships,
         on_delete=models.RESTRICT,
         related_name="relationship_beneficiary",
+        unique=True
     )
     beneficiary_name = models.CharField(max_length=200, null=True, blank=True)
     beneficiary_dob = models.DateField(null=True, blank=True)

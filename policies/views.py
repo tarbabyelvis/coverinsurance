@@ -378,9 +378,11 @@ class PolicyBeneficiariesView(APIView):
     )
     def post(self, request, policy_id):
 
+        if Beneficiary.objects.filter(policy_id=policy_id).exists():
+            return HTTPResponse.error(message="This policy already has a beneficiary.")
+
         serializer = BeneficiarySerializer(
             data=request.data,
-            many=True,
             context={"request": request},
         )
         if serializer.is_valid():
@@ -388,7 +390,7 @@ class PolicyBeneficiariesView(APIView):
                 logger.info("Validated data: %s", serializer.validated_data)
                 serializer.save(
                     policy=policy_id
-                )  # Set the policy_id for each beneficiary
+                )
                 return HTTPResponse.success(
                     message="Resources created successfully",
                     status_code=status.HTTP_201_CREATED,
