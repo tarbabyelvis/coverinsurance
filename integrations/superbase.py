@@ -115,7 +115,7 @@ def __fetch_data(tenant_id, payload, uri, max_retries=2):
         response = __make_request(tenant_id, payload, uri)
         status, message, data = __process_response(response)
         if status == 200 or status == 201:
-            return status, message, data
+            return 200, message, data
         else:
             attempt += 1
             print(f'attempt {attempt} for payload {json.dumps(payload)}')

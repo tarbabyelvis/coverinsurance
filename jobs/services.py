@@ -1,3 +1,4 @@
+import logging
 import traceback
 from datetime import datetime, date, timedelta
 from typing import Final
@@ -10,7 +11,7 @@ from config.enums import PolicyType
 from config.models import ClaimantDetails, LoanProduct
 from core.utils import first_day_of_previous_month, last_day_of_previous_month, get_loan_id_from_legacy_loan, \
     first_day_of_month_for_yesterday
-from integrations.back_office import __make_backoffice_request
+from integrations.back_office import make_backoffice_request
 from integrations.enums import Integrations
 from integrations.guardrisk.guardrisk import GuardRisk
 from integrations.models import IntegrationConfigs
@@ -22,6 +23,8 @@ from jobs.models import TaskLog
 from policies.models import Policy, PremiumPayment
 from policies.serializers import PolicyDetailSerializer, PremiumPaymentSerializer, \
     ClientPolicyRequestSerializer
+from policies.services import extract_employment_fields
+from policies.views import logger
 from sms.services import warn_of_policy_lapse
 from .models import Task
 
@@ -381,47 +384,33 @@ def __fetch_premiums(start_date: datetime, end_date: datetime):
 
 def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
     print(f'fetching fineract data from {start_date} to {end_date} for org {fineract_org_id}')
-    # new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
-    loan_ids = find_credit_life_policies()
-    payload = {
-        "loan_ids": loan_ids
-    }
-    print(f'payload {payload}')
-    status, scores = __make_backoffice_request('fin-za', '/reports/application-score-and-employment-report', payload)
-    print(f'scores {scores}')
-    if status == 200:
-        saving_application_score(scores)
-    # closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
-    # repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
+    new_loans_status, new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    fetch_and_update_loan_scores(new_loans_status, new_loans)
+    closed_status, closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    repay_status, repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
     # # loans_past_due = __fetch_past_loans_due(fineract_org_id)
     # # loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
-    # save_new_loans(new_loans)
-    # update_closed_loans(closed_loans)
-    # save_repayments(repayments)
+    save_new_loans(new_loans_status, new_loans)
+    update_closed_loans(closed_status, closed_loans)
+    save_repayments(repay_status, repayments)
     # process_adjustments(loans)
     # process_unpaid_and_lapsed_policies(loans_past_due)
     print(f'Done processing fineract data fetch for {start_date} to {end_date} and tenant {fineract_org_id}')
 
 
-def find_credit_life_policies():
-    policy_ids = []
-    policies = Policy.objects.filter(policy_type__id=1, is_legacy=False)
-    for policy in policies:
-        policy_ids.append(policy.loan_id)
-    return policy_ids
-
-
-def saving_application_score(scores):
-    policies = []
-    for score in scores:
-        policy = Policy.objects.filter(loan_id=score['loan_id']).first()
-        if policy is not None:
-            policy_details = policy.policy_details or {}
-            policy_details['score'] = score['Score'] or 0
-            policy_details['score_band'] = score['Score Band'] or ''
-            policy.policy_details = policy_details
-            policies.append(policy)
-    Policy.objects.bulk_update(policies, ['policy_details'])
+def fetch_and_update_loan_scores(status, new_loans):
+    if status == 200:
+        loan_ids = get_loan_ids(new_loans)
+        payload = {
+            "loan_ids": loan_ids
+        }
+        status, scores = make_backoffice_request(
+            tenant_id='fin-za',
+            uri='/reports/application-score-and-employment-report',
+            payload=payload
+        )
+        if status == 200:
+            update_policy_with_application_score(scores, new_loans)
 
 
 def process_adjustments(loans: list):
@@ -505,7 +494,12 @@ def process_unpaid_and_lapsed_policies(lapsed):
         print(e)
 
 
-def update_closed_loans(closed_loans):
+def update_closed_loans(status, closed_loans):
+    data = {
+        "status": status,
+        "closed_loans": len(closed_loans)
+    }
+    save_fineract_job('closed_loans_size', status, data)
     db_policies = []
     for loan in closed_loans:
         policy_number, _ = get_policy_number_and_external_id(loan)
@@ -517,15 +511,10 @@ def update_closed_loans(closed_loans):
             policy.policy_status = map_closure_reason(loan["closed_reason"])
             policy.closed_date = loan["closed_date"]
             policy_details = policy.policy_details or {}
-            print(f'db policy details, premium {policy_number}, {policy_details}')
             outstanding_balance = float(loan["current_outstanding_balance"])
             total_policy_premium_collected = float(loan["total_policy_premium_collected"])
-            print(f'balance Type: {type(outstanding_balance)}, policy {policy_number}')
-            print(f' premium Type: {type(total_policy_premium_collected)}, policy {policy_number}')
-            print(f'outstanding type {outstanding_balance}:: total {total_policy_premium_collected}')
             policy_details["current_outstanding_balance"] = outstanding_balance
             policy_details["total_policy_premium_collected"] = total_policy_premium_collected
-            print(f'details {policy_details}')
             policy.policy_details = policy_details
             db_policies.append(policy)
         except Exception as e:
@@ -541,13 +530,76 @@ def map_closure_reason(closed_reason: str) -> str:
         return "P"
 
 
-def save_new_loans(new_loans):
+def save_new_loans(status, new_loans):
+    data = {
+        "status": status,
+        "new_loans": len(new_loans)
+    }
+    save_fineract_job('new_loans', status, data)
     for loan in new_loans:
         try:
+            print(f'was the loan updated ..{loan}')
             create_policy(loan)
         except Exception as e:
             print(f"Error saving new loan{loan['loanId']}")
             print(e)
+
+
+def save_fineract_job(task_type, status, data):
+    task = fetch_tasks(task_type)
+    log = create_task_logs(task)
+    try:
+        log.data = data
+        if str(status).startswith("2"):
+            log.status = "completed"
+            log.save()
+        else:
+            log.status = "failed"
+            log.save()
+    except Exception as e:
+        print(e)
+        log.status = "failed"
+        log.save()
+
+
+def update_policy_with_application_score(scores, loans):
+    loan_dict = {int(loan['loanId']): loan for loan in loans}
+
+    for score in scores:
+        loan_id = int(score['loan_id'])
+        if loan_id in loan_dict:
+            loan = loan_dict[loan_id]
+            loan['policy_details'] = loan.get('policy_details', {})
+            loan['policy_details']['score'] = int(score.get('Score', 0))
+            loan['policy_details']['score_band'] = score.get('Score Band', '')
+            loan['email'] = score.get('client_email', '')
+            loan['employer_name'] = score.get('employer_name', '')
+            loan['position'] = score.get('position', '')
+            loan['employment_start_date'] = score.get('employment_start_date', '')
+            loan['employer_phone_number'] = score.get('employer_phone_number', '')
+            loan['payment_frequency'] = score.get('payment_frequency', '')
+            loan['marital_status'] = score.get('marital_status', '')
+            break
+
+
+def get_loan_ids(loans):
+    loan_ids = []
+    for l in loans:
+        loan_ids.append(l.get("loanId", ""))
+    return loan_ids
+
+
+def saving_application_score(scores):
+    policies = []
+    for score in scores:
+        policy = Policy.objects.filter(loan_id=score['loan_id']).first()
+        if policy is not None:
+            policy_details = policy.policy_details or {}
+            policy_details['score'] = int(score['Score']) or 0
+            policy_details['score_band'] = score['Score Band'] or ''
+            policy.policy_details = policy_details
+            policies.append(policy)
+    Policy.objects.bulk_update(policies, ['policy_details'])
 
 
 def extract_policy_and_client_info(loan):
@@ -564,6 +616,19 @@ def extract_policy_and_client_info(loan):
     initiation_fee = round(float(loan.get("initiation_fee", 0)), 2)
     service_fee = round(float(loan.get("service_fee", 0)), 2)
     interest_rate = round(float(loan.get("interest_rate", 0)), 2)
+    existing_policy_details = loan.get("policy_details", {})
+    new_policy_details = {
+        "binder_fees": calculate_binder_fees_amount(premium),
+        "total_loan_schedule": schedule,
+        "total_policy_premium_collected": collected,
+        "current_outstanding_balance": outstanding_balance,
+        "installment_amount": installment,
+        "loan_status": loan.get("loan_status"),
+        "initiation_fee": initiation_fee,
+        "service_fee": service_fee,
+        "interest_rate": interest_rate
+    }
+    merged_policy_details = {**existing_policy_details, **new_policy_details}
     policy = {
         "policy_type": 1,
         "insurer": 1 if policy_provider_type == "Internal Credit Life" else 2,
@@ -589,17 +654,7 @@ def extract_policy_and_client_info(loan):
         "sub_scheme": loan.get("sub_scheme") or "",
         "policy_type_id": loan.get("policy_type_id", ""),
         "loan_id": loan.get("loanId", ""),
-        "policy_details": {
-            "binder_fees": calculate_binder_fees_amount(premium),
-            "total_loan_schedule": schedule,
-            "total_policy_premium_collected": collected,
-            "current_outstanding_balance": outstanding_balance,
-            "installment_amount": installment,
-            "loan_status": loan.get("loan_status"),
-            "initiation_fee": initiation_fee,
-            "service_fee": service_fee,
-            "interest_rate": interest_rate
-        }
+        "policy_details": merged_policy_details
     }
     client = {
         "client_id": loan["client_primary_id_number"],
@@ -610,11 +665,17 @@ def extract_policy_and_client_info(loan):
         "primary_id_number": loan["client_primary_id_number"],
         "primary_id_document_type": 1,
         "gender": loan.get("client_gender") or "Unknown",
-        "marital_status": "Unknown",
+        'marital_status': loan.get('marital_status', ''),
         "email": loan.get("email", ""),
         "phone_number": loan.get("mobile_number", ""),
         "entity_type": "Individual",
+        'employer_name': loan.get('employer_name', ''),
+        'job_title': loan.get('position', ''),
+        'employment_date': loan.get('employment_start_date', ''),
+        'employer_phone_number': loan.get('employer_phone_number', ''),
+        'payment_frequency': loan.get('payment_frequency', ''),
     }
+    client = extract_employment_fields(client)
     return policy, client
 
 
@@ -639,13 +700,13 @@ def create_policy(loan, is_update: bool = False, old_policy=None):
         total_policy_premium_collected = round(float(loan.get("total_policy_premium_collected") or 0), 2)
         current_outstanding_balance = round(float(loan.get("current_outstanding_balance") or 0), 2)
         schedule = round((float(loan.get("total_loan_schedule", "") or 0)), 2)
-        policy_details = {
-            "binder_fees": calculate_binder_fees_amount(premium),
-            "total_loan_schedule": schedule,
-            "total_policy_premium_collected": total_policy_premium_collected,
-            "current_outstanding_balance": current_outstanding_balance,
-            "installment_amount": loan.get("instalment_amount") or 0,
-        }
+        policy_details = old_policy.policy_details or {}
+        policy_details["binder_fees"]: calculate_binder_fees_amount(premium)
+        policy_details["total_loan_schedule"]: schedule
+        policy_details["total_policy_premium_collected"]: total_policy_premium_collected
+        policy_details["current_outstanding_balance"]: current_outstanding_balance
+        policy_details["installment_amount"]: loan.get("instalment_amount") or 0
+
         old_policy.policy_details = policy_details
         old_policy.save()
         return
@@ -657,31 +718,38 @@ def create_policy(loan, is_update: bool = False, old_policy=None):
     serializer.save()
 
 
-def save_repayments(repayments):
+def save_repayments(status, repayments):
+    data = {
+        "status": status,
+        "repayments": len(repayments),
+    }
+    save_fineract_job('repayments', status, data)
     for repayment in repayments:
         policy_number, _ = get_policy_number_and_external_id(repayment)
-        print(f'policy_number: {policy_number}')
         try:
+            policy_id = None
             policy = Policy.objects.filter(policy_number=policy_number).first()
             if policy is not None:
-                policy_id = policy.id
-                policy_details = policy.policy_details
-                collected = round(float(repayment.get("total_policy_premium_collected")), 2)
-                outstanding = round(float(repayment.get("current_outstanding_balance") or 0), 2)
-                policy_details["total_policy_premium_collected"] = collected,
-                policy_details["current_outstanding_balance"] = outstanding
-                policy.policy_details = policy_details
-                policy.save()
+                if policy.policy_status not in ['L', 'X']:
+                    policy_id = policy.id
+                    policy_details = policy.policy_details
+                    collected = round(float(repayment.get("total_policy_premium_collected")), 2)
+                    outstanding = round(float(repayment.get("current_outstanding_balance") or 0), 2)
+                    policy_details["total_policy_premium_collected"] = collected,
+                    policy_details["current_outstanding_balance"] = outstanding
+                    policy.policy_details = policy_details
+                    policy.save()
             else:
                 create_policy(repayment)
                 policy_created = Policy.objects.filter(policy_number=policy_number).first()
                 policy_id = policy_created.id
-            repayment_details = extract_repayment_details(repayment, policy_id)
-            serializer = PremiumPaymentSerializer(
-                data=repayment_details
-            )
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
+            if policy.policy_status not in ['L', 'X']:
+                repayment_details = extract_repayment_details(repayment, policy_id)
+                serializer = PremiumPaymentSerializer(
+                    data=repayment_details
+                )
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
         except Exception as e:
             print(f"Error saving repayment {repayment}")
             print(e)
@@ -718,12 +786,12 @@ def __fetch_new_policies_from_fin_connect(start_date: date, end_date: date, tena
     new_loans = []
     try:
         response_status, _, data = query_new_loans(tenant_id, start_date, end_date)
-        print(f'response_status: {response_status}:: data: {data}')
-        return data
+        print(f'new policies status: {response_status}:: data: {data}')
+        return 200, data
     except Exception as e:
         print("Something went wrong fetching new loans, retrying")
         print(e)
-        return new_loans
+        return 0, new_loans
 
 
 def __fetch_loan_repayments_from_fin_connect(start_date: date, end_date: date, tenant_id):
@@ -731,12 +799,12 @@ def __fetch_loan_repayments_from_fin_connect(start_date: date, end_date: date, t
     collections = []
     try:
         response_status, _, data = query_repayments(tenant_id, start_date, end_date)
-        print(f'response_status: {response_status}:: data: {data}')
-        return data
+        print(f'repayments status: {response_status}:: data: {data}')
+        return 200, data
     except Exception as e:
         print("Something went wrong fetching loan repayments")
         print(e)
-        return collections
+        return 0, collections
 
 
 def __fetch_closed_loans_from_fin_connect(start_date: date, end_date: date, tenant_id):
@@ -744,12 +812,12 @@ def __fetch_closed_loans_from_fin_connect(start_date: date, end_date: date, tena
     closed_loans = []
     try:
         response_status, _, data = query_closed_loans(tenant_id, start_date, end_date)
-        print(f'response_status: {response_status}:: data: {data}')
-        return data
+        print(f'closed loans status: {response_status}:: data: {data}')
+        return 200, data
     except Exception as e:
         print("Something went wrong fetching closed loans, retrying")
         print(e)
-        return closed_loans
+        return 0, closed_loans
 
 
 def __fetch_premium_adjustments_from_fin_connect(tenant_id):

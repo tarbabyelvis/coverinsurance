@@ -673,7 +673,8 @@ class ClientsSummaryReportView(APIView):
             )
 
         try:
-            data = summarize_clients()
+            clients = fetch_clients(from_date, to_date, query)
+            data = summarize_clients(clients)
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,

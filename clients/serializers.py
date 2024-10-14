@@ -97,7 +97,6 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         # fields = [field.name for field in ClientDetails._meta.get_fields() if field.name != 'deleted']
 
     def validate_primary_id_document_type(self, value):
-        print("validate primary ID")
         try:
             if isinstance(value, IdDocumentType):
                 # If the value is an instance of IdDocumentType, use its primary key
@@ -210,7 +209,6 @@ class ClientDetailsSerializer(serializers.ModelSerializer):
         if errors:
             print("Error validation")
             raise serializers.ValidationError(errors)
-        print("Done client validation")
         return data
 
     @transaction.atomic

@@ -5,8 +5,7 @@ from io import BytesIO
 
 import openpyxl
 import pandas as pd
-from django.db.models import Q, Count, Case, When, Value, CharField, IntegerField
-from django.db.models.functions import Cast
+from django.db.models import Q, Count, Case, When, Value, CharField
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 
@@ -48,7 +47,6 @@ def fetch_quarterly_bordraux_summary(from_date, to_date, entity):
     new_policies = fetch_new_policies_between(entity, from_date, to_date)
     categorized_policies = get_categorized_policy_counts(new_policies)
 
-    print(f'counts {categorized_policies}')
     categorized_policies_list = [
         {"category": entry["category"], "count": entry["count"]}
         for entry in categorized_policies
@@ -106,8 +104,6 @@ def generate_quarterly_excel_report(from_date, to_date, entity):
     active_policies_period_start = fetch_active_policies_as_at_date(entity, given_date=from_date)
     active_policies_period_end = fetch_active_policies_as_at_date(entity, given_date=to_date)
     new_policies = fetch_new_policies_between(entity, from_date, to_date)
-    for policy in new_policies:
-        print(f'print policy {policy.policy_details}')
     category_counts = get_categorized_policy_counts(new_policies)
     lapsed_policies = fetch_lapsed_policies_between(entity, from_date, to_date)
     wb = openpyxl.Workbook()

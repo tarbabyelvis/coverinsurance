@@ -90,7 +90,6 @@ class PolicySerializer(serializers.ModelSerializer):
 
     def to_internal_value(self, data):
         # Convert QueryDict to a mutable dictionary
-        print(f'policy data coming {data}')
         mutable_data = data
         if "client" in mutable_data and isinstance(
                 mutable_data["client"], ClientDetails
@@ -357,7 +356,6 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
                 if created:
                     terms = policy_data.get("policy_term", 1)
-                    print(f'terms {terms}')
                     amount_due_per_term = policy_data["premium"]
                     # create payment schedule
                     if terms > 0:
