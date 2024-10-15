@@ -158,7 +158,6 @@ class PolicyView(APIView):
         )
 
 
-
 class PolicyDetailView(APIView):
     # permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
@@ -377,17 +376,14 @@ class PolicyBeneficiariesView(APIView):
         },
     )
     def post(self, request, policy_id):
-
         if Beneficiary.objects.filter(policy_id=policy_id).exists():
             return HTTPResponse.error(message="This policy already has a beneficiary.")
-
         serializer = BeneficiarySerializer(
             data=request.data,
             context={"request": request},
         )
         if serializer.is_valid():
             try:
-                logger.info("Validated data: %s", serializer.validated_data)
                 serializer.save(
                     policy=policy_id
                 )
@@ -396,8 +392,10 @@ class PolicyBeneficiariesView(APIView):
                     status_code=status.HTTP_201_CREATED,
                 )
             except Exception as e:
+                print(f'error {str(e)}')
                 return HTTPResponse.error(message=str(e))
         else:
+            print(f'serial errors {serializer.errors}')
             return HTTPResponse.error(message=serializer.errors)
 
     @swagger_auto_schema(

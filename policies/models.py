@@ -196,13 +196,13 @@ class Beneficiary(BaseModel):
         Policy,
         on_delete=models.RESTRICT,
         related_name="policy_beneficiary",
+        unique=True
     )
 
     relationship = models.ForeignKey(
         Relationships,
         on_delete=models.RESTRICT,
         related_name="relationship_beneficiary",
-        unique=True
     )
     beneficiary_name = models.CharField(max_length=200, null=True, blank=True)
     beneficiary_dob = models.DateField(null=True, blank=True)
