@@ -1,16 +1,17 @@
 # serializers.py
-from datetime import datetime
-from django.db import transaction
 import json
+from datetime import datetime
+
+from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
+from django.db import transaction
+from marshmallow import Schema, fields, validates_schema, ValidationError
 from rest_framework import serializers
+
 from clients.commons import CLIENTS_EXPECTED_COLUMNS
 from config.models import BusinessSector
-from config.serializers import BusinessSectorSerializer
 from .models import ClientDetails, ClientEmploymentDetails, IdDocumentType
-from django.core.exceptions import ObjectDoesNotExist
-from marshmallow import Schema, fields, validates_schema, ValidationError
-from django.core.validators import validate_email
-from django.core.exceptions import ValidationError as DjangoValidationError
 
 
 def in_memory_file_exists(in_memory_file):
@@ -65,6 +66,7 @@ class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        print(f'validated client employment data: {validated_data}')
         sector = validated_data.pop("sector", None)
         if isinstance(sector, int):
             sector = BusinessSector.objects.get(id=sector)

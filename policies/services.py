@@ -398,17 +398,26 @@ def extract_employment_fields(client_details):
     employment_fields = {
         'job_title',
         'sector',
-        'employer',
         'employment_date',
+        'employer_phone_number',
         'employer_name',
         'gross_salary',
         'basic_salary',
     }
     employment_data = {}
+
     for field in employment_fields:
         if field in client_details:
-            employment_data[field] = client_details.pop(field)
-            client_details['employment_details'] = employment_data
+            value = client_details[field]
+
+            if value not in [None, '', [], {}]:
+                employment_data[field] = client_details.pop(field)
+            else:
+                client_details.pop(field, None)
+
+    if employment_data:
+        client_details['employment_details'] = employment_data
+
     return client_details
 
 

@@ -404,6 +404,7 @@ def fetch_and_update_loan_scores(status, new_loans):
         payload = {
             "loan_ids": loan_ids
         }
+        print('fetching credit scores and employment details')
         status, scores = make_backoffice_request(
             tenant_id='fin-za',
             uri='/reports/application-score-and-employment-report',
@@ -499,7 +500,6 @@ def update_closed_loans(status, closed_loans):
         "status": status,
         "closed_loans": len(closed_loans)
     }
-    save_fineract_job('closed_loans_size', status, data)
     db_policies = []
     for loan in closed_loans:
         policy_number, _ = get_policy_number_and_external_id(loan)
@@ -521,6 +521,7 @@ def update_closed_loans(status, closed_loans):
             print(f"Error updating closed loan  {loan}")
             print(e)
     Policy.objects.bulk_update(db_policies, fields=['policy_status', 'closed_date', 'policy_details'])
+    save_fineract_job('closed_loans', status, data)
 
 
 def map_closure_reason(closed_reason: str) -> str:
@@ -535,14 +536,14 @@ def save_new_loans(status, new_loans):
         "status": status,
         "new_loans": len(new_loans)
     }
-    save_fineract_job('new_loans', status, data)
     for loan in new_loans:
         try:
             print(f'was the loan updated ..{loan}')
             create_policy(loan)
         except Exception as e:
-            print(f"Error saving new loan{loan['loanId']}")
+            print(f"Error saving new loan {loan['loanId']}")
             print(e)
+    save_fineract_job('new_loans', status, data)
 
 
 def save_fineract_job(task_type, status, data):
@@ -566,6 +567,7 @@ def update_policy_with_application_score(scores, loans):
     loan_dict = {int(loan['loanId']): loan for loan in loans}
 
     for score in scores:
+        print(f'score {score}')
         loan_id = int(score['loan_id'])
         if loan_id in loan_dict:
             loan = loan_dict[loan_id]
@@ -574,12 +576,11 @@ def update_policy_with_application_score(scores, loans):
             loan['policy_details']['score_band'] = score.get('Score Band', '')
             loan['email'] = score.get('client_email', '')
             loan['employer_name'] = score.get('employer_name', '')
-            loan['position'] = score.get('position', '')
+            loan['job_title'] = score.get('position', '')
             loan['employment_start_date'] = score.get('employment_start_date', '')
             loan['employer_phone_number'] = score.get('employer_phone_number', '')
             loan['payment_frequency'] = score.get('payment_frequency', '')
-            loan['marital_status'] = score.get('marital_status', '')
-            break
+            loan['marital_status'] = (score.get('marital_status') or 'Unknown').capitalize()
 
 
 def get_loan_ids(loans):
@@ -723,7 +724,6 @@ def save_repayments(status, repayments):
         "status": status,
         "repayments": len(repayments),
     }
-    save_fineract_job('repayments', status, data)
     for repayment in repayments:
         policy_number, _ = get_policy_number_and_external_id(repayment)
         try:
@@ -753,6 +753,7 @@ def save_repayments(status, repayments):
         except Exception as e:
             print(f"Error saving repayment {repayment}")
             print(e)
+    save_fineract_job('repayments', status, data)
 
 
 def is_legacy_policy(product_id) -> bool:

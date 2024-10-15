@@ -335,7 +335,7 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
 
         # Create or update ClientEmploymentDetails
         if employment_details_data:
-            if str(employment_details_data["sector"]).isdigit():
+            if "sector" in employment_details_data and str(employment_details_data["sector"]).isdigit():
                 try:
                     employment_details_data["sector"] = BusinessSector.objects.get(
                         pk=employment_details_data["sector"]
