@@ -1,10 +1,9 @@
-
 from django.db import models
 from django.utils import timezone
 
 from clients.models import ClientDetails
 from config.enums import PolicyType
-from config.models import Agent, InsuranceCompany, PolicyName, Relationships
+from config.models import Agent, InsuranceCompany, PolicyName, Relationships, IdDocumentType
 from core.enums import Gender, PolicyStatus, PremiumFrequency
 from core.models import BaseModel
 
@@ -175,6 +174,14 @@ class Dependant(BaseModel):
         on_delete=models.RESTRICT,
         related_name="relationship_dependant",
     )
+    primary_id_number = models.CharField(max_length=30, null=True,blank=True,)
+    primary_id_document_type = models.ForeignKey(
+        IdDocumentType,
+        on_delete=models.RESTRICT,
+        related_name="dependant_id_document_type",
+        null=True,
+        blank=True,
+    )
     dependant_name = models.CharField(max_length=200, null=True, blank=True)
     dependant_dob = models.DateField(null=True, blank=True)
     dependant_gender = models.CharField(max_length=20, choices=Gender.choices)
@@ -203,6 +210,14 @@ class Beneficiary(BaseModel):
         Relationships,
         on_delete=models.RESTRICT,
         related_name="relationship_beneficiary",
+    )
+    primary_id_number = models.CharField(max_length=30, null=True,blank=True,)
+    primary_id_document_type = models.ForeignKey(
+        IdDocumentType,
+        on_delete=models.RESTRICT,
+        related_name="beneficiary_id_document_type",
+        null=True,
+        blank=True,
     )
     beneficiary_name = models.CharField(max_length=200, null=True, blank=True)
     beneficiary_dob = models.DateField(null=True, blank=True)

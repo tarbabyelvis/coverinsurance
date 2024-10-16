@@ -66,7 +66,6 @@ class ClientEmploymentDetailsSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        print(f'validated client employment data: {validated_data}')
         sector = validated_data.pop("sector", None)
         if isinstance(sector, int):
             sector = BusinessSector.objects.get(id=sector)
