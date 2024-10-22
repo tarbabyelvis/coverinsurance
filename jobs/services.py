@@ -1,4 +1,3 @@
-import logging
 import traceback
 from datetime import datetime, date, timedelta
 from typing import Final
@@ -24,7 +23,6 @@ from policies.models import Policy, PremiumPayment
 from policies.serializers import PolicyDetailSerializer, PremiumPaymentSerializer, \
     ClientPolicyRequestSerializer
 from policies.services import extract_employment_fields
-from policies.views import logger
 from sms.services import warn_of_policy_lapse
 from .models import Task
 
@@ -384,14 +382,14 @@ def __fetch_premiums(start_date: datetime, end_date: datetime):
 
 def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
     print(f'fetching fineract data from {start_date} to {end_date} for org {fineract_org_id}')
-    new_loans_status, new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
-    fetch_and_update_loan_scores(new_loans_status, new_loans)
-    closed_status, closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    # new_loans_status, new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    # fetch_and_update_loan_scores(new_loans_status, new_loans)
+    # closed_status, closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
     repay_status, repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
     # # loans_past_due = __fetch_past_loans_due(fineract_org_id)
     # # loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
-    save_new_loans(new_loans_status, new_loans)
-    update_closed_loans(closed_status, closed_loans)
+    # save_new_loans(new_loans_status, new_loans)
+    # update_closed_loans(closed_status, closed_loans)
     save_repayments(repay_status, repayments)
     # process_adjustments(loans)
     # process_unpaid_and_lapsed_policies(loans_past_due)
@@ -779,6 +777,7 @@ def extract_repayment_details(repayment, policy_id):
         "amount": round(float(repayment.get("paidAmount", "0")), 2),
         "transaction_type": repayment["paymentType"],
         "payment_method": repayment["paymentType"],
+        "transaction_id": repayment["transaction_id"],
     }
 
 

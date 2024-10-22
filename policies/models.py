@@ -133,6 +133,7 @@ class PremiumPayment(BaseModel):
     payment_date = models.DateField(null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     payment_method = models.CharField(max_length=200, null=True, blank=True)
+    transaction_id = models.IntegerField(null=True, blank=True)
     payment_reference = models.CharField(max_length=200, null=True, blank=True)
     payment_details = models.JSONField(null=True, blank=True)
     payment_receipt = models.FileField(null=True, blank=True)
@@ -140,7 +141,6 @@ class PremiumPayment(BaseModel):
     branch_name = models.CharField(max_length=200, null=True, blank=True)
     policy_payment_method = models.CharField(max_length=200, null=True, blank=True)
     transaction_type = models.CharField(max_length=200, null=True, blank=True)
-    client_transaction_id = models.CharField(max_length=200, null=True, blank=True)
     teller_transaction_number = models.CharField(max_length=200, null=True, blank=True)
 
     class Meta:
@@ -174,7 +174,7 @@ class Dependant(BaseModel):
         on_delete=models.RESTRICT,
         related_name="relationship_dependant",
     )
-    primary_id_number = models.CharField(max_length=30, null=True,blank=True,)
+    primary_id_number = models.CharField(max_length=30, null=True, blank=True, )
     primary_id_document_type = models.ForeignKey(
         IdDocumentType,
         on_delete=models.RESTRICT,
@@ -210,7 +210,7 @@ class Beneficiary(BaseModel):
         on_delete=models.RESTRICT,
         related_name="relationship_beneficiary",
     )
-    primary_id_number = models.CharField(max_length=30, null=True,blank=True,)
+    primary_id_number = models.CharField(max_length=30, null=True, blank=True, )
     primary_id_document_type = models.ForeignKey(
         IdDocumentType,
         on_delete=models.RESTRICT,
