@@ -257,7 +257,7 @@ class PolicyDetailSerializer(PolicySerializer):
     client = ClientDetailsSerializer(read_only=True)
     insurer = InsuranceCompanySerializer(read_only=True)
     agent = AgentSerializer(read_only=True)
-    policy_beneficiary = BeneficiarySerializer(many=True)
+    policy_beneficiary = BeneficiarySerializer()
     policy_dependants = DependantSerializer(many=True)
 
 
@@ -308,9 +308,7 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
     def create(self, validated_data):
         client_data = validated_data.pop("client")
         policy_data = validated_data.pop("policy")
-        beneficiaries_data = (
-            policy_data.pop("beneficiaries") if "beneficiaries" in policy_data else []
-        )
+        beneficiary_data = policy_data.pop("beneficiary", None)
         dependants_data = (
             policy_data.pop("dependants") if "dependants" in policy_data else []
         )
@@ -389,7 +387,7 @@ class ClientPolicyRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError("Error creating policy.")
 
         # Create beneficiaries and dependants
-        for beneficiary_data in beneficiaries_data:
+        if beneficiary_data:
             Beneficiary.objects.create(policy=policy_instance, **beneficiary_data)
 
         for dependant_data in dependants_data:

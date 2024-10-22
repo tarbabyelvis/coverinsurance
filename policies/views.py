@@ -34,6 +34,7 @@ from .serializers import (
     PolicySerializer,
     PremiumPaymentSerializer, CoverChargesSerializer,
 )
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -176,6 +177,7 @@ class PolicyDetailView(APIView):
         try:
             policy = get_object_or_404(Policy, pk=pk)
             serializer = PolicyDetailSerializer(policy)
+            logger.info('policy data {}'.format(serializer.data))
             return HTTPResponse.success(
                 message="Request Successful",
                 status_code=status.HTTP_200_OK,
@@ -372,9 +374,7 @@ class PolicyBeneficiariesView(APIView):
 
     @swagger_auto_schema(
         operation_description="Add policy beneficiary",
-        request_body=BeneficiarySerializer(
-            many=True
-        ),  # Update to accept a list of beneficiaries
+        request_body=BeneficiarySerializer(),  # Update to accept a beneficiary
         responses={
             201: openapi.Response("Created", BeneficiarySerializer),
             400: "Bad Request",
@@ -418,6 +418,41 @@ class PolicyBeneficiariesView(APIView):
             status_code=status.HTTP_200_OK,
             data=beneficiaries,
         )
+
+    @swagger_auto_schema(
+        operation_description="Update policy beneficiary",
+        request_body=BeneficiarySerializer(
+        ),
+        responses={
+            201: openapi.Response("Updated", BeneficiarySerializer),
+            400: "Bad Request",
+        },
+    )
+    def put(self, request, policy_id):
+        beneficiary = Beneficiary.objects.filter(policy_id=policy_id).first()
+        if beneficiary is None:
+            return HTTPResponse.error(message="This beneficiary does not exist.")
+        serializer = BeneficiarySerializer(
+            beneficiary,
+            data=request.data,
+            context={"request": request},
+            partial=True
+        )
+
+        if serializer.is_valid():
+            try:
+                serializer.save()
+
+                return HTTPResponse.success(
+                    message="Resources updated successfully",
+                    status_code=status.HTTP_200_OK,
+                )
+            except Exception as e:
+                print(f'Error: {str(e)}')
+                return HTTPResponse.error(message=str(e))
+        else:
+            print(f'Serializer errors: {serializer.errors}')
+            return HTTPResponse.error(message=serializer.errors)
 
 
 # policy payments
