@@ -199,11 +199,10 @@ class Dependant(BaseModel):
 
 
 class Beneficiary(BaseModel):
-    policy = models.ForeignKey(
+    policy = models.OneToOneField(
         Policy,
         on_delete=models.RESTRICT,
-        related_name="policy_beneficiary",
-        unique=True
+        related_name="policy_beneficiary"
     )
 
     relationship = models.ForeignKey(

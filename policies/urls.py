@@ -45,5 +45,10 @@ urlpatterns = [
         "charges/",
         CalculateChargesView.as_view(),
         name="policy-charges-calculation",
-    )
+    ),
+    path(
+        "notes/<int:policy_id>",
+        PolicyNotesView.as_view(),
+        name="policy-notes",
+    ),
 ]

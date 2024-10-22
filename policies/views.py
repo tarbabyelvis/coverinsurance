@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 
@@ -32,6 +33,10 @@ from .serializers import (
     PolicyListSerializer,
     PolicySerializer,
     PremiumPaymentSerializer, CoverChargesSerializer,
+)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 logger = logging.getLogger(__name__)
@@ -531,3 +536,46 @@ class CalculateChargesView(APIView):
         return HTTPResponse.success(
             data=serializer.data, status_code=status.HTTP_200_OK
         )
+
+
+class PolicyNotesView(APIView):
+
+    def post(self, request, policy_id):
+        print('adding notes...')
+
+        data = request.data
+        print(data)
+        try:
+            logger.info("policy notes: %s", data)
+            policy = Policy.objects.filter(pk=policy_id).first()
+            if policy is None:
+                return HTTPResponse.error(message="Policy not found")
+            policy_details = policy.policy_details or {}
+
+            try:
+                if isinstance(policy_details, str):
+                    policy_details = json.loads(policy_details)
+            except json.JSONDecodeError as e:
+                return HTTPResponse.error(message="Failed to parse policy details")
+
+            print(f'policy_details {policy_details}')
+            notes = policy_details.get('notes', [])
+            if notes:
+                new_id = max(note.get('id', 0) for note in notes) + 1
+            else:
+                new_id = 1
+            data['id'] = new_id
+            notes.append(data)
+            print(f'new id: {new_id}')
+            print(f'new data: {data}')
+
+            policy_details['notes'] = notes
+            policy.policy_details = policy_details
+            policy.save()
+            return HTTPResponse.success(
+                message="Resource created successfully",
+                status_code=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            print(str(e))
+            return HTTPResponse.error(message=str(e))
