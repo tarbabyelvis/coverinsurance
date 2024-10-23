@@ -727,8 +727,6 @@ def save_repayments(status, repayments):
         try:
             policy_id = None
             policy = Policy.objects.filter(policy_number=policy_number).first()
-
-            # Check if the policy exists
             if policy is not None:
                 if policy.policy_status not in ['L', 'X']:
                     policy_id = policy.id
@@ -786,8 +784,8 @@ def extract_repayment_details(repayment, policy_id):
         "policy_number": policy_number,
         "payment_date": repayment["transactionDate"],
         "amount": round(float(repayment.get("paidAmount", "0")), 2),
-        "transaction_type": repayment["paymentType"],
-        "payment_method": repayment["paymentType"],
+        "transaction_type": repayment["paymentType"] or "",
+        "payment_method": repayment["paymentType"] or "",
         "transaction_id": repayment["transaction_id"],
     }
 
