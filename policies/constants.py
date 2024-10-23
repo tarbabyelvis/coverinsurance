@@ -394,16 +394,16 @@ POLICY_CLIENTS_COLUMNS_THF_UPDATE = {
     "premium": "Monthly CLI Prem",
 }
 POLICY_SCORE_THF_UPDATE = {
-    "policy_number": "LoanRefId",
-    "score": "Application Score",
-    "risk_band": "RiskBand",
+    "policy_number": "Policy Number",
+    # "score": "Application Score",
+    # "risk_band": "RiskBand",
 }
 POLICY_CLIENTS_COLUMNS_CFSA_UPDATE = {
-    "loanId": "Loan Id",
-    "product_id": "product_id",
-    "closed_reason": "closed_reason",
-    "expiry_date": "closed_date",
-    "loan_external_id": "loan_external_id",
+    "policy_number": "Policy Number",
+    # "product_id": "product_id",
+    # "closed_reason": "closed_reason",
+    # "expiry_date": "closed_date",
+    # "loan_external_id": "loan_external_id",
 }
 POLICY_CLIENTS_COLUMNS_CFSA = {
     "policy_number": "Policy Number",

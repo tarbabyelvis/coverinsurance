@@ -17,8 +17,7 @@ from core.enums import PremiumFrequency
 from core.utils import get_dict_values, merge_dict_into_another, replace_keys, get_current_schema
 from integrations.utils import calculate_binder_fees_amount, calculate_commission_amount, \
     calculate_guard_risk_admin_amount
-from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, POLICY_CLIENTS_COLUMNS_THF_UPDATE, \
-    DEFAULT_BENEFICIARY_FIELDS, POLICY_SCORE_THF_UPDATE
+from policies.constants import DEFAULT_CLIENT_FIELDS, DEFAULT_POLICY_FIELDS, POLICY_SCORE_THF_UPDATE
 from policies.constants import FUNERAL_POLICY_CLIENT_COLUMNS
 from policies.models import Policy
 from policies.serializers import BeneficiarySerializer
@@ -288,7 +287,7 @@ def process_worksheet(
         print(f'unique actual headers: {unique_to_actual_headers}')
         raise ValidationError(f"{data_type.capitalize()} headers not matching the ones on the excel sheet")
 
-    processed_data = []
+    legit_active = []
     for row in worksheet.iter_rows(min_row=2, values_only=True):
         if any(cell is not None for cell in row):
             row_dict = dict(zip(headers, row))
@@ -302,14 +301,12 @@ def process_worksheet(
                         print(f'policy number: {policy_number}')
                         policy = Policy.objects.filter(policy_number=policy_number).first()
                         if policy is not None:
-                            policy_details = policy.policy_details or {}
-                            policy_details['risk_band'] = data["risk_band"]
-                            policy_details['score'] = data["score"]
-                            policy.policy_details = policy_details
-                            processed_data.append(policy)
+                            policy.policy_status = 'A'
+                            policy.closed_date = None
+                            legit_active.append(policy)
 
-    Policy.objects.bulk_update(processed_data, ['policy_details'])
-    print('Done updating credit scores...')
+    Policy.objects.bulk_update(legit_active, ['policy_status', 'closed_date'])
+    print('Done updating policy statuses...')
     # for row in worksheet.iter_rows(min_row=2, values_only=True):
     #     if any(cell is not None for cell in row):
     #         row_dict = dict(zip(headers, row))
@@ -365,7 +362,7 @@ def process_worksheet(
     #
     #         data = merge_dict_into_another(data, default_columns)
     #         processed_data.append(process_data(data, data_type))
-    return processed_data
+    return legit_active
 
 
 def process_data(data: Dict[str, Any], data_type: str) -> Dict[str, Any]:
@@ -751,7 +748,7 @@ def upload_indlu_clients_and_policies(
     # clients = process_worksheet(wb, "Members", CLIENT_COLUMNS_INDLU, "client")
     data_type = source
     if data_type == 'indlu':
-        policy_clients_dump = process_worksheet(wb, "DataDump 300624", POLICY_SCORE_THF_UPDATE, "indlu")
+        policy_clients_dump = process_worksheet(wb, "Data", POLICY_SCORE_THF_UPDATE, "indlu")
     # elif data_type == 'cfsa':
     #     policy_clients_dump = process_worksheet(wb, "Data", POLICY_CLIENTS_COLUMNS_CFSA, "cfsa")
     # else:
@@ -902,7 +899,7 @@ def save_client_policy(client_policy_data):
     # )
     # serializer.is_valid(raise_exception=True)
     # serializer.save()
-    logger.info(f"Saved Client and Policy {client} {client_policy_data}")
+    logger.info(f"Saved Client and Policy {client_policy_data}")
 
 
 def match_beneficiaries_to_policies(beneficiaries, policies):

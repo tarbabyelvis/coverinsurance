@@ -1,3 +1,4 @@
+import logging
 import traceback
 from datetime import datetime, date, timedelta
 from typing import Final
@@ -26,6 +27,9 @@ from policies.services import extract_employment_fields
 from sms.services import warn_of_policy_lapse
 from .models import Task
 
+
+logger = logging.getLogger(__name__)
+
 first_day_of_month_for_yesterday: date = first_day_of_month_for_yesterday()
 last_day_of_previous_month: date = last_day_of_previous_month().date()
 today_start_date: date = datetime.today().date()
@@ -48,6 +52,7 @@ def daily_job_postings(start_date=first_day_of_month_for_yesterday, end_date=yes
         print(f"Error on sending life cover: {e}")
 
     try:
+
         life_funeral_daily(funeral_policies, nifty_configs, start_date, end_date)
     except Exception as e:
         print(f"Error on sending life funeral: {e}")
@@ -151,20 +156,23 @@ def __credit_life(
         raise Exception(e)
 
 
-def process_credit_life(data, integration_configs, start_date, end_date, is_daily_submission=True):
+def process_credit_life(policies, integration_configs, start_date, end_date, is_daily_submission=True):
     task = fetch_tasks('CREDIT_LIFE_DAILY' if is_daily_submission else 'CREDIT_LIFE_MONTHLY')
     log = create_task_logs(task)
     try:
         guard_risk = GuardRisk(integration_configs.access_key, integration_configs.base_url)
         client_identifier = integration_configs.client_identifier
-        data, response_status = guard_risk.life_credit_daily(data, start_date, end_date, client_identifier) \
-            if is_daily_submission else guard_risk.life_credit_monthly(data, start_date, end_date, client_identifier)
+        data, response_status = guard_risk.life_credit_daily(policies, start_date, end_date, client_identifier) \
+            if is_daily_submission else guard_risk.life_credit_monthly(policies, start_date, end_date, client_identifier)
         print(response_status)
-        log.data = data
+
         if str(response_status).startswith("2"):
+            data['credit_life'] = len(policies)
+            log.data = data
             log.status = "completed"
             log.save()
         else:
+            log.data = data
             log.status = "failed"
             log.save()
     except Exception as e:
@@ -189,32 +197,33 @@ def __life_funeral(
 ):
     try:
         if funeral_policies.exists():
-            pass
-            # nifty_data = list(filter(lambda p: p.entity == 'Nifty Cover', funeral_policies))
-            # nifty_policies = PolicyDetailSerializer(nifty_data, many=True).data
-            # process_life_funeral(nifty_policies, nifty_configs, start_date, end_date, is_daily_submission)
+            nifty_data = list(filter(lambda p: p.entity == 'Nifty Cover', funeral_policies))
+            nifty_policies = PolicyDetailSerializer(nifty_data, many=True).data
+            process_life_funeral(nifty_policies, nifty_configs, start_date, end_date, is_daily_submission)
         else:
-            pass
-        # process_life_funeral([], nifty_configs, start_date, end_date, is_daily_submission)
+            process_life_funeral([], nifty_configs, start_date, end_date, is_daily_submission)
     except Exception as e:
         print(e)
         raise Exception(e)
 
 
-def process_life_funeral(data, integration_configs, start_date, end_date, is_daily_submission=True):
+def process_life_funeral(policies, integration_configs, start_date, end_date, is_daily_submission=True):
     task = fetch_tasks('LIFE_FUNERAL_DAILY' if is_daily_submission else 'LIFE_FUNERAL_MONTHLY')
     log = create_task_logs(task)
     try:
         guard_risk = GuardRisk(integration_configs.access_key, integration_configs.base_url)
         client_identifier = integration_configs.client_identifier
-        data, response_status = guard_risk.life_funeral_daily(data, start_date, end_date, client_identifier) \
-            if is_daily_submission else guard_risk.life_funeral_monthly(data, start_date, end_date, client_identifier)
+        data, response_status = guard_risk.life_funeral_daily(policies, start_date, end_date, client_identifier) \
+            if is_daily_submission else guard_risk.life_funeral_monthly(policies, start_date, end_date, client_identifier)
         print(response_status)
         log.data = data
         if str(response_status).startswith("2"):
+            data['funeral'] = len(policies)
+            log.data = data
             log.status = "completed"
             log.save()
         else:
+            log.data = data
             log.status = "failed"
             log.save()
     except Exception as e:
@@ -257,20 +266,23 @@ def __claims(
         raise Exception(e)
 
 
-def process_claims(data, integration_configs, start_date, end_date, is_daily_submission=True):
+def process_claims(claims, integration_configs, start_date, end_date, is_daily_submission=True):
     task = fetch_tasks('CLAIM_DAILY' if is_daily_submission else 'CLAIM_MONTHLY')
     log = create_task_logs(task)
     try:
         guard_risk = GuardRisk(integration_configs.access_key, integration_configs.base_url)
         client_identifier = integration_configs.client_identifier
-        data, response_status = guard_risk.life_claims_daily(data, start_date, end_date, client_identifier) \
-            if is_daily_submission else guard_risk.life_claims_monthly(data, start_date, end_date, client_identifier)
+        data, response_status = guard_risk.life_claims_daily(claims, start_date, end_date, client_identifier) \
+            if is_daily_submission else guard_risk.life_claims_monthly(claims, start_date, end_date, client_identifier)
         print(response_status)
         log.data = data
         if str(response_status).startswith("2"):
+            data['claims'] = len(claims)
+            log.data = data
             log.status = "completed"
             log.save()
         else:
+            log.data = data
             log.status = "failed"
             log.save()
     except Exception as e:
@@ -314,19 +326,22 @@ def __premiums(
         raise Exception(e)
 
 
-def process_premiums(data, integration_configs, start_date, end_date, is_daily_submission=True):
+def process_premiums(premiums, integration_configs, start_date, end_date, is_daily_submission=True):
     task = fetch_tasks('PREMIUM_DAILY' if is_daily_submission else 'PREMIUM_MONTHLY')
     log = create_task_logs(task)
     try:
         guard_risk = GuardRisk(integration_configs.access_key, integration_configs.base_url)
-        data, response_status = guard_risk.life_premiums_daily(data, start_date, end_date) \
-            if is_daily_submission else guard_risk.life_premiums_monthly(data, start_date, end_date)
+        data, response_status = guard_risk.life_premiums_daily(premiums, start_date, end_date) \
+            if is_daily_submission else guard_risk.life_premiums_monthly(premiums, start_date, end_date)
         print(response_status)
         log.data = data
         if str(response_status).startswith("2"):
+            data['premiums'] = len(premiums)
+            log.data = data
             log.status = "completed"
             log.save()
         else:
+            log.data = data
             log.status = "failed"
             log.save()
     except Exception as e:
@@ -357,8 +372,7 @@ def __fetch_policies(start_date: datetime, end_date: datetime, policy_type: Poli
     return Policy.objects.filter(
         Q(policy_status='A', policy_type__policy_type=policy_type.name, policy_provider_type='Internal Credit Life',
           commencement_date__range=(start_date, end_date)) |
-        Q(policy_status__in=('P', 'C', 'X'), policy_type__policy_type=policy_type.name,
-          # TODO add the lapsed policies once notifications are done
+        Q(policy_status__in=('P', 'C', 'X','L'), policy_type__policy_type=policy_type.name,
           policy_provider_type='Internal Credit Life',
           closed_date__range=(start_date, end_date))
     )
@@ -382,14 +396,14 @@ def __fetch_premiums(start_date: datetime, end_date: datetime):
 
 def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
     print(f'fetching fineract data from {start_date} to {end_date} for org {fineract_org_id}')
-    # new_loans_status, new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    new_loans_status, new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
     # fetch_and_update_loan_scores(new_loans_status, new_loans)
-    # closed_status, closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    closed_status, closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
     repay_status, repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
     # # loans_past_due = __fetch_past_loans_due(fineract_org_id)
     # # loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
-    # save_new_loans(new_loans_status, new_loans)
-    # update_closed_loans(closed_status, closed_loans)
+    save_new_loans(new_loans_status, new_loans)
+    update_closed_loans(closed_status, closed_loans)
     save_repayments(repay_status, repayments)
     # process_adjustments(loans)
     # process_unpaid_and_lapsed_policies(loans_past_due)
