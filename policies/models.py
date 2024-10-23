@@ -140,8 +140,6 @@ class PremiumPayment(BaseModel):
     payment_receipt = models.FileField(null=True, blank=True)
     is_reversed = models.BooleanField(default=False)
     branch_name = models.CharField(max_length=200, null=True, blank=True)
-    policy_payment_method = models.CharField(max_length=200, null=True, blank=True)
-    transaction_type = models.CharField(max_length=200, null=True, blank=True)
     teller_transaction_number = models.CharField(max_length=200, null=True, blank=True)
 
     class Meta:

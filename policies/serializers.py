@@ -432,7 +432,10 @@ class PremiumPaymentSerializer(serializers.ModelSerializer):
         # Extract policy_id from the data and update internal_value
         policy_id = data.get("policy_id")
         if policy_id:
-            internal_value.update({"policy_id": policy_id})  # Ensure it gets mapped correctly
+            internal_value.update({"policy_id": policy_id})
+        for key, value in internal_value.items():
+            if value == "":
+                internal_value[key] = None
         return internal_value
 
     def validate_amount(self, value):

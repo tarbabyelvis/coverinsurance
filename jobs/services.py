@@ -779,13 +779,13 @@ def get_policy_number_and_external_id(loan):
 
 def extract_repayment_details(repayment, policy_id):
     policy_number, _ = get_policy_number_and_external_id(repayment)
+    payment_type = repayment["paymentType"] or ""
     return {
         "policy_id": policy_id,
         "policy_number": policy_number,
         "payment_date": repayment["transactionDate"],
         "amount": round(float(repayment.get("paidAmount", "0")), 2),
-        "transaction_type": repayment["paymentType"] or "",
-        "payment_method": repayment["paymentType"] or "",
+        "payment_method": payment_type,
         "transaction_id": repayment["transaction_id"],
     }
 
