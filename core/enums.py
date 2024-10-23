@@ -31,8 +31,8 @@ class PolicyStatus(models.TextChoices):
     FULLY_PAID = "F", "Paid Up"
     SURRENDERED = "S", "Surrendered"
     SURRENDERED_REPLACE = "SR", "Surrendered due to replacement"
-    TRANSFERRED_OUT = "T", "Transferred out"
-
+    TRANSFERRED_OUT = "T", "Transferred out",
+    HISTORIC_LAPSED = "HL", "Historic Lapsed"
 
 class ClaimStatus(models.TextChoices):
     CREATED = "CREATED", "Created"

@@ -423,8 +423,6 @@ class ClientPolicyResponseSerializer(serializers.Serializer):
 class PremiumPaymentSerializer(serializers.ModelSerializer):
     payment_receipt = serializers.FileField(required=False)
     payment_receipt_date = serializers.DateField(required=False)
-    payment_method = serializers.CharField(max_length=200, required=False)
-    payment_reference = serializers.CharField(max_length=200, required=False)
     policy = PolicySerializer(required=False)
 
     def to_internal_value(self, data):

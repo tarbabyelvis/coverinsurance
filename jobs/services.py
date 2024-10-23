@@ -779,7 +779,7 @@ def get_policy_number_and_external_id(loan):
 
 def extract_repayment_details(repayment, policy_id):
     policy_number, _ = get_policy_number_and_external_id(repayment)
-    payment_type = repayment["paymentType"] or ""
+    payment_type = repayment["paymentType"] or None
     return {
         "policy_id": policy_id,
         "policy_number": policy_number,
