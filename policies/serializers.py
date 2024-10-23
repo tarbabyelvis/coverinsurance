@@ -84,7 +84,7 @@ class PolicyPaymentScheduleSerializer(serializers.ModelSerializer):
 
 
 class PolicySerializer(serializers.ModelSerializer):
-    beneficiaries = BeneficiarySerializer(required=False, many=True)
+    beneficiary = BeneficiarySerializer(required=False)
     dependants = DependantSerializer(required=False, many=True)
     insurer = serializers.PrimaryKeyRelatedField(queryset=InsuranceCompany.objects.all())
 
@@ -180,7 +180,7 @@ class PolicySerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        beneficiaries_data = validated_data.pop("beneficiaries", [])
+        beneficiary_data = validated_data.pop("beneficiary", None)
         dependants_data = validated_data.pop("dependants", [])
         terms = validated_data.get("policy_term", 1)  # Default to 1 if not provided
 
@@ -208,7 +208,7 @@ class PolicySerializer(serializers.ModelSerializer):
             payment_due_date += timedelta(days=30)
 
         # Create beneficiaries and dependants
-        for beneficiary_data in beneficiaries_data:
+        if beneficiary_data:
             Beneficiary.objects.create(policy=policy, **beneficiary_data)
 
         for dependant_data in dependants_data:
@@ -218,7 +218,7 @@ class PolicySerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        beneficiaries_data = validated_data.pop("beneficiaries", [])
+        beneficiary = validated_data.pop("beneficiary", None)
         dependants_data = validated_data.pop("dependants", [])
 
         instance = super().update(instance, validated_data)
@@ -227,8 +227,8 @@ class PolicySerializer(serializers.ModelSerializer):
         instance.policy_beneficiary.all().delete()
         instance.policy_dependants.all().delete()
 
-        for beneficiary_data in beneficiaries_data:
-            Beneficiary.objects.create(policy=instance, **beneficiary_data)
+        if beneficiary:
+            Beneficiary.objects.create(policy=instance, **beneficiary)
 
         for dependant_data in dependants_data:
             Dependant.objects.create(policy=instance, **dependant_data)
@@ -243,9 +243,6 @@ class PolicyListSerializer(serializers.ModelSerializer):
     policy_status_display = serializers.CharField(
         source="get_policy_status_display", read_only=True
     )
-
-    # policy_beneficiary = BeneficiarySerializer(read_only=True, many=True)
-    # policy_dependants = DependantSerializer(read_only=True, many=True)
 
     class Meta:
         model = Policy

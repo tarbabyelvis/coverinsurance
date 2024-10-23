@@ -727,27 +727,38 @@ def save_repayments(status, repayments):
         try:
             policy_id = None
             policy = Policy.objects.filter(policy_number=policy_number).first()
+
+            # Check if the policy exists
             if policy is not None:
                 if policy.policy_status not in ['L', 'X']:
                     policy_id = policy.id
                     policy_details = policy.policy_details
+
                     collected = round(float(repayment.get("total_policy_premium_collected")), 2)
                     outstanding = round(float(repayment.get("current_outstanding_balance") or 0), 2)
-                    policy_details["total_policy_premium_collected"] = collected,
+
+                    policy_details["total_policy_premium_collected"] = collected
                     policy_details["current_outstanding_balance"] = outstanding
+
                     policy.policy_details = policy_details
                     policy.save()
             else:
                 create_policy(repayment)
                 policy_created = Policy.objects.filter(policy_number=policy_number).first()
-                policy_id = policy_created.id
-            if policy.policy_status not in ['L', 'X']:
+
+                if policy_created:
+                    policy_id = policy_created.id
+                    policy = policy_created
+                else:
+                    print(f"Policy creation failed for repayment {repayment}")
+                    continue
+
+            if policy and policy.policy_status not in ['L', 'X']:
                 repayment_details = extract_repayment_details(repayment, policy_id)
-                serializer = PremiumPaymentSerializer(
-                    data=repayment_details
-                )
+                serializer = PremiumPaymentSerializer(data=repayment_details)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
+
         except Exception as e:
             print(f"Error saving repayment {repayment}")
             print(e)

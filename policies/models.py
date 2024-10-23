@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 from clients.models import ClientDetails
@@ -174,7 +175,7 @@ class Dependant(BaseModel):
         on_delete=models.RESTRICT,
         related_name="relationship_dependant",
     )
-    primary_id_number = models.CharField(max_length=30, null=True, blank=True, )
+    primary_id_number = models.CharField(max_length=30, null=True, blank=True)
     primary_id_document_type = models.ForeignKey(
         IdDocumentType,
         on_delete=models.RESTRICT,
@@ -193,6 +194,13 @@ class Dependant(BaseModel):
     class Meta:
         verbose_name = "Dependant"
         verbose_name_plural = "Dependants"
+        constraints = [
+            models.UniqueConstraint(
+                fields=['primary_id_number'],
+                condition=~Q(primary_id_number=''),
+                name='unique_dependant_primary_id_number_when_set'
+            )
+        ]
 
     def __str__(self):
         return f"{self.id} - {self.policy}"
@@ -210,7 +218,7 @@ class Beneficiary(BaseModel):
         on_delete=models.RESTRICT,
         related_name="relationship_beneficiary",
     )
-    primary_id_number = models.CharField(max_length=30, null=True, blank=True, )
+    primary_id_number = models.CharField(max_length=30, null=True, blank=True)
     primary_id_document_type = models.ForeignKey(
         IdDocumentType,
         on_delete=models.RESTRICT,
@@ -232,6 +240,13 @@ class Beneficiary(BaseModel):
     class Meta:
         verbose_name = "Beneficiary"
         verbose_name_plural = "Beneficiaries"
+        constraints = [
+            models.UniqueConstraint(
+                fields=['primary_id_number'],
+                condition=~Q(primary_id_number=''),
+                name='unique_beneficiary_primary_id_number_when_set'
+            )
+        ]
 
     def __str__(self):
         return f"{self.id} - {self.policy}"

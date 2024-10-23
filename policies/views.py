@@ -369,6 +369,43 @@ class PolicyDependenciesView(APIView):
         )
 
 
+class UpdatePolicyDependency(APIView):
+    @swagger_auto_schema(
+        operation_description="Update policy dependant",
+        request_body=DependantSerializer(
+        ),
+        responses={
+            201: openapi.Response("Updated", DependantSerializer),
+            400: "Bad Request",
+        },
+    )
+    def put(self, request, pk):
+        dependant = Dependant.objects.filter(pk=pk).first()
+        if dependant is None:
+            return HTTPResponse.error(message="This dependant does not exist.")
+        serializer = DependantSerializer(
+            dependant,
+            data=request.data,
+            context={"request": request},
+            partial=True
+        )
+
+        if serializer.is_valid():
+            try:
+                serializer.save()
+
+                return HTTPResponse.success(
+                    message="Resources updated successfully",
+                    status_code=status.HTTP_200_OK,
+                )
+            except Exception as e:
+                print(f'Error: {str(e)}')
+                return HTTPResponse.error(message=str(e))
+        else:
+            print(f'Serializer errors: {serializer.errors}')
+            return HTTPResponse.error(message=serializer.errors)
+
+
 # add policies
 class PolicyBeneficiariesView(APIView):
 
@@ -383,6 +420,11 @@ class PolicyBeneficiariesView(APIView):
     def post(self, request, policy_id):
         if Beneficiary.objects.filter(policy_id=policy_id).exists():
             return HTTPResponse.error(message="This policy already has a beneficiary.")
+
+        primary_id_number = request.data.get('primary_id_number')
+        if primary_id_number and Beneficiary.objects.filter(primary_id_number=primary_id_number).exists():
+            return HTTPResponse.error(message="This beneficiary with id number already exists.")
+
         serializer = BeneficiarySerializer(
             data=request.data,
             context={"request": request},
