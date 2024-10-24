@@ -43,7 +43,7 @@ def daily_job_postings(start_date=first_day_of_month_for_yesterday, end_date=yes
     start_date_time, end_date_time = __get_start_and_end_dates_with_time(start_date, end_date)
     print(f'start date: {start_date_time}, end date: {end_date_time}')
     credit_life_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.CREDIT_LIFE)
-    funeral_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.FUNERAL_COVER)
+    # funeral_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.FUNERAL_COVER)
     fetched_claims = __fetch_claims(start_date_time, end_date_time)
     fetched_premiums = __fetch_premiums(start_date_time, end_date_time)
     try:
@@ -51,11 +51,11 @@ def daily_job_postings(start_date=first_day_of_month_for_yesterday, end_date=yes
     except Exception as e:
         print(f"Error on sending life cover: {e}")
 
-    try:
-
-        life_funeral_daily(funeral_policies, nifty_configs, start_date, end_date)
-    except Exception as e:
-        print(f"Error on sending life funeral: {e}")
+    # try:
+    #
+    #     life_funeral_daily(funeral_policies, nifty_configs, start_date, end_date)
+    # except Exception as e:
+    #     print(f"Error on sending life funeral: {e}")
 
     try:
         claims_daily(fetched_claims, nifty_configs, indlu_configs, start_date, end_date)
