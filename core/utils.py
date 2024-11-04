@@ -5,6 +5,10 @@ from typing import List
 from django.db import connection
 from rest_framework.pagination import PageNumberPagination
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class CustomPagination(PageNumberPagination):
     page_size = 20  # Set your desired page size here
@@ -142,7 +146,9 @@ def last_day_of_previous_month():
 def first_day_of_month_for_yesterday():
     today = datetime.now()
     yesterday = today - timedelta(days=1)
+    logger.info('yesterday {}'.format(yesterday))
     first_day_of_month = yesterday.replace(day=1)
+    logger.info('first_day_of_month_for_yesterday {}'.format(first_day_of_month))
     return first_day_of_month
 
 

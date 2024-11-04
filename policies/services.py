@@ -297,13 +297,13 @@ def process_worksheet(
                     data = {k: row_dict[k] for k in columns if k in row_dict}
                     if data is not None:
                         print(f'data {data}')
-                        loan_id = data["loan_id"]
+                        id = data["id"]
                         lapsed = data["lapsed"]
-                        print(f'loan id: {loan_id}')
+                        print(f'loan id: {id}')
                         if lapsed in ['Reinstate', 'lapsed warning notification','lapse warning communication']:
-                            policy = Policy.objects.filter(loan_id=loan_id).first()
+                            policy = Policy.objects.filter(pk=id).first()
                             if policy is not None:
-                                print(f"reinstating {loan_id}")
+                                print(f"reinstating {id}")
                                 policy.policy_status = 'A'
                                 policy.closed_date = None
                                 legit_active.append(policy)

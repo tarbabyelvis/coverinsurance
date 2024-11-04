@@ -1,9 +1,13 @@
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
+from datetime import timedelta
 
 from .managers import UserManager
 
+def default_expiry_date():
+    return timezone.now() + timedelta(days=90)
 
 class User(AbstractUser):
     username = None  # Remove username field since we use email for login
@@ -32,10 +36,9 @@ class User(AbstractUser):
         ('admin', 'Admin'),
         ('ceo', 'CEO'),
         ('insurance_manager', 'Insurance Manager'),
+        ('insurance_initiator', 'Insurance Initiator'),
         ('insurance', 'Insurance'),
         ('finance_officer', 'Finance Officer'),
-        ('collections_manager', 'Collections Manager'),
-        ('collections', 'Collections'),
         ('it_manager', 'IT Manager'),
         ('it_officer', 'IT Officer'),
         ('records_officer', 'Records Officer'),
@@ -51,6 +54,8 @@ class User(AbstractUser):
     is_teamleader = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
     phone = models.CharField(max_length=20, null=True, blank=True)
+    password_expiry_date = models.DateTimeField(default=default_expiry_date)
+    login_attempts = models.IntegerField(default=0)
 
     def __str__(self):
         return self.email

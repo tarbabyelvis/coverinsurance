@@ -41,15 +41,15 @@ def daily_job_postings(start_date=first_day_of_month_for_yesterday, end_date=yes
     nifty_configs = fetch_configs(identifier='Nifty Cover')
     indlu_configs = fetch_configs(identifier='Indlu')
     start_date_time, end_date_time = __get_start_and_end_dates_with_time(start_date, end_date)
-    print(f'start date: {start_date_time}, end date: {end_date_time}')
+    logger.info(f'start date: {start_date_time}, end date: {end_date_time}')
     credit_life_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.CREDIT_LIFE)
     # funeral_policies = __fetch_policies(start_date_time, end_date_time, PolicyType.FUNERAL_COVER)
     fetched_claims = __fetch_claims(start_date_time, end_date_time)
     fetched_premiums = __fetch_premiums(start_date_time, end_date_time)
-    try:
-        credit_life_daily(credit_life_policies, nifty_configs, indlu_configs, start_date, end_date)
-    except Exception as e:
-        print(f"Error on sending life cover: {e}")
+    # try:
+    #     credit_life_daily(credit_life_policies, nifty_configs, indlu_configs, start_date, end_date)
+    # except Exception as e:
+    #     print(f"Error on sending life cover: {e}")
 
     # try:
     #
@@ -57,15 +57,15 @@ def daily_job_postings(start_date=first_day_of_month_for_yesterday, end_date=yes
     # except Exception as e:
     #     print(f"Error on sending life funeral: {e}")
 
-    try:
-        claims_daily(fetched_claims, nifty_configs, indlu_configs, start_date, end_date)
-    except Exception as e:
-        print(f"Error on sending claims: {e}")
+    # try:
+    #     claims_daily(fetched_claims, nifty_configs, indlu_configs, start_date, end_date)
+    # except Exception as e:
+    #     print(f"Error on sending claims: {e}")
 
-    try:
-        premiums_daily(fetched_premiums, nifty_configs, indlu_configs, start_date, end_date)
-    except Exception as e:
-        print(f"Error on sending premiums: {e}")
+    # try:
+    #     premiums_daily(fetched_premiums, nifty_configs, indlu_configs, start_date, end_date)
+    # except Exception as e:
+    #     print(f"Error on sending premiums: {e}")
 
     status = 200
     data = {

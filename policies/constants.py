@@ -394,7 +394,7 @@ POLICY_CLIENTS_COLUMNS_THF_UPDATE = {
     "premium": "Monthly CLI Prem",
 }
 POLICY_SCORE_THF_UPDATE = {
-    "loan_id": "loan_id",
+    "id": "id",
     "lapsed": "lapsed",
     # "score": "Application Score",
     # "risk_band": "RiskBand",
