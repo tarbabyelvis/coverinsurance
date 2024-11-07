@@ -34,6 +34,7 @@ class PolicyStatus(models.TextChoices):
     TRANSFERRED_OUT = "T", "Transferred out",
     HISTORIC_LAPSED = "HL", "Historic Lapsed"
 
+
 class ClaimStatus(models.TextChoices):
     CREATED = "CREATED", "Created"
     ON_ASSESSMENT = "ON_ASSESSMENT", "On Assessment"
@@ -42,6 +43,14 @@ class ClaimStatus(models.TextChoices):
     APPROVED = "APPROVED", "Approved"
     PAID = "PAID", "Paid"
     REPUDIATED = "REPUDIATED", "Repudiated"
+
+
+class CreationStage(models.TextChoices):
+    INITIATED = "INITIATED", "Initiated"
+    ON_ASSESSMENT = "ON_ASSESSMENT", "On Assessment"
+    REVIEW = "REVIEW", "Review"
+    DECLINED = "DECLINED", "Declined"
+    CREATED = "CREATED", "Created"
 
 
 class PaymentStatus(models.TextChoices):

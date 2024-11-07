@@ -5,8 +5,9 @@ from django.utils import timezone
 from clients.models import ClientDetails
 from config.enums import PolicyType
 from config.models import Agent, InsuranceCompany, PolicyName, Relationships, IdDocumentType
-from core.enums import Gender, PolicyStatus, PremiumFrequency
+from core.enums import Gender, PolicyStatus, PremiumFrequency, CreationStage
 from core.models import BaseModel
+from users.models import User
 
 
 # from auditlog.registry import auditlog
@@ -81,6 +82,9 @@ class Policy(BaseModel):
     policy_provider_type = models.CharField(max_length=25, null=True, blank=True, default='Internal Credit Life')
     is_legacy = models.BooleanField(default=False)
     is_warned_of_non_payment = models.BooleanField(default=False)
+    creation_stage = models.CharField(max_length=20, choices=CreationStage.choices, default=CreationStage.CREATED)
+    lock = models.BooleanField(default=False)
+    allocated = models.BooleanField(default=False)
 
     def get_status_symbol(self):
         """
@@ -265,3 +269,18 @@ class StatusSnapshot(BaseModel):
     )
     policy_status = models.CharField(max_length=20, choices=PolicyStatus.choices)
     status_date = models.DateTimeField(default=timezone.now)
+
+
+class CreationStageSnapshot(BaseModel):
+    policy = models.ForeignKey(
+        Policy,
+        on_delete=models.RESTRICT,
+        related_name="creation_snapshots"
+    )
+    creation_stage = models.CharField(max_length=20, choices=CreationStage.choices, default=CreationStage.INITIATED)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.RESTRICT,
+        related_name="policy_stage_user",
+    )
+    stage_date = models.DateTimeField(default=timezone.now)

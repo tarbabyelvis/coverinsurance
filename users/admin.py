@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from rest_framework.authtoken.models import Token
+
 from .forms import CustomUserChangeForm, CustomUserCreationForm
 from .models import *
 
@@ -39,6 +39,7 @@ class CustomUserAdmin(UserAdmin):
             },
         ),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
+        ("Security", {"fields": ("login_attempts", "password_expiry_date")}),
     )
     add_fieldsets = (
         (

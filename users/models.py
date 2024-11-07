@@ -6,8 +6,10 @@ from datetime import timedelta
 
 from .managers import UserManager
 
+
 def default_expiry_date():
     return timezone.now() + timedelta(days=90)
+
 
 class User(AbstractUser):
     username = None  # Remove username field since we use email for login
@@ -16,7 +18,6 @@ class User(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
-    # Adding unique related_name attributes for groups and permissions
     groups = models.ManyToManyField(
         Group,
         related_name='custom_user_groups',
