@@ -397,14 +397,14 @@ def __fetch_premiums(start_date: datetime, end_date: datetime):
 
 def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
     print(f'fetching fineract data from {start_date} to {end_date} for org {fineract_org_id}')
-    # new_loans_status, new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
-    # fetch_and_update_loan_scores(new_loans_status, new_loans)
-    # closed_status, closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    new_loans_status, new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    fetch_and_update_loan_scores(new_loans_status, new_loans)
+    closed_status, closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
     repay_status, repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
     # loans_past_due = __fetch_past_loans_due(fineract_org_id)
     # loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
-    # save_new_loans(new_loans_status, new_loans)
-    # update_closed_loans(closed_status, closed_loans)
+    save_new_loans(new_loans_status, new_loans)
+    update_closed_loans(closed_status, closed_loans)
     save_repayments(repay_status, repayments)
     # process_adjustments(loans)
     # process_unpaid_and_lapsed_policies(loans_past_due)
@@ -747,7 +747,7 @@ def save_repayments(status, repayments):
                     policy_id = policy.id
                     policy_details = policy.policy_details
 
-                    collected = round(float(repayment.get("total_policy_premium_collected")), 2)
+                    collected = round(float(repayment.get("total_policy_premium_collected") or 0), 2)
                     outstanding = round(float(repayment.get("current_outstanding_balance") or 0), 2)
 
                     policy_details["total_policy_premium_collected"] = collected
