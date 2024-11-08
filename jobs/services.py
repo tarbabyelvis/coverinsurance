@@ -27,7 +27,6 @@ from policies.services import extract_employment_fields
 from sms.services import warn_of_policy_lapse
 from .models import Task
 
-
 logger = logging.getLogger(__name__)
 
 first_day_of_month_for_yesterday: date = first_day_of_month_for_yesterday()
@@ -163,7 +162,8 @@ def process_credit_life(policies, integration_configs, start_date, end_date, is_
         guard_risk = GuardRisk(integration_configs.access_key, integration_configs.base_url)
         client_identifier = integration_configs.client_identifier
         data, response_status = guard_risk.life_credit_daily(policies, start_date, end_date, client_identifier) \
-            if is_daily_submission else guard_risk.life_credit_monthly(policies, start_date, end_date, client_identifier)
+            if is_daily_submission else guard_risk.life_credit_monthly(policies, start_date, end_date,
+                                                                       client_identifier)
         print(response_status)
 
         if str(response_status).startswith("2"):
@@ -214,7 +214,8 @@ def process_life_funeral(policies, integration_configs, start_date, end_date, is
         guard_risk = GuardRisk(integration_configs.access_key, integration_configs.base_url)
         client_identifier = integration_configs.client_identifier
         data, response_status = guard_risk.life_funeral_daily(policies, start_date, end_date, client_identifier) \
-            if is_daily_submission else guard_risk.life_funeral_monthly(policies, start_date, end_date, client_identifier)
+            if is_daily_submission else guard_risk.life_funeral_monthly(policies, start_date, end_date,
+                                                                        client_identifier)
         print(response_status)
         log.data = data
         if str(response_status).startswith("2"):
@@ -372,7 +373,7 @@ def __fetch_policies(start_date: datetime, end_date: datetime, policy_type: Poli
     return Policy.objects.filter(
         Q(policy_status='A', policy_type__policy_type=policy_type.name, policy_provider_type='Internal Credit Life',
           commencement_date__range=(start_date, end_date)) |
-        Q(policy_status__in=('P', 'C', 'X','L'), policy_type__policy_type=policy_type.name,
+        Q(policy_status__in=('P', 'C', 'X', 'L'), policy_type__policy_type=policy_type.name,
           policy_provider_type='Internal Credit Life',
           closed_date__range=(start_date, end_date))
     )
@@ -396,9 +397,9 @@ def __fetch_premiums(start_date: datetime, end_date: datetime):
 
 def fetch_and_process_fin_connect_data(start_date: date, end_date: date, fineract_org_id):
     print(f'fetching fineract data from {start_date} to {end_date} for org {fineract_org_id}')
-    #new_loans_status, new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
-    #fetch_and_update_loan_scores(new_loans_status, new_loans)
-    #closed_status, closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
+    # new_loans_status, new_loans = __fetch_new_policies_from_fin_connect(start_date, end_date, fineract_org_id)
+    # fetch_and_update_loan_scores(new_loans_status, new_loans)
+    # closed_status, closed_loans = __fetch_closed_loans_from_fin_connect(start_date, end_date, fineract_org_id)
     repay_status, repayments = __fetch_loan_repayments_from_fin_connect(start_date, end_date, fineract_org_id)
     # loans_past_due = __fetch_past_loans_due(fineract_org_id)
     # loans = __fetch_premium_adjustments_from_fin_connect(fineract_org_id)
@@ -767,9 +768,10 @@ def save_repayments(status, repayments):
 
             if policy and policy.policy_status not in ['L', 'X']:
                 repayment_details = extract_repayment_details(repayment, policy_id)
-                serializer = PremiumPaymentSerializer(data=repayment_details)
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
+                if repayment_details['amount'] > 0:
+                    serializer = PremiumPaymentSerializer(data=repayment_details)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
 
         except Exception as e:
             print(f"Error saving repayment {repayment}")
@@ -798,7 +800,7 @@ def extract_repayment_details(repayment, policy_id):
         "policy_id": policy_id,
         "policy_number": policy_number,
         "payment_date": repayment["transactionDate"],
-        "amount": round(float(repayment.get("paidAmount", "0")), 2),
+        "amount": round(float(repayment.get("paidAmount") or 0), 2),
         "payment_method": payment_type,
         "transaction_id": repayment["transaction_id"],
     }
