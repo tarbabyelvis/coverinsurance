@@ -1,6 +1,7 @@
 from django.urls import path
 from config.views import AgentList, BusinessSectorList, ClaimFieldsAPIView, ClaimTypeList, DocumentTypeList, \
-    IdDocumentTypeList, InsuranceCompanyList, PolicyNameList, PolicyTypeFieldsAPIView, RelationshipsList
+    IdDocumentTypeList, InsuranceCompanyList, PolicyNameList, PolicyTypeFieldsAPIView, RelationshipsList, \
+    FinClaimantDetails
 
 app_name = 'config'
 urlpatterns = [
@@ -14,4 +15,5 @@ urlpatterns = [
     path("agents", AgentList.as_view(), name="agent-list"),
     path('policy-type-fields/', PolicyTypeFieldsAPIView.as_view(), name='policy-type-fields'),
     path('claim-type-fields/', ClaimFieldsAPIView.as_view(), name='claim-type-fields'),
+    path('fin-claimant-details/', FinClaimantDetails.as_view(), name='fin-claimant-details'),
 ]

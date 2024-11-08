@@ -68,3 +68,8 @@ class PolicyTypeFieldsSerializer(serializers.ModelSerializer):
     class Meta:
         model = PolicyTypeFields
         fields = ["short_name", "name", "input_type", "is_required", "is_unique"]
+
+class ClaimantDetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClaimantDetails
+        exclude = ["deleted"]

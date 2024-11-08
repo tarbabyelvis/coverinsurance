@@ -119,3 +119,15 @@ class ClaimFieldsAPIView(APIView):
         claim_type_fields = ClaimFields.objects.filter(id=claim_type)
         serializer = ClaimFieldsSerializer(claim_type_fields, many=True)
         return HTTPResponse.success(serializer.data)
+
+
+class FinClaimantDetails(APIView):
+    @swagger_auto_schema(
+        operation_description="Retrieve FIN claimant details",
+        responses={200: ClaimantDetailsSerializer(many=True)},
+    )
+    def get(self, request):
+        print('getting claimant details...')
+        claimant_details = ClaimantDetails.objects.all()
+        serializer = ClaimantDetailsSerializer(claimant_details, many=True)
+        return HTTPResponse.success(data=serializer.data)
