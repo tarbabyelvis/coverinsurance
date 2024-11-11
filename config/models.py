@@ -177,11 +177,11 @@ class ClaimantDetails(models.Model):
     email = models.CharField(max_length=60)
     phone_number = models.CharField(max_length=60)
     bank = models.CharField(max_length=60)
-    branch = models.CharField(max_length=60)
     branch_code = models.CharField(max_length=60)
     account_name = models.CharField(max_length=60)
     account_number = models.CharField(max_length=60)
     account_type = models.CharField(max_length=60)
+    currency = models.CharField(max_length=10, default='ZAR')
     created = models.DateField(default=timezone.now)
     objects = models.Manager()
 

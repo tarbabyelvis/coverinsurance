@@ -72,4 +72,8 @@ class PolicyTypeFieldsSerializer(serializers.ModelSerializer):
 class ClaimantDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClaimantDetails
-        exclude = ["deleted"]
+        fields = [
+            'name', 'surname', 'id_number', 'id_type', 'email',
+            'phone_number', 'bank', 'currency', 'branch_code',
+            'account_name', 'account_number', 'account_type', 'created'
+        ]
