@@ -383,6 +383,7 @@ def __fetch_claims(start_date: datetime, end_date: datetime):
     return Claim.objects.filter(
         submitted_date__gte=start_date,
         submitted_date__lte=end_date,
+        claim_status='APPROVED',
         policy__policy_provider_type='Internal Credit Life'
     )
 

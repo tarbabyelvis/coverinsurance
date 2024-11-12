@@ -276,6 +276,7 @@ class ClaimDetailAPIView(APIView):
                 message="Claim not found", status_code=status.HTTP_404_NOT_FOUND
             )
         data = request.data
+        print(f'claim obtained {claim}')
         serializer = ClaimSerializer(claim, data=data)
         if serializer.is_valid():
             serializer.save()
